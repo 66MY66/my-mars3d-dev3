@@ -2327,31 +2327,37 @@ function onClickBimLayer(event: any) {
     overflow: hidden !important;
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
     height: auto !important;
     box-sizing: border-box;
   }
 
   .mars-dialog__footer {
-    position: relative;
-    left: 0;
-    bottom: auto;
+    // Override mars-dialog's default overlay footer so it becomes the
+    // third independent flex region below the scrollable content.
+    position: relative !important;
+    inset: auto !important;
     width: 100%;
-    height: auto;
+    flex: 0 0 var(--popup-footer-height);
+    height: var(--popup-footer-height);
     min-height: var(--popup-footer-height);
     flex-shrink: 0;
     align-items: center;
     padding: 8px 12px;
     box-sizing: border-box;
+    z-index: 2;
+    background: var(--popup-surface);
+    border-top: 1px solid var(--popup-border);
   }
 
   .layer-panel-body {
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
-    height: 100%;
+    height: auto;
+    overflow: hidden;
   }
 
   .layer-panel-fixed {
@@ -2363,8 +2369,9 @@ function onClickBimLayer(event: any) {
   }
 
   .layer-panel-scroll {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
+    height: auto;
     overflow-x: hidden;
     overflow-y: auto;
   }

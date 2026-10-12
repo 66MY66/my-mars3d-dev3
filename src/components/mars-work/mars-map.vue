@@ -476,6 +476,18 @@ function removeBrandingOnce(container: ParentNode | null, mapInstance?: any): vo
   } catch {
   }
 
+  // Cesium may place its credit container outside the map host. Clean only
+  // the credit container belonging to this map instance.
+  if (mapInstance) {
+    const viewer = mapInstance?.viewer || mapInstance?._viewer
+    const creditContainer = viewer?.cesiumWidget?.creditContainer || viewer?._cesiumWidget?._creditContainer
+    try {
+      const creditHits = creditContainer?.querySelectorAll?.(MARS3D_BRANDING_SELECTOR) || []
+      creditHits.forEach((el: Element) => hideIfBranding(el))
+    } catch {
+    }
+  }
+
   try {
     const textHits = (root as any).querySelectorAll ? (root as any).querySelectorAll("a,span,div") : []
     textHits.forEach((el: Element) => {
@@ -494,6 +506,9 @@ function startNoWatermarkGuard(container: HTMLElement | null, mapInstance?: any)
   }
   ensureNoWatermarkStyle()
   removeBrandingOnce(container, mapInstance)
+  if (document.body && document.body !== container) {
+    removeBrandingOnce(document.body, mapInstance)
+  }
 
   if (watermarkObserver) {
     try {
@@ -508,6 +523,19 @@ function startNoWatermarkGuard(container: HTMLElement | null, mapInstance?: any)
     return
   }
 
+  // Some Cesium/Mars3D builds append their credit node directly under body
+  // instead of the map host. Observe body as well, while hideIfBranding keeps
+  // the cleanup limited to known branding signatures.
+  const observerTargets: Node[] = [root]
+  if (document.body && document.body !== root) {
+    observerTargets.push(document.body)
+  }
+  const viewer = mapInstance?.viewer || mapInstance?._viewer
+  const creditContainer = viewer?.cesiumWidget?.creditContainer || viewer?._cesiumWidget?._creditContainer
+  if (creditContainer && creditContainer !== root) {
+    observerTargets.push(creditContainer)
+  }
+
   watermarkObserver = new MutationObserver((muts) => {
     muts.forEach((m) => {
       m.addedNodes.forEach((n) => {
@@ -516,13 +544,13 @@ function startNoWatermarkGuard(container: HTMLElement | null, mapInstance?: any)
         }
         const el = n as Element
         hideIfBranding(el)
-        removeBrandingOnce(el, mapInstance)
+        removeBrandingOnce(container, mapInstance)
       })
     })
   })
 
   try {
-    watermarkObserver.observe(root, { childList: true, subtree: true })
+    observerTargets.forEach((target) => watermarkObserver?.observe(target, { childList: true, subtree: true }))
   } catch {
     try {
       watermarkObserver.observe(document.body, { childList: true, subtree: true })
