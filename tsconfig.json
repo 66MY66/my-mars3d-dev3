@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": true,
+    "useDefineForClassFields": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "strictFunctionTypes": false,
+    "strictNullChecks": false,
+    "jsx": "preserve",
+    "allowJs": true,
+    "sourceMap": true,
+    "alwaysStrict": true,
+    "noImplicitAny": false,
+    "experimentalDecorators": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "isolatedModules": false,
+    "baseUrl": ".",
+    "outDir": "dist",
+    "types": ["vite/client", "node"],
+    "lib": ["esnext", "dom", "dom.iterable", "scripthost"],
+    "paths": {
+      "@/*": ["src/*"],
+      "@/core/commandBus": ["src/cui-bridge/commandBus.ts"],
+      "@mars/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "packages/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/components/mars-work/expand/index.js"],
+  "exclude": ["node_modules", "src/**/*.js", "src/**/*.test.ts", "src/**/*.spec.ts", "dist"]
+}

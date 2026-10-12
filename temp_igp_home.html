@@ -1,0 +1,1143 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="_m_" content="F641B4066EA05331">
+    <meta name="version" content="Touch Site V4.2.0 (2019.09.03)">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta charset="utf-8" />
+    <title>é¦é¡µ-ä¸­å½å°éå±å°çç©çç ç©¶æ</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+    <meta content="yes" name="apple-mobile-web-app-capable" />
+    <meta content="yes" name="apple-touch-fullscreen" />
+    <meta content="black" name="apple-mobile-web-app-status-bar-style" />
+    <meta content="telephone=no;email=no" name="format-detection" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="keywords" content="ä¸­å½å°éå±å°çç©çç ç©¶æ">
+    <meta name="description" content="ä¸­å½å°éå±å°çç©çç ç©¶æ">
+    <meta name="SiteName" Â content="ä¸­å½å°éå±å°çç©çç ç©¶æ">
+    <meta name="SiteDomain" content="www.cea-igp.ac.cn">
+    <meta name="SiteIDCode" Â content="CA330000000604243490002">
+    <link rel="shortcut icon" href="theme/favicon.ico" />
+    <link rel="stylesheet" href="theme/css/swiper.min.css" />
+    <link rel="stylesheet" type="text/css" href="theme/css/base.css" />
+    <link rel="stylesheet" type="text/css" href="theme/css/common.css" />
+    <link rel="stylesheet" href="theme/css/index.css" />
+    <script type="text/javascript" src="theme/js/jquery-3.6.1.min.js"></script>
+    <script type="text/javascript" src="theme/js/swiper.min.js"></script>
+    <script type="text/javascript" src="theme/js/MSClass.js"></script>
+    <style>
+        .kk {
+            display: none;
+        }
+    </style>
+
+</head>
+<body>
+    <!--é£çªå¼å§-->
+      <!--<div id="FlAD" class="adver" style="position:fixed;top:0;left:0;Z-INDEX:10000;">
+        <div id="img1" style="Z-INDEX: 1000; LEFT: 2px; WIDTH:270px; POSITION: absolute; TOP: 43px; HEIGHT: 100px; visibility: visible;">
+            <a class="gb" style="position:absolute;top:0;right:0;color:#333333;height:20px;line-height:20px;">
+                <a class="gb" style="position:absolute;top:0;right:0;color:#fff;height:20px;line-height:20px;" onClick="document.getElementById('img1').style.display='none'">å³é­</a>
+                <a href="kydt/280467.html" target="_blank">        
+        		<img style="width:230px;" src="Uploads/kindeditor/image/20240123/å¾®ä¿¡å¾ç20240123.png" alt="" />
+       
+        </a>
+        </div>
+    </div>-->
+ 
+
+
+
+    <SCRIPT>
+        var xPos = 300;
+        var yPos = 200;
+        var step = 1;
+        var delay = 30;
+        var height = 0;
+        var Hoffset = 0;
+        var Woffset = 0;
+        var yon = 0;
+        var xon = 0;
+        var pause = true;
+        var interval;
+        img1.style.top = yPos;
+
+        function changePos() {
+            width = document.documentElement.clientWidth;
+            height = document.documentElement.clientHeight;
+            Hoffset = img1.offsetHeight;
+            Woffset = img1.offsetWidth;
+            img1.style.left = xPos + document.body.scrollLeft + "px";
+            img1.style.top = yPos + document.body.scrollTop + "px";
+            if (yon) {
+                yPos = yPos + step;
+            } else {
+                yPos = yPos - step;
+            }
+            if (yPos < 0) {
+                yon = 1;
+                yPos = 0;
+            }
+            if (yPos >= (height - Hoffset)) {
+                yon = 0;
+                yPos = (height - Hoffset);
+            }
+            if (xon) {
+                xPos = xPos + step;
+            } else {
+                xPos = xPos - step;
+            }
+            if (xPos < 0) {
+                xon = 1;
+                xPos = 0;
+            }
+            if (xPos >= (width - Woffset)) {
+                xon = 0;
+                xPos = (width - Woffset);
+            }
+        }
+
+        function start() {
+            img1.visibility = "visible";
+            interval = setInterval('changePos()', delay);
+            document.getElementById("img1").onmouseover = function() {
+                clearInterval(interval);
+            }
+            document.getElementById("img1").onmouseout = function() {
+                interval = setInterval('changePos()', delay);
+            }
+        }
+
+        function pause_resume() {
+            if (pause) {
+                clearInterval(interval);
+                pause = false;
+            } else {
+                interval = setInterval('changePos()', delay);
+                pause = true;
+            }
+        }
+        start();
+    </SCRIPT>
+     
+
+
+    <!--header-->
+    <script type="text/javascript" src="theme/js/ckplayer.js"></script>
+
+<style>
+    .topright li a {
+        background-position: -220px 0;
+    }
+</style>
+<div class="top clear">
+    
+    <!--ææºå¯¼èª-->
+    <ul class="pnav clear">
+        <li class="clear"><a class="aa" href="index.html">é¦é¡µ</a></li>
+        
+        <li class="li1 clear"><a class="aa" href="jinqiyaowen/index.html">è¿æè¦é»<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+            </ul>
+        </li>
+        
+        <li class="li2 clear"><a class="aa" href="cxdt/index.html">ç ç©¶æå¨æ<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+            </ul>
+        </li>
+        
+        <li class="li3 clear"><a class="aa" href="kydt/index.html">ç§ç å¨æ<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+            </ul>
+        </li>
+        
+        <li class="li4 clear"><a class="aa" href="rcpy/rcqp/index.html">äººæå¹å»<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+                <li><a href="rcpy/rcqp/index.html">äººææè</a></li>
+                
+                <li><a href="rcpy/bshldz/bshldzjg/index.html">åå£«åææ¶</a></li>
+                
+            </ul>
+        </li>
+        
+        <li class="li5 clear"><a class="aa" href="xueshuhuodong/index.html">å­¦æ¯æ´»å¨<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+            </ul>
+        </li>
+        
+        <li class="li6 clear"><a class="aa" href="cxgg/index.html">ææ°å¬å<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+            </ul>
+        </li>
+        
+        <li class="li7 clear"><a class="aa" href="dskp/index.html">å°éç§æ®å®£ä¼ <span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+            </ul>
+        </li>
+        
+        <li class="li8 clear"><a class="aa" href="yqlc/index.html">åæé¾æ¥<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+                <li><a href="https://www.mem.gov.cn/">åºæ¥ç®¡çé¨</a></li>
+                
+                <li><a href="http://www.cea.gov.cn">ä¸­å½å°éå±</a></li>
+                
+                <li><a href="yqlc/zgdzj/index.html">ççº§å°éå±</a></li>
+                
+                <li><a href="yqlc/gndzzd/index.html">å°éå±ç´å±åä½</a></li>
+                
+                <li><a href="yqlc/gwdzzd/index.html">ä¸»è¦å°éç½ç«</a></li>
+                
+            </ul>
+        </li>
+        
+        <li class="li9 clear"><a class="aa" href="gxxjs/xjsjg/index.html">å³äºç ç©¶æ<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+                <li><a href="gxxjs/xjsjg/index.html">ç ç©¶æç®ä»</a></li>
+                
+                <li><a href="gxxjs/xjsld/index.html">ç ç©¶æé¢å¯¼</a></li>
+                
+                <li><a href="gxxjs/ljwm/index.html">å­¦æ¯å§åä¼</a></li>
+                
+                <li><a href="gxxjs/xueweiweiyuanhui/index.html">å­¦ä½å§åä¼</a></li>
+                
+                <li><a href="gxxjs/xjsls/index.html">ç ç©¶æåå²</a></li>
+                
+                <li><a href="gxxjs/xjslz/index.html">ç ç©¶æä½ç½®</a></li>
+                
+            </ul>
+        </li>
+        
+        <li class="li10 clear"><a class="aa" href="liangyuanyuanshi/index.html">ä¸¤é¢é¢å£«<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+            </ul>
+        </li>
+        
+        <li class="li11 clear"><a class="aa" href="kxdw/zszj/index.html">ç§ç éä¼<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+                <li><a href="kxdw/zszj/index.html">ç¹èä¸å®¶</a></li>
+                
+                <li><a href="kxdw/xjy/index.html">æ­£é«èç§°</a></li>
+                
+                <li><a href="xjyfg/index.html">å¯é«èç§°</a></li>
+                
+                <li><a href="xjycj/index.html">ä¸­çº§èç§°</a></li>
+                
+                <li><a href="kxdw/rych/index.html">è£èªç§°å·</a></li>
+                
+            </ul>
+        </li>
+        
+        <li class="li12 clear"><a class="aa" href="kxjg/szdshysywlxjs/xjsjg/index.html">ç§ç æºæ<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+                <li><a href="kxjg/szdshysywlxjs/xjsjg/index.html">å°éå­¦ç ç©¶å®¤</br>ï¼ç¬¬ä¸ç ç©¶å®¤ï¼</a></li>
+                
+                <li><a href="kxjg/gcdshycfjz(dsshh)xjs/xjsjg/index.html">å¼ºéå¨å°éå­¦ç ç©¶å®¤</br>ï¼ç¬¬äºç ç©¶å®¤ï¼</a></li>
+                
+                <li><a href="kxjg/sydqwlxjs/xjsjg/index.html">å°çåé¨ç©çç ç©¶å®¤</br>ï¼ç¬¬ä¸ç ç©¶å®¤ï¼</a></li>
+                
+                <li><a href="kxjg/ssdshydsjcybjsxjs/xjsjg/index.html">éåä¸å°å£³å½¢åç ç©¶å®¤</br>ï¼ç¬¬åç ç©¶å®¤ï¼</a></li>
+                
+                <li><a href="kxjg/dchyscdgjxjs/xjsjg/index.html">å°ç£å­¦ç ç©¶å®¤</br>ï¼ç¬¬äºç ç©¶å®¤ï¼</a></li>
+                
+                <li><a href="kxjg/dqwlgcjsxjs/xjsjg/index.html">å°çç©çåå¯¼ææ¯ç ç©¶å®¤</br>ï¼ç¬¬å­ç ç©¶å®¤ï¼</a></li>
+                
+                <li><a href="kxjg/qqdsgdygcjsxjs/xjsjg/index.html">éå¤©ç¶å°éç ç©¶å®¤</br>ï¼ç¬¬ä¸ç ç©¶å®¤ï¼</a></li>
+                
+            </ul>
+        </li>
+        
+        <li class="li13 clear"><a class="aa" href="kejizhichengbumen/beijingguojiadiqiuguanxiangtai/zhuyaozhize/index.html">ç§ææ¯ææºæ<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+                <li><a href="kejizhichengbumen/beijingguojiadiqiuguanxiangtai/zhuyaozhize/index.html">åäº¬å½å®¶å°çè§è±¡å°</a></li>
+                
+                <li><a href="kxjg/fzjzgcjsxjy/fzjzgcjsyjy/index.html">é²ç¾åç¾å·¥ç¨ææ¯ä¸­å¿</a></li>
+                
+                <li><a href="kejizhichengbumen/kejixinxizhongxin/zhongxinjianjie/index.html">ç§æä¿¡æ¯ä¸­å¿</a></li>
+                
+                <li><a href="kejizhichengbumen/dizhenkexueshujuzhongxin/zhuyaozhize/index.html">å°éç§å­¦æ°æ®ä¸­å¿</a></li>
+                
+                <li><a href="kejizhichengbumen/houqinfuwuzhongxincaiwuyuguoyouzichanguanlizhongxin/zhuyaozhize/index.html">åå¤æå¡ä¸­å¿(è´¢å¡ä¸å½æèµäº§ç®¡çä¸­å¿)</a></li>
+                
+            </ul>
+        </li>
+        
+        <li class="li14 clear"><a class="aa" href="glbwjg/bgs(wsbgs)/jbsx/index.html">ç®¡çæå¡æºæ<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+                <li><a href="glbwjg/bgs(wsbgs)/jbsx/index.html">æåå¬å®¤</a></li>
+                
+                <li><a href="glbwjg/rczyb/jbsx/index.html">äººæèµæºé¨</a></li>
+                
+                <li><a href="glbwjg/kjfzbjcyb/jbsx/index.html">ç§æåå±é¨</a></li>
+                
+                <li><a href="glbwjg/kejichengguozhuanhuayufuwubu/jibenxinxi/index.html">ç§æææè½¬åä¸æå¡é¨</a></li>
+                
+                <li><a href="glbwjg/jgcwb/jbsx/index.html">è®¡åè´¢å¡é¨</a></li>
+                
+                <li><a href="glbwjg/dqgzbgs/jbsx/index.html">åç¾¤å·¥ä½åå¬å®¤</a></li>
+                
+                <li><a href="glbwjg/jjjcsjs/jbxx/index.html">çºªæ£å®¤</a></li>
+                
+                <li><a href="glbwjg/ctxgzbgs/jbsx/index.html">ç¦»éä¼å·¥ä½åå¬å®¤</a></li>
+                
+                <li><a href="glbwjg/hqbwzx/jbsx/index.html">å°éç§å­¦å®éªåºåå¬å®¤</a></li>
+                
+            </ul>
+        </li>
+        
+        <li class="li15 clear"><a class="aa" href="yjbw/boshizhaoshengxinxi/index.html">ç ç©¶çæè²<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+                <li><a href="yjbw/boshizhaoshengxinxi/index.html">åå£«æçä¿¡æ¯</a></li>
+                
+                <li><a href="yjbw/shuoshizhaoshengxinxi/index.html">ç¡å£«æçä¿¡æ¯</a></li>
+                
+                <li><a href="yjbw/yanjiushengyuandi/index.html">ç ç©¶çå­å°</a></li>
+                
+                <li><a href="yjbw/boshishengdaoshijianjie/index.html">åå£«çå¯¼å¸ç®ä»</a></li>
+                
+                <li><a href="yjbw/shuoshishengdaoshijianjie/index.html">ç¡å£«çå¯¼å¸ç®ä»</a></li>
+                
+            </ul>
+        </li>
+        
+        <li class="li16 clear"><a class="aa" href="gongzuojianbao/index.html">å·¥ä½ç®æ¥<span class="jiao"></span></a>
+            <ul class="psnav clear">
+                
+            </ul>
+        </li>
+        
+        <!--<li class="clear"><a class="aa" target="_blank" href="http://www.weibo.com/ceaigp">å®æ¹å¾®å</a></li>-->
+    </ul>
+    <div class="phtop phshow">
+        <div class="pbtn"></div>
+    </div>
+    <!---->
+    <div class="header clear margin">
+        <h1 class="logo">
+            <a href="index.html"><img src="Uploads/kindeditor/image/20220906/logo.png" alt="" /></a>
+        </h1>
+        <ul class="topright pcshow">
+           <li class="li2"><a href="http://mail.cea-igp.ac.cn/" target="_blank">é®ç®±</a></li>
+        </ul>
+    </div>
+    <div class="words clear">
+        <div class="w1">ç§ç è¦æ¥å½å®¶ä¹ææ¥ï¼è¿è¦åèµ°ä¸æ­¥ã<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ââèµµä¹ç« &nbsp;&nbsp;&nbsp;<br /></div>
+    </div>
+</div>
+<div class="margin navcon clear">
+    <div class="pcnav clear">
+        <ul class="nav clear">
+            <li class="active"><a href="index.html">é¦é¡µ</a></li>
+            
+            <li aid="11168" id="11168" class="li1"><a href="jinqiyaowen/index.html">è¿æè¦é»</a></li>
+            
+            <li aid="10056" id="10056" class="li2"><a href="cxdt/index.html">ç ç©¶æå¨æ</a></li>
+            
+            <li aid="11035" id="11035" class="li3"><a href="kydt/index.html">ç§ç å¨æ</a></li>
+            
+            <li aid="10018" id="10018" class="li4"><a href="rcpy/rcqp/index.html">äººæå¹å»</a></li>
+            
+            <li aid="11270" id="11270" class="li5"><a href="xueshuhuodong/index.html">å­¦æ¯æ´»å¨</a></li>
+            
+            <li aid="10016" id="10016" class="li6"><a href="cxgg/index.html">ææ°å¬å</a></li>
+            
+            <li aid="10057" id="10057" class="li7"><a href="dskp/index.html">å°éç§æ®å®£ä¼ </a></li>
+            
+            <li aid="10078" id="10078" class="li8"><a href="yqlc/index.html">åæé¾æ¥</a></li>
+            
+            <li aid="9860" id="9860" class="li9"><a href="gxxjs/xjsjg/index.html">å³äºç ç©¶æ</a></li>
+            
+            <li aid="11271" id="11271" class="li10"><a href="liangyuanyuanshi/index.html">ä¸¤é¢é¢å£«</a></li>
+            
+            <li aid="9879" id="9879" class="li11"><a href="kxdw/zszj/index.html">ç§ç éä¼</a></li>
+            
+            <li aid="9887" id="9887" class="li12"><a href="kxjg/szdshysywlxjs/xjsjg/index.html">ç§ç æºæ</a></li>
+            
+            <li aid="11223" id="11223" class="li13"><a href="kejizhichengbumen/beijingguojiadiqiuguanxiangtai/zhuyaozhize/index.html">ç§ææ¯ææºæ</a></li>
+            
+            <li aid="9953" id="9953" class="li14"><a href="glbwjg/bgs(wsbgs)/jbsx/index.html">ç®¡çæå¡æºæ</a></li>
+            
+            <li aid="10014" id="10014" class="li15"><a href="yjbw/boshizhaoshengxinxi/index.html">ç ç©¶çæè²</a></li>
+            
+            <li aid="11176" id="11176" class="li16"><a href="gongzuojianbao/index.html">å·¥ä½ç®æ¥</a></li>
+            
+            <!--<li aid="10000"><a target="_blank" href="http://www.weibo.com/ceaigp">å®æ¹å¾®å</a></li>-->
+        </ul>
+    </div>
+</div>
+<script>
+    $(function() {
+        $(".nav>li").each(function() {
+            if ($(this).attr("aid") == "$topclass.id$") {
+                $(this).addClass("active");
+                $(this).siblings("li").removeClass("active");
+            }
+        })
+
+        $(".pbtn").click(function() {
+            $(".pnav").slideToggle();
+            $(this).toggleClass("show");
+        })
+        $(".pnav>li").each(function() {
+            if ($(this).find(".psnav>li").length > 0) {
+                $(this).find(".aa").attr("href", "javascript:;");
+                
+            } else {
+                $(this).find(".jiao").hide();
+            }
+            $(this).find(".aa").click(function() {
+                if ($(this).parent(".pnav>li").find(".psnav>li").length > 0) {
+                    $(".pnav>li").addClass("show");
+
+                }else{
+                    $(this).parent(".pnav>li").find(".psnav").remove();
+                }
+
+                if ($(this).parent(".pnav>li").hasClass("open")) {
+                    $(this).parent(".pnav>li").find(".psnav").slideUp();
+                    $(this).parent(".pnav>li").removeClass("open");
+                } else {
+                    $(this).parent(".pnav>li").find(".psnav").slideDown();
+                    $(this).parent(".pnav>li").addClass("open");
+                    $(this).parent(".pnav>li").siblings("li").find(".psnav").slideUp();
+                    $(this).parent(".pnav>li").siblings("li").removeClass("open");
+                }
+            })
+        });
+        //2020/10/29ä¿®æ¹
+        //||$(this).attr("bid") == "10008"||$(this).attr("bid") == "11003"
+        $("li").each(function() {
+            if ($(this).attr("bid") == "9882") {
+                $(this).css("display", "none")
+            }
+        })
+    })
+</script>
+
+
+    <!--headerend-->
+    <!--main-->
+    <div class="maincon clear">
+        <!--<div class="center">
+            <div class="index1">
+                <h3 class="index1_1">ä¹ è¿å¹³å¨æ°çä¹é²æ¨é½å¸èå¯è°ç </h3>
+                <div class="index1_2">12æ¥ä¸åè³13æ¥ä¸åï¼ä¹ è¿å¹³æ»ä¹¦è®°å¨æ°çä¹é²æ¨é½å¸èå¯äºæ°çå¤§å­¦ãä¹é²æ¨é½å½ééæ¸¯åºãå¤©å±±åºåºåå··ç¤¾åºã<br />
+æ°çç»´å¾å°èªæ²»åºåç©é¦ï¼äºè§£æ°çå å¼ºäººæå¹å»ãç»ç­¹ç«æé²æ§åç»æµç¤¾ä¼åå±ãæå®æ¨è¿æ°æå¢ç»è¿æ­¥ã<br />
+é¸ç¢ä¸­åæ°æå±åä½æè¯ç­æåµã</div>
+            </div>
+        </div>-->
+        <!--æ è¯­-->
+         <!--<div class="twenty"><a href="shenruxuexiguanchedangdeershidajingshen/index.html" target="_blank"><img src="Uploads/kindeditor/image/20230828/äºåå¤§.jpg" alt="" width="590" height="90" title="" align="" /></a></div>-->
+        <!--åå»ºå·¥ä½-->       
+        <div class="img margin indexImg clear indexImg2">
+            <!--<a target="_blank" class="a1" href="dangshixuexijiaoyu/index.html">	è®¤çå­¦ä¹ è´¯å½»ä¹ è¿å¹³æ»ä¹¦è®°âä¸ä¸âéè¦è®²è¯ç²¾ç¥åå²å­¦ä¹ æè²</a>
+            <a target="_blank" class="a2" href="dangjiangongzuo/index.html">	æ·±å¥å­¦ä¹ è´¯å½»ä¹ è¿å¹³æ°æ¶ä»£ä¸­å½ç¹è²ç¤¾ä¼ä¸»ä¹ææ³</a>-->
+            <!--<a target="_blank" class="a1" href="xuexiguanchexijinpingxinshidaizhongguoteseshehuizhuyisixiangzhutijiaoyu/index.html"></a>
+            <a target="_blank" class="a2" href="shenruxuexiguanchedangdeershidajingshen/index.html"></a>-->
+            <a target="_blank" href="https://www.mem.gov.cn/xw/ztzl/xxzl/"><img src="Uploads/kindeditor/image/20240428/å¾®ä¿¡å¾ç_20240428160633.png" alt="" /></a>
+        </div>
+        <!--ä¸é¨å-->
+        <div class="center margin clear">
+            <div class="centertop clear boxCon">
+                <!---->
+                <div class="cenleft">
+                    
+                    <h3 class="indextitle"><span class="left">è¿æè¦é»</span>
+                        <a class="right" href="jinqiyaowen/index.html">æ´å¤>></a>
+                    </h3>
+                    
+                    <ul class="clear kylist ywlist rclist">
+
+                        
+                        <li class="first" tags="recommend">
+                            <a href="https://m.chinanews.com/wap/detail/chs/zw/10548564.shtml">
+                                <div class="Img"><img src="Uploads/20260203/QQ20260203-111801.png" alt="ä¸­å½å°éå±ï¼æ¨è¿äººå·¥æºè½èµè½é²éåç¾" title="ä¸­å½å°éå±ï¼æ¨è¿äººå·¥æºè½èµè½é²éåç¾"></div>
+                                <p class="title">ä¸­å½å°éå±ï¼æ¨è¿äººå·¥æºè½èµè½é²éåç¾</p>
+                                <!--<div class="sum"></div>-->
+                                <p class="time">2026-01-09 <i class="more">æ¥çæ´å¤</i></p>
+                            </a>
+                        </li>
+                         
+                        <li tags="">
+                            <a href="https://www.cea.gov.cn/cea/xwzx/fzjzyw/5838585/index.html">
+                                <span class="tit">ä¸­å½å°éå±åç»ä¼ è¾¾å­¦ä¹ è´¯å½»ä¹ è¿å¹³æ»ä¹¦...</span> <i class="time1">2026-03-16</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="https://mp.weixin.qq.com/s/wM6MPztJ5E8uB-YrZzo_8Q">
+                                <span class="tit">éå®åå±ç®æ ï¼å¼ºåç§æèµè½ ä»¥é«æ°´å¹³...</span> <i class="time1">2026-03-11</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="https://www.cea.gov.cn/cea/xwzx/fzjzyw/5838231/index.html">
+                                <span class="tit">éå®ç®æ ç»èå¾ å®å¹²æå½è°±æ°ç¯ ââå°...</span> <i class="time1">2026-03-09</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="https://www.cea.gov.cn/cea/xwzx/fzjzyw/5838004/index.html">
+                                <span class="tit">ä¸­å½å°éå±åç»é¨ç½²å¼å±æ ç«åè·µè¡æ­£ç¡®...</span> <i class="time1">2026-03-05</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="https://www.cea.gov.cn/cea/xwzx/fzjzyw/5837609/index.html">
+                                <span class="tit">ä¸­å½å°éå±åç»ä¼ è¾¾å­¦ä¹ è´¯å½»ä¹ è¿å¹³æ»ä¹¦...</span> <i class="time1">2026-03-02</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="https://www.cea.gov.cn/cea/xwzx/fzjzyw/5837869/index.html">
+                                <span class="tit">ä¸­å½å°éå±å¬å¼2026å¹´å¨é¢ä»ä¸¥æ²»åå·¥ä½...</span> <i class="time1">2026-03-02</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="http://society.people.com.cn/n1/2026/0228/c1008-40672125.html">
+                                <span class="tit">2025å¹´å¬ä¼å³æ³¨çé²éåç¾åå¤§å·¥ä½è¿å±...</span> <i class="time1">2026-02-28</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="http://society.people.com.cn/n1/2026/0227/c1008-40671606.html">
+                                <span class="tit">2025å¹´å¬ä¼å³æ³¨çé²éåç¾åå¤§ç§æè¿å±...</span> <i class="time1">2026-02-28</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="https://mp.weixin.qq.com/s/3KyaXtzbv8dbZZkX-mQEdA">
+                                <span class="tit">ä¸­åå°åãéç¥ãå¨å¨åå¼å±æ ç«åè·µè¡...</span> <i class="time1">2026-02-24</i></a>
+                        </li>
+                        
+                    </ul>
+
+                </div>
+                <!---->
+                <div class="dyleft clear cmar">
+                    
+                    <h3 class="indextitle"><span class="left">ç ç©¶æå¨æ</span>
+                        <a class="right" href="cxdt/index.html">æ´å¤>></a>
+                    </h3>
+                    
+                    <ul class="clear dtlist">
+                        <div class="yjbanner clear">
+                            
+                            <a href="cxdt/281526.html">
+                                <div class="Img"><img src="Uploads/20260108/è°å¬å¥éè®°.png" /></div>
+                                <div class="words">
+                                    <p class="tit">è°å¬ç§åç³»åå¨ç»ä½åãè°å¬å¥éè®°ãå¥å´åäº¬å½±è§å¨ç»åä¼ä¼è´¨å¨ç»ææ¡</p>
+                                    <!--<div class="sum">è¿æ¥ï¼ç±åäº¬å¸å¹¿çµå±æå¯¼ãåäº¬å½±è§å¨ç»åä¼ä¸»åç20...</div>-->
+                                </div>
+                            </a>
+                            
+                        </div>
+
+                        
+                        <li tags="">
+                            <a href="cxdt/281596.html"><span class="tit">ä¸­å½å°éå±å°çç©çç ç©¶æå¬å¼2026å¹´å¨...</span> <i class="time1">2026-03-13</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="cxdt/281595.html"><span class="tit">AIä¸ºåä»£å¤å»ºâæèé®è¯âï¼å°çææºè½...</span> <i class="time1">2026-03-17</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="cxdt/281593.html"><span class="tit">å°çæçµå¤´ä¿®è®¢çå½å®¶æ åãå°éå°ç«è§...</span> <i class="time1">2026-03-16</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="cxdt/281592.html"><span class="tit">å°çæçµå¤´ä¿®è®¢çå½å®¶æ åãå°éå°ç«è§...</span> <i class="time1">2026-03-16</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="cxdt/281589.html"><span class="tit">ç ç©¶æåå§é¨ç½²å¼å±æ ç«åè·µè¡æ­£ç¡®æ¿ç»©...</span> <i class="time1">2026-03-13</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="cxdt/281579.html"><span class="tit">âè°å¬âå°éæ³¢å¤§æ¨¡åå¥é2025å¹´å¬ä¼å³...</span> <i class="time1">2026-03-03</i></a>
+                        </li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="index2 clear">
+            <div class="margin clear">
+                <!--å­¦æ¯æ´»å¨-->
+                <div class="cenleft">
+                    
+                    <h3 class="indextitle"><span class="left">å­¦æ¯æ´»å¨</span>
+                        <a class="right" href="xueshuhuodong/index.html">æ´å¤>></a>
+                    </h3>
+                    
+                    <ul class="clear kylist rclist">
+                        
+                        <li tags="">
+                            <a href="xueshuhuodong/281552.html"><span class="tit">Web of Science (SCIE)ä¸AIå·¥å·Researc...</span><i class="time1">2026-01-28</i></a></li>
+                        
+                        <li tags="">
+                            <a href="xueshuhuodong/281547.html"><span class="tit">Crustal domains identification with ...</span><i class="time1">2026-01-23</i></a></li>
+                        
+                        <li tags="">
+                            <a href="xueshuhuodong/281546.html"><span class="tit">é«ç²¾åº¦å°éæåæ¹æ³åå¨æ·±å°æ¢æµä¸­çåº...</span><i class="time1">2026-01-21</i></a></li>
+                        
+                        <li tags="">
+                            <a href="xueshuhuodong/281541.html"><span class="tit">é«åè¾¨çå¨æ³¢å½¢æååå¶å¨éèé«åä¸ç¼...</span><i class="time1">2026-01-19</i></a></li>
+                        
+                        <li tags="">
+                            <a href="xueshuhuodong/281534.html"><span class="tit">å­¦æ¯è®²åº§-è¶ä½é¢åç´éæ¯ææ¯ç ç©¶è¿å±+...</span><i class="time1">2026-01-13</i></a></li>
+                        
+                        <li tags="">
+                            <a href="xueshuhuodong/281532.html"><span class="tit">åºäºå¾®å°éç²¾ç»åæ¼çå°ç­å¨å±æ­å±åè£...</span><i class="time1">2026-01-09</i></a></li>
+                        
+                        <li tags="">
+                            <a href="xueshuhuodong/281531.html"><span class="tit">å¤§è§æ¨¡éç£åå¶æ¢¯åº¦å¼ éæ°æ®æ³¢æ°åå¿«é...</span><i class="time1">2025-12-26</i></a></li>
+                        
+                        <li tags="">
+                            <a href="xueshuhuodong/281500.html"><span class="tit">åºäºå¨çä¸åºåå°éå­¦è§æµç2025å¹´ç¼ç¸...</span><i class="time1">2025-12-08</i></a></li>
+                        
+                    </ul>
+                </div>
+                <!--ç§ç å¨æ-->
+                <div class="dyleft kydt clear">
+                    
+                    <h3 class="indextitle"><span class="left">ç§ç å¨æ</span>
+                        <a class="right" href="kydt/index.html">æ´å¤>></a>
+                    </h3>
+                    
+                    <ul class="clear dtlist">
+                        <!--<div class="yjbanner clear">
+                            
+                        </div>-->
+
+                        
+                        <li tags="">
+                            <a href="kydt/281591.html"><span class="tit">2026å¹´3æ12æ¥å°æ¹¾è±è²å¿5.3çº§å°éç§ææ¯æç®æ¥</span> <i class="time1">2026-03-16</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="kydt/281590.html"><span class="tit">JGR-SEï¼ä¸­å½ä¸åå°åºå°éååå¼æ§ä¸æ·±é¨å¨åå­¦æº...</span> <i class="time1">2026-03-13</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="kydt/281584.html"><span class="tit">SDEEï¼éç¨äºæ ¸å·¥ç¨çé¿å¨ææ åè°±æ¨¡ååå¤ç®æ å¹...</span> <i class="time1">2026-03-11</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="kydt/281570.html"><span class="tit">2026å¹´2æ23æ¥æ°çå·´é³é­æ¥å·å°çå¿5.1çº§å°éç§æ...</span> <i class="time1">2026-02-27</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="kydt/281568.html"><span class="tit">CEEï¼2023å¹´ç§¯ç³å±±å°éåºåå¤è§¦åæºå¶çç¸äºä½ç¨...</span> <i class="time1">2026-02-24</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="kydt/281563.html"><span class="tit">GJI: åºäºæ°´-å-éç-ç¶ææ©æ¦å¨è¦åæ¨¡åçå»¶è¿è¯±...</span> <i class="time1">2026-02-10</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="kydt/281557.html"><span class="tit">SRLï¼å¤ææ­å±å ä½æ§å¶çåéç ´è£ä¸ä½éè¿ç§»â202...</span> <i class="time1">2026-02-05</i></a>
+                        </li>
+                        
+                        <li tags="">
+                            <a href="kydt/281554.html"><span class="tit">TPï¼åååæéç ´åæºå¶ï¼æ¥èªé«åè¾¨çç­åå­¦ç»æ...</span> <i class="time1">2026-02-03</i></a>
+                        </li>
+                        
+                    </ul>
+                </div>
+                <!--å°éç§æ®-->
+                <div class="cenleft cenright">
+                    
+                    <h3 class="indextitle"><span class="left">å°éç§æ®å®£ä¼ </span>
+                        <a class="right" href="dskp/index.html">æ´å¤>></a>
+                    </h3>
+                    
+                    <ul class="clear kylist">
+                        
+                        <li tags="">
+                            <a href="https://app.gmdaily.cn/as/opened/n/b9a5db55a8b64e0fb3257af1358feef3"><i class="number">1</i><i class="time1">[02-09]</i>ãæ°æ¥èµ°åºå±ãèå¬å°çâå¿è·³â</a></li>
+                        
+                        <li tags="">
+                            <a href="https://mp.weixin.qq.com/s/nrSnbae3T_0sKNLn_eW00w"><i class="number">2</i><i class="time1">[02-05]</i>åªä½æ­æ¥ | é«å­æ½­ï¼æåä¸¤å²¸é²ç¾åç¾è½å ...</a></li>
+                        
+                        <li tags="">
+                            <a href="https://mp.weixin.qq.com/s/D4OhDZSiRACnT3wPWwQ3pA"><i class="number">3</i><i class="time1">[01-23]</i>2026å¹´é¦åºï¼å¤ªé³Xçº§èæå¼åå¼ºç£æ´</a></li>
+                        
+                        <li tags="">
+                            <a href="https://mp.weixin.qq.com/s/MdaVb7Gk1GzjruBNDzfHgQ"><i class="number">4</i><i class="time1">[01-23]</i>ãéèè®¿è°ãå¤éä»è°ï¼1556å¹´åå¿å¤§å°é</a></li>
+                        
+                        <li tags="">
+                            <a href="https://kw.beijing.gov.cn/ztzl/kjcgzh/hdbd/202512/t20251230_4377804.html?_refluxos=a10"><i class="number">5</i><i class="time1">[01-07]</i>ä¸­å³æâç«è±âæ´»å¨ä¹ä¸­å½å°éå±å°çç©çç ...</a></li>
+                        
+                        <li tags="">
+                            <a href="https://m.chinanews.com/wap/detail/chs/zw/10493172.shtml"><i class="number">6</i><i class="time1">[10-09]</i>ä¸­å½å å¼ºéå¤©ç¶å°éçæµç ç©¶ å©åå®å¨çäº§</a></li>
+                        
+                        <li tags="">
+                            <a href="dskp/281238.html"><i class="number">7</i><i class="time1">[09-19]</i>ç§æèµè½éå¤©ç¶å°éçæµ</a></li>
+                        
+                        <li tags="">
+                            <a href="https://mp.weixin.qq.com/s/rnNAF11JA3DSDbIlXNRE9w"><i class="number">8</i><i class="time1">[09-17]</i>å¾®æµ·æ¥ | åå£«éç» å¿æ¿å®£è®² ä¼äººæ¾æ´ é¹«å³°...</a></li>
+                        
+                    </ul>
+                </div>
+                <!---->
+            </div>
+        </div>
+
+         <div class="index2 index3 clear">
+            <div class="margin clear">
+                <!--äººæå¹å»-->
+                <div class="cenleft">
+                    
+                    <h3 class="indextitle"><span class="left">äººæå¹å»</span>
+                        <a class="right" href="rcpy/rcqp/index.html">æ´å¤>></a>
+                    </h3>
+                    
+                    <ul class="clear kylist rclist">
+                        
+                        <li tags="">
+                            <a href="rcqp/281253.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2026å¹´åº¦æèå¬å</a></li>
+                        
+                        <li tags="">
+                            <a href="rcqp/281182.html">ä¸­å½å°éå±å°çç©çç ç©¶æè¯éæ¨ä¾æç³æ¥2025å¹´ä¼éé¡¹...</a></li>
+                        
+                        <li tags="">
+                            <a href="rcqp/281077.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2025å¹´åº¦è¡¥åæèæ¥åæ¶é´å»¶...</a></li>
+                        
+                        <li tags="">
+                            <a href="rcqp/281076.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2025å¹´åº¦æèç¨äººåå¬ç¤º</a></li>
+                        
+                        <li tags="">
+                            <a href="rcqp/281023.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2025å¹´åº¦è¡¥åæèå¬å</a></li>
+                        
+                        <li tags="">
+                            <a href="rcqp/280950.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2025å¹´åº¦æèå¬å</a></li>
+                        
+                        <li tags="">
+                            <a href="rcqp/280655.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2024å¹´åº¦æèç¨äººåå¬ç¤ºï¼ç¬¬...</a></li>
+                        
+                        <li tags="">
+                            <a href="rcqp/280597.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2024å¹´åº¦æèç¨äººåå¬ç¤ºï¼ç¬¬...</a></li>
+                        
+                    </ul>
+                </div>
+                <!---->
+                 <!--ç ç©¶çæè²-->
+                <div class="cenleft">
+                    
+                    <h3 class="indextitle"><span class="left">ç ç©¶çæè²</span>
+                        <a class="right" href="yjbw/boshizhaoshengxinxi/index.html">æ´å¤>></a>
+                    </h3>
+                    
+                    <ul class="clear kylist rclist">
+                        
+                        <li tags="recommend">
+                            <a href="yjbw/boshizhaoshengxinxi/281588.html">å³äº2026å¹´ç ç©¶æææ¶åå£«ç ç©¶çå¥å­¦èè¯æ¶é´åèåºå®...</a></li>
+                        
+                        <li tags="recommend">
+                            <a href="yjbw/boshizhaoshengxinxi/281587.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2026å¹´åå£«ç ç©¶çæçå½åå·¥...</a></li>
+                        
+                        <li tags="recommend">
+                            <a href="yjbw/shuoshizhaoshengxinxi/281586.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2026å¹´ææ¶ç¡å£«çå¤è¯èçå...</a></li>
+                        
+                        <li tags="recommend">
+                            <a href="yjbw/shuoshizhaoshengxinxi/281585.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2026å¹´ç¡å£«ç ç©¶çå¤è¯å½åå·¥...</a></li>
+                        
+                        <li tags="recommend">
+                            <a href="yjbw/shuoshizhaoshengxinxi/281572.html">ä¸­å½å°éå±å°çç©çç ç©¶æ2026å¹´ç¡å£«ç ç©¶çå¥å­¦èè¯å...</a></li>
+                        
+                        <li tags="recommend">
+                            <a href="yjbw/boshizhaoshengxinxi/281543.html">2026å¹´âç³è¯·-èæ ¸å¶âåå£«ç ç©¶çæå½åç»æå¬ç¤º</a></li>
+                        
+                        <li tags="recommend">
+                            <a href="yjbw/boshizhaoshengxinxi/281523.html">2026å¹´âç³è¯·-èæ ¸å¶âåå£«ææå®¡æ ¸ç»æå¬ç¤º</a></li>
+                        
+                        <li tags="recommend">
+                            <a href="yjbw/boshizhaoshengxinxi/281520.html">2026å¹´ç¡è½¬åæå½åååå¬ç¤º</a></li>
+                        
+                    </ul>
+                </div>
+                <!--ææ°å¬å-->
+                <div class="cenleft cenright">
+                    
+                    <h3 class="indextitle"><span class="left">ææ°å¬å</span>
+                        <a class="right" href="cxgg/index.html">æ´å¤>></a>
+                    </h3>
+                    
+                    <ul class="clear announcement">
+                        
+                        <li tags="" class="clear">
+                            <a href="cxgg/281576.html">
+                                <p class="time">
+                                    <i class="time1">2026-03</i>
+                                    <i class="day">02</i>
+                                </p>
+                                <div class="words">
+                                    <p class="title">æäº¤å¬å-é¢åå·¨éæ³å¨æ¯å¨ä¼ æä¿¡æ¯çè¾¹ç¼å¤çè®¾å¤ç å¶ä¸éå¥è½¯ä»¶</p>
+                                    <div class="sum">ä¸ãé¡¹ç®åºæ¬æåµ1.é¡¹ç®ç¼å·ï¼ZXCG-2026032.é¡¹ç®åç§°ï¼é¢åå·¨éæ³å¨æ¯å¨ä¼ æä¿¡æ¯çè¾¹ç¼å¤çè®¾å¤...</div>
+                                </div>
+                            </a>
+                        </li>
+                        
+                        <li tags="" class="clear">
+                            <a href="cxgg/281564.html">
+                                <p class="time">
+                                    <i class="time1">2026-02</i>
+                                    <i class="day">10</i>
+                                </p>
+                                <div class="words">
+                                    <p class="title">å³äºå¾æ±å½å®¶æ åãå°éå¬å±ä¿¡æ¯å¾å½¢ç¬¦å·ä¸æ å¿ï¼ä¿®è®¢ï¼ãä¸ãæ°´åºå°éçæµææ¯è¦æ±ï¼...</p>
+                                    <div class="sum">åæå³åä½åä¸å®¶ï¼ æ ¹æ®ãå½å®¶æ åç®¡çåæ³ãï¼å¨å½å°éæ ååææ¯å§åä¼ç§ä¹¦å¤ç»ç»å®æäºæ¨è...</div>
+                                </div>
+                            </a>
+                        </li>
+                        
+                        <li tags="" class="clear">
+                            <a href="cxgg/281555.html">
+                                <p class="time">
+                                    <i class="time1">2026-02</i>
+                                    <i class="day">03</i>
+                                </p>
+                                <div class="words">
+                                    <p class="title">åè°å¬å-é¢åå·¨éæ³å¨æ¯å¨ä¼ æä¿¡æ¯çè¾¹ç¼å¤çè®¾å¤ç å¶ä¸éå¥è½¯ä»¶</p>
+                                    <div class="sum">ä¸­å½å°éå±å°çç©çç ç©¶æå¯¹é¢åå·¨éæ³å¨æ¯å¨ä¼ æä¿¡æ¯çè¾¹ç¼å¤çè®¾å¤ç å¶ä¸éå¥è½¯ä»¶æéæå¡è¿è¡...</div>
+                                </div>
+                            </a>
+                        </li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!--åæé¾æ¥-->
+        <div class="clear yqfriend">
+            <h3 class="indextitle"><span class="left">åæé¾æ¥</span>
+            <!--<a class="right" href="yqlc/index.html">æ´å¤>></a>-->
+            </h3>
+            
+            <ul class="yqtab">
+                
+                <li><a href="https://www.mem.gov.cn/" target="_blank">åºæ¥ç®¡çé¨</a></li>
+                
+                <li><a href="http://www.cea.gov.cn" target="_blank">ä¸­å½å°éå±</a></li>
+                
+                <li>ççº§å°éå±</li>
+                <li>å°éå±ç´å±åä½</li>
+                
+            </ul>
+            <ul class="yqcon clear">
+                <li></li>
+                <li></li>
+                <li class="clear">
+                    <ul class="clear ylinkc">
+                        
+                        <li>
+                            <a href="http://www.bjdzj.gov.cn/" target="_blank">åäº¬</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.tjdzj.gov.cn/" target="_blank">å¤©æ´¥</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.hbdzj.gov.cn/hbdzj/" target="_blank">æ²³å</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.nmgdzj.gov.cn/" target="_blank">åèå¤</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.lndzj.gov.cn/" target="_blank">è¾½å®</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://dzj.jl.gov.cn/" target="_blank">åæ</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.hea.gov.cn/" target="_blank">é»é¾æ±</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.shdzj.gov.cn/" target="_blank">ä¸æµ·</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.jsdzj.gov.cn/" target="_blank">æ±è</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.zjdz.gov.cn/" target="_blank">æµæ±</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.ahdzj.gov.cn/" target="_blank">å®å¾½</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.fjdzj.gov.cn/" target="_blank">ç¦å»º</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.jxsdzj.gov.cn/" target="_blank">æ±è¥¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.sddzj.gov.cn/" target="_blank">å±±ä¸</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://shxdzj.gov.cn/" target="_blank">å±±è¥¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.hendzj.gov.cn" target="_blank">æ²³å</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.hubdzj.gov.cn/" target="_blank">æ¹å</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.hundzj.gov.cn/" target="_blank">æ¹å</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.gddzj.gov.cn/" target="_blank">å¹¿ä¸</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.gxdzj.gov.cn/" target="_blank">å¹¿è¥¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.haindzj.gov.cn/" target="_blank">æµ·å</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.cqdzj.gov.cn/" target="_blank">éåº</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.scdzj.gov.cn/" target="_blank">åå·</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.gzsdzj.gov.cn/" target="_blank">è´µå·</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.yndzj.gov.cn/" target="_blank">äºå</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.qhdzj.gov.cn/" target="_blank">éæµ·</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.xizdzj.gov.cn" target="_blank">è¥¿è</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.eqsn.gov.cn/" target="_blank">éè¥¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.gsdzj.gov.cn" target="_blank">çè</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.nxdzj.gov.cn" target="_blank">å®å¤</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.xjdzj.gov.cn/" target="_blank">æ°ç</a>
+                        </li>
+                        
+                    </ul>
+                </li>
+                <li class="clear">
+                    <ul class="clear ylinkc">
+                        
+                        <li>
+                            <a href="http://www.eq-igl.ac.cn/" target="_blank">å°è´¨ç ç©¶æ</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.ief.ac.cn/" target="_blank">å°éé¢æµç ç©¶æ</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.iem.net.cn/" target="_blank">å·¥ç¨åå­¦ç ç©¶æ</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.cenc.ac.cn/" target="_blank">ä¸­å½å°éå°ç½ä¸­å¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.eq-cedpc.cn/" target="_blank">ä¸­å½å°éç¾å®³é²å¾¡ä¸­å¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.ceadrc.cn/" target="_blank">åå±ç ç©¶ä¸­å¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.gec.ac.cn/" target="_blank">å°çç©çåæ¢ä¸­å¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="https://www.fmac.ac.cn/" target="_blank">ç¬¬ä¸çæµä¸­å¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.smac.ac.cn/" target="_blank">ç¬¬äºçæµä¸­å¿</a>
+                        </li>
+                        
+                        <li>
+                            <a href="http://www.szadpr.cn/" target="_blank">æ·±å³é²ç¾åç¾ææ¯ç ç©¶é¢</a>
+                        </li>
+                        
+                    </ul>
+                </li>
+                <li class="clear">
+                    <ul class="clear ylinkc">
+                        
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <!---->
+
+    </div>
+    <!--mainend-->
+    <!--footer-->
+    <div class="foot clear">
+    <div class="margin clear footer">
+        <div class="clear footright">
+            <ul class="fotlist clear">
+                <li class="li1">å°åï¼åäº¬å¸æµ·æ·åºæ°æå¤§å­¦åè·¯5å·</li>
+                <li class="li2">é®ç®±å°åï¼bangongshi@cea-igp.ac.cn</li>
+                <li class="li3">é®ç¼ï¼100081</li>
+                <li class="li4">èç³»çµè¯ï¼010-68415367</li>
+				<li class="li5">å®æ¹å¾®åï¼httpï¼//www.weibo.com/ceaigp</li>
+            </ul>
+			<div class="fotlink clear">
+    <a target="_blank" href="http://jiucuo.kaipuyun.cn"><img src="theme/image/ico10.png" /></a>
+    <a target="_blank" href="http://bszs.conac.cn/sitename?method=show&id=5429A98513A20B85E053022819AC41B6"><img src="theme/image/ico9.png" /></a>
+    <a target="_blank" href="http://zygjjg.12388.gov.cn/"><img src="theme/image/jiucuo1.jpg" /></a>
+</div>
+
+
+        </div>
+    </div>
+    <div class="copyright">@2023 ä¸­å½å°éå±å°çç©çç ç©¶æ çæææ    äº¬ICPå¤08002722-3å·
+        <p class="icp"><a target="_blank" style="color:#fff;" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010802021806">äº¬å¬ç½å®å¤ 11010802021806å·</a></p>
+    </div>
+</div>
+
+
+</body>
+
+</html>
+<script type="text/javascript" src="theme/js/txtscroll.js"></script>
+<script>
+    $(function() {
+        $(".yqcon>li").eq(0).css("background", "none")
+        $(".yqcon>li").eq(1).css("background", "none")
+        $(".yqtab>li").eq(2).addClass("on");
+        $(".yqcon>li").eq(2).show();
+        $(".yqtab>li").each(function() {
+            $(this).hover(function() {
+                var ind = $(this).index();
+                if (ind > 1) {
+                    $(this).addClass("on").siblings("li").removeClass("on");
+                    $(".yqcon>li").eq(ind).show();
+                    $(".yqcon>li").eq(ind).siblings("li").hide();
+                }
+            })
+        })
+        $(".hiden").each(function() {
+            $(this).find("p").click(function() {
+                $(this).siblings(".ylink").slideToggle();
+                $(this).parents(".hiden").siblings(".hiden").find(".ylink").slideUp();
+            })
+        })
+        var swiper = new Swiper('.swbanner', {
+            spaceBetween: 30,
+            autoplay: {
+                delay: 5000,
+                disableOnInteraction: false,
+            },
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true,
+            },
+        });
+        //
+        var swiper = new Swiper('.yjbanner', {
+            spaceBetween: 30,
+            loop: true,
+            autoplay: {
+                delay: 3000,
+                disableOnInteraction: false,
+            },
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true,
+            },
+        });
+        //<img src="theme/image/new.png"/><img src="theme/image/hot.png"/>
+        $(".rclist>li").each(function() {
+            if ($(this).attr("tags") != "") {
+                $(this).find("a").addClass("width")
+            }
+            if ($(this).attr("tags") == "hot") {
+                $(this).find("a").addClass("width");
+                $(this).find(".hot").append("<img src='theme/image/hot.png'/>");
+            }
+            if ($(this).attr("tags") == "new") {
+                $(this).find("a").addClass("width");
+                $(this).find(".hot").append("<img src='theme/image/new.png'/>");
+            }
+        })
+        /*$(".ywlist>li").each(function(){
+        	if($(this).attr("tags")!=""){
+        		$(this).find("a").addClass("width1")
+        	}else if($(this).attr("tags") == "hot"){
+				$(this).find("a").addClass("width");
+				$(this).find(".hot").append("<img src='theme/image/hot.png'/>");
+			}else if($(this).attr("tags") == "new"){
+				$(this).find("a").addClass("width");
+				$(this).find(".hot").append("<img src='theme/image/new.png'/>");
+			}
+        })*/
+        $(function() {
+            $(".ke").eq(0).addClass("aat");
+            $(".kk").eq(0).show();
+            $(".ke").each(function() {
+                $(this).click(function() {
+                    var aad = $(this).index() - 1;
+                    $(this).addClass("aat").siblings(".ke").removeClass("aat");
+                    $(".kk").eq(aad).show();
+                    $(".kk").eq(aad).siblings(".kk").hide();
+                })
+            })
+        })
+    })
+</script>
+
+

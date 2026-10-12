@@ -1,0 +1,86 @@
+[
+  {
+    "id": "manage-basemap",
+    "label": "底图",
+    "icon": "MapTwo",
+    "group": "常用",
+    "action": { "type": "widget.toggle", "widget": "manage-basemap" }
+  },
+  {
+    "id": "manage-layers",
+    "label": "图层",
+    "icon": "Layers",
+    "group": "常用",
+    "action": { "type": "widget.toggle", "widget": "manage-layers" }
+  },
+  {
+    "id": "thematic-workbench",
+    "label": "专题制图工作台",
+    "icon": "Workbench",
+    "group": "工具",
+    "action": { "type": "widget.toggle", "widget": "thematic-workbench" }
+  },
+  {
+    "id": "split-screen-compare",
+    "label": "分屏对比",
+    "icon": "Column",
+    "group": "工具",
+    "action": { "type": "widget.toggle", "widget": "split-screen-compare" }
+  },
+  {
+    "id": "eoapi-timeline-player",
+    "label": "时间轴演化",
+    "icon": "Play",
+    "group": "工具",
+    "action": { "type": "widget.toggle", "widget": "eoapi-timeline-player" }
+  },
+  {
+    "id": "dataset-repository",
+    "label": "数据集仓库",
+    "icon": "Box",
+    "group": "成果管理",
+    "action": { "type": "widget.toggle", "widget": "dataset-repository" }
+  },
+  {
+    "id": "my-repository",
+    "label": "我的仓库",
+    "icon": "PreviewOpen",
+    "group": "成果管理",
+    "action": { "type": "widget.toggle", "widget": "my-repository" }
+  },
+  {
+    "id": "save-result",
+    "label": "保存成果",
+    "icon": "Save",
+    "group": "成果管理",
+    "action": { "type": "widget.toggle", "widget": "save-result" }
+  },
+  {
+    "id": "result-playback",
+    "label": "成果回放",
+    "icon": "History",
+    "group": "成果管理",
+    "action": { "type": "widget.toggle", "widget": "result-playback" }
+  },
+  {
+    "id": "hazard-identification",
+    "label": "隐患识别展示",
+    "icon": "Alarm",
+    "group": "风险监测",
+    "action": { "type": "widget.toggle", "widget": "hazard-identification" }
+  },
+  {
+    "id": "alert-confirm",
+    "label": "告警确认",
+    "icon": "Alarm",
+    "group": "风险监测",
+    "action": { "type": "widget.toggle", "widget": "alert-confirm" }
+  },
+  {
+    "id": "knowledge-graph",
+    "label": "知识图谱",
+    "icon": "BookOpen",
+    "group": "灾害评估",
+    "action": { "type": "widget.toggle", "widget": "knowledge-graph" }
+  }
+]

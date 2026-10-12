@@ -1,0 +1,31 @@
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "sk-sp-d97874107d9c474b9fccd47ffd6049e2",
+    "ANTHROPIC_BASE_URL": "https://coding.dashscope.aliyuncs.com/apps/anthropic",
+    "ANTHROPIC_MODEL": "glm-5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "glm-5"
+  },
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "model": "kimi-k2.5",
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "playwright@claude-plugins-official": false,
+    "chrome-devtools-mcp@claude-plugins-official": true
+  },
+  "language": "chinese",
+  "hasCompletedOnboarding": true,
+  "skipDangerousModePermissionPrompt": true
+}

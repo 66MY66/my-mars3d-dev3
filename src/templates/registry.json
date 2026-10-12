@@ -1,0 +1,28 @@
+[
+  {
+    "id": "heat-basic",
+    "name": "热力图（基础）",
+    "type": "heat",
+    "colorStops": [
+      { "pos": 0.25, "color": "#0000FF" },
+      { "pos": 0.55, "color": "#00FF00" },
+      { "pos": 0.85, "color": "#FFFF00" },
+      { "pos": 1.0, "color": "#FF0000" }
+    ],
+    "opacity": 0.85,
+    "legendLayout": "horizontal",
+    "units": { "distance": "km", "population": "wan" },
+    "sampleField": "value"
+  },
+  {
+    "id": "choropleth-basic",
+    "name": "分级设色（基础）",
+    "type": "choropleth",
+    "breaks": [10, 50, 100, 200],
+    "colors": ["#e3f2fd", "#90caf9", "#42a5f5", "#1e88e5", "#0d47a1"],
+    "opacity": 0.9,
+    "legendLayout": "vertical",
+    "units": { "distance": "km", "population": "wan" },
+    "sampleField": "level"
+  }
+]

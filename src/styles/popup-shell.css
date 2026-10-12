@@ -1,0 +1,237 @@
+/**
+ * Mars Popup Shell v1
+ * 统一 mars-dialog / mars-task-modal 视觉外壳
+ * 详见 docs/popup-ui-spec.md
+ */
+
+/* ========== 浮动面板（默认） ========== */
+.mars-dialog.mars-popup-shell {
+  border-radius: var(--popup-radius, 8px) !important;
+  overflow: hidden;
+  background: var(--popup-border) !important;
+}
+
+.mars-dialog.mars-popup-shell .mars-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--popup-header-height);
+  padding: var(--popup-header-padding);
+  overflow: hidden;
+  border-top-left-radius: var(--popup-radius, 8px) !important;
+  border-top-right-radius: var(--popup-radius, 8px) !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.mars-dialog.mars-popup-shell .mars-dialog__header .icon {
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.mars-dialog.mars-popup-shell .mars-dialog__header .title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: var(--popup-header-height);
+  font-size: var(--popup-title-font-size);
+  font-weight: var(--popup-title-font-weight);
+}
+
+.mars-dialog.mars-popup-shell .mars-dialog__header-right {
+  float: none;
+  flex-shrink: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mars-dialog.mars-popup-shell .mars-dialog__header .close-btn {
+  float: none;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: calc(var(--popup-radius, 8px) - 2px);
+  cursor: pointer;
+  transition: background var(--transition-fast, 0.2s ease), color var(--transition-fast, 0.2s ease);
+}
+
+.mars-dialog.mars-popup-shell .mars-dialog__header .close-btn:hover {
+  background: color-mix(in srgb, var(--text-primary, #fff) 10%, transparent) !important;
+}
+
+.mars-dialog.mars-popup-shell .mars-dialog__content {
+  border-bottom-left-radius: var(--popup-radius, 8px) !important;
+  border-bottom-right-radius: var(--popup-radius, 8px) !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.mars-dialog.mars-popup-shell .mars-dialog__footer {
+  border-bottom-left-radius: var(--popup-radius, 8px) !important;
+  border-bottom-right-radius: var(--popup-radius, 8px) !important;
+}
+
+/* ========== 右侧抽屉变体 ========== */
+.mars-dialog.mars-popup-shell.ksh002-drawer {
+  border-top-left-radius: var(--popup-radius, 8px) !important;
+  border-bottom-left-radius: var(--popup-radius, 8px) !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-left: 1px solid var(--layout-border, var(--popup-border));
+  background: var(--popup-surface) !important;
+  backdrop-filter: blur(var(--popup-blur));
+  -webkit-backdrop-filter: blur(var(--popup-blur));
+}
+
+.mars-dialog.mars-popup-shell.ksh002-drawer .mars-dialog__header {
+  border-top-left-radius: var(--popup-radius, 8px) !important;
+  border-top-right-radius: 0 !important;
+}
+
+.mars-dialog.mars-popup-shell.ksh002-drawer .mars-dialog__content {
+  border-bottom-left-radius: var(--popup-radius, 8px) !important;
+  border-bottom-right-radius: 0 !important;
+  background: color-mix(in srgb, var(--popup-surface) 88%, transparent);
+}
+
+.mars-dialog.mars-popup-shell.ksh002-drawer .ksh002-drawer-toggle {
+  border-radius: calc(var(--popup-radius, 8px) - 2px) !important;
+}
+
+/* ========== mars-task-modal ========== */
+.task-popover.mars-task-modal.mars-popup-shell {
+  border-radius: var(--popup-radius, 8px) !important;
+  overflow: hidden;
+  background: var(--popup-border);
+}
+
+.task-popover.mars-popup-shell .task-popover-header {
+  min-height: var(--popup-header-height);
+  padding: var(--popup-header-padding);
+  border-top-left-radius: var(--popup-radius, 8px);
+  border-top-right-radius: var(--popup-radius, 8px);
+}
+
+.task-popover.mars-popup-shell .task-popover-title {
+  font-size: var(--popup-title-font-size);
+  font-weight: var(--popup-title-font-weight);
+}
+
+.task-popover.mars-popup-shell .task-popover-body {
+  padding: var(--popup-body-padding);
+  background: var(--popup-surface);
+}
+
+.task-popover.mars-popup-shell .task-popover-footer {
+  min-height: var(--popup-footer-height);
+  padding: var(--popup-footer-padding);
+  border-bottom-left-radius: var(--popup-radius, 8px);
+  border-bottom-right-radius: var(--popup-radius, 8px);
+  background: var(--popup-surface);
+}
+
+.task-popover.mars-popup-shell .task-popover-close {
+  width: 28px;
+  height: 28px;
+  border-radius: calc(var(--popup-radius, 8px) - 2px);
+  transition: background var(--transition-fast, 0.2s ease);
+}
+
+.task-popover.mars-popup-shell .task-popover-close:hover {
+  background: color-mix(in srgb, var(--text-primary, #fff) 10%, transparent);
+}
+
+/* ========== 标题栏操作按钮（通用） ========== */
+.mars-popup-shell .mars-popup-header-btn,
+.mars-popup-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: calc(var(--popup-radius, 8px) - 2px);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.88;
+  transition: background var(--transition-fast, 0.2s ease), color var(--transition-fast, 0.2s ease), opacity var(--transition-fast, 0.2s ease);
+}
+
+.mars-popup-shell .mars-popup-header-btn:hover,
+.mars-popup-header-btn:hover {
+  opacity: 1;
+  color: var(--color-primary, #2d8cf0);
+  background: color-mix(in srgb, var(--text-primary, #fff) 8%, transparent);
+}
+
+.mars-popup-shell .mars-popup-header-btn.active,
+.mars-popup-header-btn.active {
+  opacity: 1;
+  color: var(--color-primary, #2d8cf0);
+  background: color-mix(in srgb, var(--color-primary, #2d8cf0) 14%, transparent);
+}
+
+/* ========== 壳内表单控件圆角 ========== */
+.mars-popup-shell .ant-input,
+.mars-popup-shell .ant-input-affix-wrapper,
+.mars-popup-shell .ant-input-number,
+.mars-popup-shell .ant-input-number-input,
+.mars-popup-shell .ant-select:not(.ant-select-customize-input) .ant-select-selector,
+.mars-popup-shell .ant-picker,
+.mars-popup-shell .ant-btn:not(.ant-btn-circle):not(.ant-btn-icon-only) {
+  border-radius: var(--popup-item-radius, 8px) !important;
+}
+
+.mars-popup-shell .ant-checkbox-inner,
+.mars-popup-shell .ant-radio-inner {
+  border-radius: calc(var(--popup-item-radius, 8px) - 2px);
+}
+
+/* ========== 工作流内容卡片（分析类弹窗复用） ========== */
+.mars-popup-shell .object-meta,
+.mars-popup-shell .param-card {
+  border: 1px solid var(--popup-border, rgba(255 255 255 / 0.12));
+  border-radius: var(--popup-item-radius, 8px);
+  padding: 10px;
+}
+
+.mars-popup-shell .point-row {
+  border: 1px solid var(--popup-border, rgba(255 255 255 / 0.12));
+  border-radius: var(--popup-item-radius, 8px);
+}
+
+.mars-popup-shell .cover-preview img,
+.mars-popup-shell .cover-preview-img img {
+  border-radius: calc(var(--popup-item-radius, 8px) - 2px);
+}
+
+.mars-popup-shell .ant-steps-item-icon {
+  border-radius: var(--popup-item-radius, 8px) !important;
+}
+
+.mars-popup-shell .ant-radio-button-wrapper:first-child {
+  border-top-left-radius: var(--popup-item-radius, 8px) !important;
+  border-bottom-left-radius: var(--popup-item-radius, 8px) !important;
+}
+
+.mars-popup-shell .ant-radio-button-wrapper:last-child {
+  border-top-right-radius: var(--popup-item-radius, 8px) !important;
+  border-bottom-right-radius: var(--popup-item-radius, 8px) !important;
+}

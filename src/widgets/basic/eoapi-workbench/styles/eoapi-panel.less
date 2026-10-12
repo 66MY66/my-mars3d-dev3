@@ -1,0 +1,203 @@
+/**
+ * eoAPI 工作台面板样式
+ */
+
+// 面板容器样式
+.eoapi-workbench-panel {
+  --eoapi-workbench-content-bg: rgba(255, 255, 255, 0.98);
+  --eoapi-workbench-subtext: rgba(0, 0, 0, 0.65);
+
+  :root[data-theme="dark"] & {
+    --eoapi-workbench-content-bg: rgba(0, 0, 0, 0.82);
+    --eoapi-workbench-subtext: rgba(255, 255, 255, 0.75);
+  }
+
+  color: var(--mars-text-color);
+  --mars-extra-text-color: var(--eoapi-workbench-subtext);
+
+  // 对话框内容区
+  .mars-dialog__content {
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--eoapi-workbench-content-bg) !important;
+  }
+
+  // 头部工具栏
+  .mars-dialog__header {
+    .mars-dialog__header-extra {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .mars-dialog__footer {
+    background-color: var(--eoapi-workbench-content-bg) !important;
+  }
+}
+
+// 最小化状态样式
+.eoapi-workbench-minimized {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 120px;
+  height: 40px;
+  background: var(--mars-base-bg);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 1000;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--mars-base-bg);
+    transform: scale(1.05);
+  }
+
+  .minimized-icon {
+    font-size: 16px;
+    color: #40a9ff;
+  }
+
+  .minimized-text {
+    font-size: 12px;
+    color: var(--mars-text-color);
+  }
+}
+
+// Tab 样式调整
+.eoapi-workbench-panel .ant-tabs {
+  .ant-tabs-nav {
+    margin-bottom: 10px;
+  }
+
+  .ant-tabs-content {
+    height: calc(100% - 40px);
+    overflow: auto;
+  }
+
+  .ant-tabs-tab-btn {
+    color: var(--mars-text-color);
+  }
+
+  .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: var(--mars-primary-color);
+  }
+}
+
+// 状态徽章增强
+.eoapi-status-badge {
+  &.status-ok {
+    background: rgba(82, 196, 26, 0.2);
+  }
+
+  &.status-slow {
+    background: rgba(250, 173, 20, 0.2);
+  }
+
+  &.status-error {
+    background: rgba(255, 77, 79, 0.2);
+  }
+}
+
+// 数据集列表项样式（为阶段二准备）
+.dataset-item {
+  padding: 12px;
+  border-bottom: 1px dashed var(--surface-border);
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(64, 169, 255, 0.1);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .dataset-name {
+    font-size: 14px;
+    color: var(--mars-text-color);
+    margin-bottom: 4px;
+  }
+
+  .dataset-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--mars-extra-text-color);
+  }
+}
+
+// 版本列表项样式（为阶段二准备）
+.revision-item {
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  background: var(--mars-control-bg);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(64, 169, 255, 0.15);
+  }
+
+  .revision-message {
+    font-size: 13px;
+    color: var(--mars-text-color);
+  }
+
+  .revision-time {
+    font-size: 11px;
+    color: var(--mars-extra-text-color);
+    margin-top: 4px;
+  }
+}
+
+// 保存弹窗样式（为阶段三准备）
+.save-dialog {
+  .save-form {
+    .form-row {
+      margin-bottom: 16px;
+
+      .form-label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--mars-extra-text-color);
+        font-size: 13px;
+      }
+
+      .form-input {
+        width: 100%;
+      }
+
+      .form-checkbox-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        .form-checkbox {
+          color: var(--mars-text-color);
+        }
+      }
+    }
+  }
+}
+
+// 拖拽调整大小时的样式
+.eoapi-workbench-panel.resizing {
+  user-select: none;
+  pointer-events: none;
+}
+
+// 响应式调整
+@media screen and (max-width: 768px) {
+  .eoapi-workbench-panel {
+    width: 90vw !important;
+    right: 5vw !important;
+  }
+}

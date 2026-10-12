@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  mars3d-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mars3d-frontend
+    ports:
+      - "5280:3000"  # 外部5280端口映射到内部3000端口
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - ./config:/app/dist/config
+      - ./config:/app/config
+      - ./config/index.html:/app/dist/index.html
+      - ./config/gx.jpg:/app/dist/favicon.ico
+    networks:
+      - mars3d-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  mars3d-network:
+    driver: bridge

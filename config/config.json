@@ -1,0 +1,427 @@
+{
+  "scene": {
+    "center": {
+      "lat": 26.5,
+      "lng": 101.5,
+      "alt": 2140000,
+      "heading": 0,
+      "pitch": -90
+    },
+    "scene3DOnly": false,
+    "shadows": false,
+    "removeDblClick": true,
+    "sceneMode": 3,
+    "showSun": true,
+    "showMoon": true,
+    "showSkyBox": true,
+    "showSkyAtmosphere": true,
+    "fog": true,
+    "fxaa": true,
+    "requestRenderMode": false,
+    "contextOptions": {
+      "requestWebgl1": false,
+      "webgl": {
+        "preserveDrawingBuffer": true
+      }
+    },
+    "globe": {
+      "depthTestAgainstTerrain": false,
+      "baseColor": "#546a53",
+      "showGroundAtmosphere": true,
+      "enableLighting": false
+    },
+    "cameraController": {
+      "zoomFactor": 3.0,
+      "minimumZoomDistance": 1,
+      "maximumZoomDistance": 50000000,
+      "enableRotate": true,
+      "enableTranslate": true,
+      "enableTilt": true,
+      "enableZoom": true,
+      "enableCollisionDetection": true,
+      "minimumCollisionTerrainHeight": 15000,
+      "maxBounds": {
+        "west": 97.5,
+        "east": 105.5,
+        "south": 21.0,
+        "north": 32.0
+      }
+    }
+  },
+  "control": {
+    "toolbar": {
+      "position": "left-bottom"
+    },
+    "homeButton": {
+      "insertIndex": 0
+    },
+    "fullscreenButton": {
+      "insertIndex": 1
+    },
+    "navigationHelpButton": {
+      "insertIndex": 5
+    },
+    "baseLayerPicker": false,
+    "sceneModePicker": {
+      "insertIndex": 4
+    },
+    "vrButton": false,
+    "animation": false,
+    "timeline": false,
+    "infoBox": false,
+    "geocoder": false,
+    "selectionIndicator": false,
+    "showRenderLoopErrors": true,
+    "contextmenu": {
+      "hasDefault": false
+    },
+    "mouseDownView": true,
+    "zoom": {
+      "insertIndex": 2
+    },
+    "compass": {
+      "bottom": "toolbar",
+      "left": "5px"
+    },
+    "distanceLegend": {
+      "left": "10px",
+      "bottom": "2px"
+    },
+    "locationBar": {
+      "crs": "CGCS2000_GK_Zone_3",
+      "crsDecimal": 0,
+      "template": "<div>经度:{lng}</div> <div>纬度:{lat}</div> <div class='hide1000'>横{crsx}  纵{crsy}</div> <div>海拔：{alt}米</div> <div class='hide700'>层级：{level}</div><div>方向：{heading}°</div> <div>俯仰角：{pitch}°</div><div class='hide700'>视高：{cameraHeight}米</div>"
+    }
+  },
+  "method": {
+    "templateValues": {
+      "mars3d_data": "//data.mars3d.cn"
+    }
+  },
+  "terrain": {
+    "url": "https://data.mars3d.cn/terrain",
+    "show": true,
+    "clip": true,
+    "comment": "基础三维地形保留，业务图层统一切回 eoAPI 当前可用最新数据源。"
+  },
+  "basemaps": [
+    {
+      "id": 10,
+      "name": "基础底图",
+      "type": "group"
+    },
+    {
+      "pid": 10,
+      "name": "高德影像(本地)",
+      "icon": "./img/thumbnail/basemap/gaode_img.png",
+      "type": "group",
+      "layers": [
+        {
+          "name": "底图",
+          "type": "xyz",
+          "url": "https://webst01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=6&x={x}&y={y}&z={z}"
+        },
+        {
+          "name": "注记",
+          "type": "xyz",
+          "url": "https://webst01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+        }
+      ],
+      "show": true
+    },
+    {
+      "pid": 10,
+      "name": "高德矢量(本地)",
+      "icon": "./img/thumbnail/basemap/gaode_vec.png",
+      "type": "xyz",
+      "url": "https://webrd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}",
+      "show": false
+    },
+    {
+      "pid": 10,
+      "name": "中国 DEM 彩色底图",
+      "icon": "./img/thumbnail/basemap/terrain.png",
+      "type": "xyz",
+      "url": "http://192.168.0.15:5955/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=terrain&rescale=-500,8000",
+      "minimumLevel": 0,
+      "maximumLevel": 12,
+      "show": false,
+      "metadata": {
+        "source": "eoAPI /data/dem/china/china_dem_full.vrt",
+        "updatedAt": "2026-05-13T08:52:20Z"
+      }
+    },
+    {
+      "pid": 10,
+      "name": "中国 DEM 灰度底图",
+      "icon": "./img/thumbnail/basemap/viridis.png",
+      "type": "xyz",
+      "url": "http://192.168.0.15:5955/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=viridis&rescale=-500,8000",
+      "minimumLevel": 0,
+      "maximumLevel": 12,
+      "show": false,
+      "metadata": {
+        "source": "eoAPI /data/dem/china/china_dem_full.vrt",
+        "updatedAt": "2026-05-13T08:52:20Z"
+      }
+    }
+  ],
+  "layers": [
+    {
+      "id": 80,
+      "name": "eoAPI 最新图层",
+      "type": "group"
+    },
+    {
+      "id": 8010,
+      "pid": 80,
+      "name": "行政区划叠加层",
+      "type": "group"
+    },
+    {
+      "id": 801101,
+      "pid": 8010,
+      "name": "中国省级行政区边界",
+      "type": "geojson",
+      "url": "http://192.168.0.15:5953/collections/public.china_province_boundaries/items?f=geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "rgba(255, 77, 79, 0.08)",
+          "outline": true,
+          "outlineColor": "#ff4d4f",
+          "outlineWidth": 2,
+          "clampToGround": true,
+          "label": {
+            "text": "{name}",
+            "font_size": 14,
+            "color": "#ffffff",
+            "outline": true,
+            "outlineColor": "#000000",
+            "outlineWidth": 2
+          }
+        }
+      },
+      "popup": "名称：{name}<br/>行政区代码：{adcode}<br/>数据时间：{created_at}",
+      "show": true,
+      "flyTo": true,
+      "metadata": {
+        "layerId": "public.china_province_boundaries",
+        "source": "eoAPI TiPG 5953",
+        "updatedAt": "2026-04-07T07:37:13.219794",
+        "coverage": "[73.502355, 3.39716187, 135.09567, 53.563269]",
+        "versionNote": "当前服务侧仍为 2026-04-07 入库版本"
+      }
+    },
+    {
+      "id": 801102,
+      "pid": 8010,
+      "name": "云南州市级边界",
+      "type": "geojson",
+      "url": "http://192.168.0.15:5953/collections/public.yunnan_city_boundaries/items?f=geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "rgba(24, 144, 255, 0.08)",
+          "outline": true,
+          "outlineColor": "#1890ff",
+          "outlineWidth": 2,
+          "clampToGround": true,
+          "label": {
+            "text": "{name}",
+            "font_size": 14,
+            "color": "#ffffff",
+            "outline": true,
+            "outlineColor": "#000000",
+            "outlineWidth": 2
+          }
+        }
+      },
+      "popup": "名称：{name}<br/>行政区代码：{adcode}<br/>数据时间：{created_at}",
+      "show": true,
+      "flyTo": true,
+      "center": {
+        "lat": 25.5,
+        "lng": 101.5,
+        "alt": 680000,
+        "heading": 0,
+        "pitch": -70
+      },
+      "metadata": {
+        "layerId": "public.yunnan_city_boundaries",
+        "source": "eoAPI TiPG 5953",
+        "updatedAt": "2026-04-07T07:37:13.547217",
+        "coverage": "[97.528671, 21.141769, 106.192434, 29.223327]",
+        "versionNote": "当前服务侧仍为 2026-04-07 入库版本"
+      }
+    },
+    {
+      "id": 8020,
+      "pid": 80,
+      "name": "DEM 栅格图层",
+      "type": "group"
+    },
+    {
+      "id": 802101,
+      "pid": 8020,
+      "name": "中国 DEM 彩色高程",
+      "type": "xyz",
+      "url": "http://192.168.0.15:5955/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=terrain&rescale=-500,8000",
+      "minimumLevel": 0,
+      "maximumLevel": 12,
+      "opacity": 0.9,
+      "show": false,
+      "metadata": {
+        "source": "eoAPI Titiler 5955",
+        "file": "/data/dem/china/china_dem_full.vrt",
+        "updatedAt": "2026-05-13T08:52:20Z"
+      }
+    },
+    {
+      "id": 802102,
+      "pid": 8020,
+      "name": "中国 DEM 灰度渲染",
+      "type": "xyz",
+      "url": "http://192.168.0.15:5955/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=viridis&rescale=-500,8000",
+      "minimumLevel": 0,
+      "maximumLevel": 12,
+      "opacity": 0.9,
+      "show": false,
+      "metadata": {
+        "source": "eoAPI Titiler 5955",
+        "file": "/data/dem/china/china_dem_full.vrt",
+        "updatedAt": "2026-05-13T08:52:20Z"
+      }
+    },
+    {
+      "id": 802103,
+      "pid": 8020,
+      "name": "中国 DEM 暗色渲染",
+      "type": "xyz",
+      "url": "http://192.168.0.15:5955/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=bone&rescale=-500,8000",
+      "minimumLevel": 0,
+      "maximumLevel": 12,
+      "opacity": 0.9,
+      "show": false,
+      "metadata": {
+        "source": "eoAPI Titiler 5955",
+        "file": "/data/dem/china/china_dem_full.vrt",
+        "updatedAt": "2026-05-13T08:52:20Z"
+      }
+    },
+    {
+      "id": 802104,
+      "pid": 8020,
+      "name": "中国 DEM 热力渲染",
+      "type": "xyz",
+      "url": "http://192.168.0.15:5955/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=plasma&rescale=-500,8000",
+      "minimumLevel": 0,
+      "maximumLevel": 12,
+      "opacity": 0.9,
+      "show": false,
+      "metadata": {
+        "source": "eoAPI Titiler 5955",
+        "file": "/data/dem/china/china_dem_full.vrt",
+        "updatedAt": "2026-05-13T08:52:20Z"
+      }
+    }
+  ],
+  "eoapiI18n": {
+    "collections": {
+      "ds_271dd141b39d": {
+        "title": "测试数据集2"
+      },
+      "ds_315aee74cdd5": {
+        "title": "发布测试数据集"
+      },
+      "ds_4d53c8a530e5": {
+        "title": "测试数据集"
+      },
+      "ds_bf915afb36ad": {
+        "title": "STAC测试数据集"
+      },
+      "earthquake_lab_demo": {
+        "title": "地震科学实验场示范数据集",
+        "description": "包含遥感影像、矢量数据、分析报告的综合示范数据集，展示平台数据管理能力",
+        "keywords": [
+          "地震",
+          "示范",
+          "遥感",
+          "矢量"
+        ]
+      },
+      "MAXAR_afghanistan_earthquake22": {
+        "title": "阿富汗地震",
+        "description": "2022年6月22日阿富汗发生5.9级地震，Maxar开放数据集提供灾后高清卫星影像",
+        "keywords": [
+          "地震",
+          "阿富汗",
+          "Maxar",
+          "光学影像",
+          "灾后评估"
+        ]
+      },
+      "MAXAR_BayofBengal_Cyclone_Mocha_May_23": {
+        "title": "孟加拉湾莫卡飓风 2023",
+        "description": "2023年5月孟加拉湾五级飓风莫卡登陆，Maxar开放数据集提供灾前灾后对比影像",
+        "keywords": [
+          "飓风",
+          "孟加拉湾",
+          "莫卡",
+          "Maxar",
+          "灾害"
+        ]
+      },
+      "MAXAR_cyclone_emnati22": {
+        "title": "埃马纳蒂飓风",
+        "description": "热带风暴埃马纳蒂登陆造成的灾害影像数据",
+        "keywords": [
+          "飓风",
+          "埃马纳蒂",
+          "Maxar",
+          "热带风暴"
+        ]
+      },
+      "MAXAR_Emilia_Romagna_Italy_flooding_may23": {
+        "title": "意大利艾米利亚-罗马涅洪涝 2023",
+        "description": "2023年5月意大利艾米利亚-罗马涅地区严重洪涝灾害影像",
+        "keywords": [
+          "洪涝",
+          "意大利",
+          "艾米利亚-罗马涅",
+          "Maxar"
+        ]
+      },
+      "MAXAR_Gambia_flooding_8_11_2022": {
+        "title": "冈比亚洪涝 2022",
+        "description": "2022年8-11月冈比亚创纪录洪涝灾害影像",
+        "keywords": [
+          "洪涝",
+          "冈比亚",
+          "Maxar",
+          "灾害"
+        ]
+      }
+    },
+    "summaryKeyLabels": {
+      "platform": "平台",
+      "instruments": "传感器",
+      "constellation": "星座",
+      "region": "区域",
+      "data_type": "数据类型",
+      "gsd": "分辨率",
+      "cloud_cover": "云量",
+      "provider": "提供方",
+      "license": "许可证"
+    },
+    "summaryValueLabels": {
+      "raster": "栅格",
+      "vector": "矢量",
+      "document": "文档",
+      "sentinel-1": "哨兵-1",
+      "sentinel-2": "哨兵-2",
+      "landsat-8": "陆地卫星-8",
+      "maxar": "Maxar卫星"
+    }
+  }
+}

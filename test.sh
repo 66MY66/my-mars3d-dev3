@@ -1,0 +1,1 @@
+docker-compose up ui -f docker-compose.run.yml

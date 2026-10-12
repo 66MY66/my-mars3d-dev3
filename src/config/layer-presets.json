@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "seismic-lab-default",
+      "name": "中国地震科学实验场（默认）",
+      "description": "默认进入视角与基础图层组合（可在后续迭代补全）",
+      "recommendedBasemapId": 2021,
+      "hasTerrain": true,
+      "layers": {
+        "show": [],
+        "hide": [],
+        "radioGroups": []
+      }
+    }
+  ]
+}

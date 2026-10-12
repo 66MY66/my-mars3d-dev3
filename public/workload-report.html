@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工作量清单 - 6月15日前已完成工单</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #52c41a; margin-bottom: 10px; }
+    .stats { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .stat-item { text-align: center; }
+    .stat-num { font-size: 32px; font-weight: bold; }
+    .stat-label { color: #666; margin-top: 5px; }
+    .filter-info { background: #e6f7ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #1890ff; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    th { background: #52c41a; color: #fff; padding: 15px 12px; text-align: left; font-weight: 500; position: sticky; top: 0; }
+    td { padding: 12px; border-bottom: 1px solid #f0f0f0; }
+    tr:hover { background: #fafafa; }
+    tr:last-child td { border-bottom: none; }
+    .status-done { background: #52c41a; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 12px; }
+    .highlight { background: #f6ffed; }
+    .file-info { background: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .file-info code { background: #f5f5f5; padding: 2px 8px; border-radius: 4px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✅ 工作量清单分析报告</h1>
+    
+    <div class="file-info">
+      <strong>数据来源：</strong><code>/program/Mars3D/docs/工作量清单.xlsx</code><br>
+      <strong>工作表：</strong>Sheet1（共1个工作表）<br>
+      <strong>总记录数：</strong>205 条<br>
+      <strong>更新时间：</strong>2026/6/16 18:24:44
+    </div>
+    
+    <div class="filter-info">
+      <strong>筛选条件：</strong>计划开始/预计完成日期 < 2026-06-15<br>
+      <strong>完成状态：</strong>进度情况 = 已完成
+    </div>
+    
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-num">205</div>
+        <div class="stat-label">总工单数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">113</div>
+        <div class="stat-label">6月15日前工单</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:#52c41a">32</div>
+        <div class="stat-label">已完成</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:#faad14">10</div>
+        <div class="stat-label">部分完成</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:#d9d9d9">71</div>
+        <div class="stat-label">未标记</div>
+      </div>
+    </div>
+    
+    <h2 style="margin:20px 0 15px;color:#333;">✅ 已完成工单列表（32个）</h2>
+    
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">序号</th>
+          <th style="width:200px">工单编号</th>
+          <th>任务描述</th>
+          <th style="width:80px">负责人</th>
+          <th style="width:110px">计划开始</th>
+          <th style="width:110px">预计完成</th>
+          <th style="width:80px">状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+        <tr>
+          <td>1</td>
+          <td><strong>3-1 左侧成果导航布局</strong></td>
+          <td>数据集仓库→我的仓库→分割线→当前任务→分割线→保存成果</td>
+          <td>李冬梅</td>
+          <td>2026-04-24</td>
+          <td>2026-04-24</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>2</td>
+          <td><strong>3-2 右侧抽屉面板互斥开发</strong></td>
+          <td>同一时间只开一个面板，切换自动关闭</td>
+          <td>李冬梅</td>
+          <td>2026-04-24</td>
+          <td>2026-04-24</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>3</td>
+          <td><strong>3-3 数据集仓库卡片列表</strong></td>
+          <td>封面、名称、标签、时间、收藏、血缘标注</td>
+          <td>李冬梅</td>
+          <td>2026-04-24</td>
+          <td>2026-04-24</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>4</td>
+          <td><strong>3-4 数据集搜索筛选</strong></td>
+          <td>关键词、标签筛选</td>
+          <td>李冬梅</td>
+          <td>2026-04-24</td>
+          <td>2026-04-24</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>5</td>
+          <td><strong>3-5 最近使用 / 我的收藏</strong></td>
+          <td>顶部快捷入口，最多 5 条</td>
+          <td>李冬梅</td>
+          <td>2026-04-27</td>
+          <td>2026-04-27</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>6</td>
+          <td><strong>3-6 数据集封面大图预览</strong></td>
+          <td>点击封面弹出预览</td>
+          <td>李冬梅</td>
+          <td>2026-04-27</td>
+          <td>2026-04-27</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>7</td>
+          <td><strong>3-7 数据集分页展示</strong></td>
+          <td>按热度倒序</td>
+          <td>李冬梅</td>
+          <td>2026-04-27</td>
+          <td>2026-04-27</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>8</td>
+          <td><strong>3-9 数据集一键同步</strong></td>
+          <td>导入后自动同步图层、标注、视角</td>
+          <td>李冬梅</td>
+          <td>2026-04-28</td>
+          <td>2026-05-28</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>9</td>
+          <td><strong>3-10 导入后快捷操作</strong></td>
+          <td>提供定位、打开图层管理、撤销导入</td>
+          <td>李冬梅</td>
+          <td>2026-04-28</td>
+          <td>2026-05-28</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>10</td>
+          <td><strong>3-11 导入图层分组管理</strong></td>
+          <td>自动归入导入 / 数据集名称分组</td>
+          <td>李冬梅</td>
+          <td>2026-04-28</td>
+          <td>2026-05-28</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>11</td>
+          <td><strong>3-13 数据集详情页开发</strong></td>
+          <td>展示元数据、附件、统计</td>
+          <td>李冬梅</td>
+          <td>2026-04-29</td>
+          <td>2026-04-29</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>12</td>
+          <td><strong>3-15 下载</strong></td>
+          <td>支持单独下载</td>
+          <td>李冬梅</td>
+          <td>2026-04-29</td>
+          <td>2026-04-29</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>13</td>
+          <td><strong>3-16 数据集收藏功能</strong></td>
+          <td>收藏 / 取消收藏，列表按收藏时间排序</td>
+          <td>李冬梅</td>
+          <td>2026-04-29</td>
+          <td>2026-04-29</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>14</td>
+          <td><strong>3-17 数据集 ZIP 打包下载</strong></td>
+          <td>全部内容打包，含 manifest</td>
+          <td>李冬梅</td>
+          <td>2026-04-30</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>15</td>
+          <td><strong>3-18 数据集版本管理</strong></td>
+          <td>多版本、日志、可导入历史版本</td>
+          <td>李冬梅</td>
+          <td>2026-04-30</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>16</td>
+          <td><strong>3-19 我的仓库列表开发</strong></td>
+          <td>按更新倒序</td>
+          <td>李冬梅</td>
+          <td>2026-04-30</td>
+          <td>2026-04-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>17</td>
+          <td><strong>3-20 数据集状态流转</strong></td>
+          <td>私有→审核中→已发布；拒绝→退回</td>
+          <td>李冬梅</td>
+          <td>2026-04-30</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>18</td>
+          <td><strong>3-21 发布撤回功能</strong></td>
+          <td>已发布可一键撤回为私有</td>
+          <td>李冬梅</td>
+          <td>2026-05-06</td>
+          <td>2026-05-06</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>19</td>
+          <td><strong>3-23 一键回退打开</strong></td>
+          <td>恢复打开前地图状态</td>
+          <td>李冬梅</td>
+          <td>2026-05-06</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>20</td>
+          <td><strong>3-24 血缘关系标注</strong></td>
+          <td>数据集来源标注</td>
+          <td>李冬梅</td>
+          <td>2026-05-06</td>
+          <td>2026-05-06</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>21</td>
+          <td><strong>3-26 当前任务目录结构</strong></td>
+          <td>数据集→图层→专题图→附件→版本</td>
+          <td>李冬梅</td>
+          <td>2026-05-07</td>
+          <td>2026-05-07</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>22</td>
+          <td><strong>3-27 目录拖拽排序</strong></td>
+          <td>支持拖拽、重命名、删除</td>
+          <td>李冬梅</td>
+          <td>2026-05-07</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>23</td>
+          <td><strong>3-28 目录搜索高亮</strong></td>
+          <td>关键词搜索高亮显示</td>
+          <td>李冬梅</td>
+          <td>2026-05-07</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>24</td>
+          <td><strong>3-30 批量显隐控制</strong></td>
+          <td>目录节点勾选批量显隐</td>
+          <td>李冬梅</td>
+          <td>2026-05-08</td>
+          <td>2026-05-08</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>25</td>
+          <td><strong>3-34 一键保存我的仓库</strong></td>
+          <td>快速保存当前成果</td>
+          <td>李冬梅</td>
+          <td>2026-05-11</td>
+          <td>2026-05-11</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>26</td>
+          <td><strong>3-35 一键提交发布</strong></td>
+          <td>快速进入审核</td>
+          <td>李冬梅</td>
+          <td>2026-05-11</td>
+          <td>2026-05-11</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>27</td>
+          <td><strong>3-36 空内容拦截</strong></td>
+          <td>无内容禁止保存并提示</td>
+          <td>李冬梅</td>
+          <td>2026-05-11</td>
+          <td>2026-05-11</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>28</td>
+          <td><strong>3-37 重名校验</strong></td>
+          <td>重名提示覆盖 / 重命名</td>
+          <td>李冬梅</td>
+          <td>2026-05-12</td>
+          <td>2026-05-12</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>29</td>
+          <td><strong>3-39 网络中断草稿保留</strong></td>
+          <td>断网保留草稿，恢复可重提交</td>
+          <td>李冬梅</td>
+          <td>2026-05-12</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>30</td>
+          <td><strong>3-40 封面图三种来源</strong></td>
+          <td>地图截图、上传、专题图截图</td>
+          <td>李冬梅</td>
+          <td>2026-05-13</td>
+          <td>2026-05-13</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>31</td>
+          <td><strong>3-41 动态图层时态保存</strong></td>
+          <td>保存 URL + 时间戳，历史可回放</td>
+          <td>李冬梅</td>
+          <td>2026-05-13</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+        <tr>
+          <td>32</td>
+          <td><strong>3-42 6 类附件管理</strong></td>
+          <td>封面、报告、导出、日志、数据、其他</td>
+          <td>李冬梅</td>
+          <td>2026-05-13</td>
+          <td>2026-05-30</td>
+          <td><span class="status-done">已完成</span></td>
+        </tr>
+        
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

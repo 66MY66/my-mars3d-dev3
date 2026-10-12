@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>部分完成工单详细分析</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #fa8c16; margin-bottom: 10px; }
+    .stats { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .stat-item { text-align: center; }
+    .stat-num { font-size: 32px; font-weight: bold; }
+    .stat-label { color: #666; margin-top: 5px; }
+    .filter-info { background: #fff7e6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #fa8c16; }
+    
+    .task-card { background: #fff; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+    .task-header { padding: 15px 20px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #f0f0f0; }
+    .task-id { font-weight: bold; color: #1890ff; min-width: 180px; }
+    .task-title { flex: 1; color: #333; }
+    .progress-bar { width: 100px; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; }
+    .progress-text { min-width: 50px; text-align: right; font-weight: bold; }
+    
+    .task-body { padding: 15px 20px; }
+    .task-row { display: flex; margin-bottom: 10px; }
+    .task-label { min-width: 80px; color: #666; }
+    .task-value { flex: 1; }
+    
+    .status-done { background: #52c41a; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 12px; }
+    .status-partial { background: #faad14; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 12px; }
+    .status-minimal { background: #fa8c16; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 12px; }
+    .status-none { background: #ff4d4f; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 12px; }
+    
+    .implemented { color: #52c41a; }
+    .missing { color: #ff4d4f; }
+    
+    .tag { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 12px; }
+    .tag-done { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+    .tag-missing { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+    
+    .summary { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .summary h3 { margin-bottom: 15px; color: #333; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .summary-item { text-align: center; padding: 15px; background: #fafafa; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔶 部分完成工单详细分析</h1>
+    <p style="color:#666;margin-bottom:20px;">数据来源: /program/Mars3D/docs/工作量清单.xlsx | 基于代码实现情况验证</p>
+    
+    <div class="filter-info">
+      <strong>筛选条件：</strong>进度情况 = 部分完成 且 计划日期 < 2026-06-15<br>
+      <strong>分析方法：</strong>通过关键词匹配检查代码实现情况
+    </div>
+    
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-num" style="color:#fa8c16">26</div>
+        <div class="stat-label">部分完成工单</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:#52c41a">16</div>
+        <div class="stat-label">基本完成(≥80%)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:#faad14">5</div>
+        <div class="stat-label">部分实现(50-79%)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:#ff4d4f">5</div>
+        <div class="stat-label">未完成(&lt;50%)</div>
+      </div>
+    </div>
+    
+    <div class="summary">
+      <h3>📊 完成情况汇总</h3>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div style="font-size:24px;color:#52c41a">16</div>
+          <div>基本完成</div>
+        </div>
+        <div class="summary-item">
+          <div style="font-size:24px;color:#faad14">5</div>
+          <div>部分实现</div>
+        </div>
+        <div class="summary-item">
+          <div style="font-size:24px;color:#fa8c16">2</div>
+          <div>初步实现</div>
+        </div>
+        <div class="summary-item">
+          <div style="font-size:24px;color:#ff4d4f">3</div>
+          <div>未实现</div>
+        </div>
+      </div>
+    </div>
+    
+    <h2 style="margin:20px 0 15px;color:#333;">📋 工单详情列表</h2>
+    
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-3 数据集仓库卡片列表</div>
+        <div class="task-title">封面、名称、标签、时间、收藏、血缘标注</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">封面、名称、标签、时间、收藏、血缘标注</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">展示完整</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-24 ~ 2026-04-24</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">card-cover</span><span class="tag tag-done">card-title</span><span class="tag tag-done">card-tags</span><span class="tag tag-done">fav-btn</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-4 数据集搜索筛选</div>
+        <div class="task-title">关键词、标签筛选</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">关键词、标签筛选</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">搜索准确</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-24 ~ 2026-04-24</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">searchKeyword</span><span class="tag tag-done">selectedTags</span><span class="tag tag-done">filter</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-5 最近使用 / 我的收藏</div>
+        <div class="task-title">顶部快捷入口，最多 5 条</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">顶部快捷入口，最多 5 条</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">显示正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-27 ~ 2026-04-27</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">recent</span><span class="tag tag-done">favorites</span><span class="tag tag-done">quickTab</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-6 数据集封面大图预览</div>
+        <div class="task-title">点击封面弹出预览</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">点击封面弹出预览</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">预览正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-27 ~ 2026-04-27</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">coverPreview</span><span class="tag tag-done">preview</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-7 数据集分页展示</div>
+        <div class="task-title">按热度倒序</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">按热度倒序</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">排序正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-27 ~ 2026-04-27</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">pagination</span><span class="tag tag-done">pageSize</span><span class="tag tag-done">page</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-8 数据集导入弹窗</div>
+        <div class="task-title">导入时选择保存时数据 / 最新数据</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:50%;background:#faad14"></div>
+        </div>
+        <div class="progress-text" style="color:#faad14">50%</div>
+        <span class="status-partial">部分实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">导入时选择保存时数据 / 最新数据</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">选项正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-27 ~ 2026-04-27</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">ImportDatasetDialog</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">导入弹窗</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-9 数据集一键同步</div>
+        <div class="task-title">导入后自动同步图层、标注、视角</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">导入后自动同步图层、标注、视角</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">同步成功</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-28 ~ 2026-05-28</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">syncMetrics</span><span class="tag tag-done">autoSync</span><span class="tag tag-done">sync</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-10 导入后快捷操作</div>
+        <div class="task-title">提供定位、打开图层管理、撤销导入</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">提供定位、打开图层管理、撤销导入</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">按钮可用</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-28 ~ 2026-05-28</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">ImportSuccessToast</span><span class="tag tag-done">定位</span><span class="tag tag-done">图层管理</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-11 导入图层分组管理</div>
+        <div class="task-title">自动归入导入 / 数据集名称分组</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">自动归入导入 / 数据集名称分组</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">分组正确</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-28 ~ 2026-05-28</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">sessionRoot</span><span class="tag tag-done">导入分组</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-12 撤销导入功能</div>
+        <div class="task-title">只清除本次导入，不影响原有数据</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:67%;background:#faad14"></div>
+        </div>
+        <div class="progress-text" style="color:#faad14">67%</div>
+        <span class="status-partial">部分实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">只清除本次导入，不影响原有数据</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">回滚正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-28 ~ 2026-05-28</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">clearSession</span><span class="tag tag-done">撤销导入</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">undoImport</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-13 数据集详情页开发</div>
+        <div class="task-title">展示元数据、附件、统计</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">展示元数据、附件、统计</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">信息完整</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-29 ~ 2026-04-29</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">DatasetDetail</span><span class="tag tag-done">元数据</span><span class="tag tag-done">附件</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-14 精细化导入选择</div>
+        <div class="task-title">支持多选图层部分导入</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:0%;background:#ff4d4f"></div>
+        </div>
+        <div class="progress-text" style="color:#ff4d4f">0%</div>
+        <span class="status-none">未实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">支持多选图层部分导入</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">可部分导入</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-29 ~ 2026-04-29</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">selectedLayers</span><span class="tag tag-missing">partialImport</span><span class="tag tag-missing">部分导入</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-15 下载</div>
+        <div class="task-title">支持单独下载</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">支持单独下载</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">下载正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-29 ~ 2026-04-29</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">download</span><span class="tag tag-done">Download</span><span class="tag tag-done">下载</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-17 数据集 ZIP 打包下载</div>
+        <div class="task-title">全部内容打包，含 manifest</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">全部内容打包，含 manifest</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">打包完整</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-30 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">zip-export</span><span class="tag tag-done">manifest</span><span class="tag tag-done">ZIP</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-18 数据集版本管理</div>
+        <div class="task-title">多版本、日志、可导入历史版本</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">多版本、日志、可导入历史版本</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">版本可回溯</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-04-30 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">VersionManager</span><span class="tag tag-done">revision</span><span class="tag tag-done">版本</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-22 数据集更新图层</div>
+        <div class="task-title">同步当前地图状态，可生成新版本</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:33%;background:#fa8c16"></div>
+        </div>
+        <div class="progress-text" style="color:#fa8c16">33%</div>
+        <span class="status-minimal">初步实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">同步当前地图状态，可生成新版本</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">更新正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-06 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">updateLayer</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">syncMapState</span><span class="tag tag-missing">更新图层</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-23 一键回退打开</div>
+        <div class="task-title">恢复打开前地图状态</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">恢复打开前地图状态</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">回退正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-06 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">回退</span><span class="tag tag-done">rollback</span><span class="tag tag-done">restore</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-25 清除导入内容</div>
+        <div class="task-title">按来源清除导入图层</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:33%;background:#fa8c16"></div>
+        </div>
+        <div class="progress-text" style="color:#fa8c16">33%</div>
+        <span class="status-minimal">初步实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">按来源清除导入图层</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">清除彻底</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-07 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">清除</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">clearImport</span><span class="tag tag-missing">removeFromDir</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-29 图层点击定位闪烁</div>
+        <div class="task-title">点击目录图层，地图闪烁并定位</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:67%;background:#faad14"></div>
+        </div>
+        <div class="progress-text" style="color:#faad14">67%</div>
+        <span class="status-partial">部分实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">点击目录图层，地图闪烁并定位</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">联动正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-08 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">focusNode</span><span class="tag tag-done">flyTo</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">定位闪烁</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-30 批量显隐控制</div>
+        <div class="task-title">目录节点勾选批量显隐</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">目录节点勾选批量显隐</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">批量控制正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-08 ~ 2026-05-08</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">checkedKeys</span><span class="tag tag-done">checkable</span><span class="tag tag-done">批量</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-31 专题图预览弹窗</div>
+        <div class="task-title">点击打开预览、上图、定位、导出</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:0%;background:#ff4d4f"></div>
+        </div>
+        <div class="progress-text" style="color:#ff4d4f">0%</div>
+        <span class="status-none">未实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">点击打开预览、上图、定位、导出</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">预览正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-08 ~ 2026-07-08</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">ThematicPreview</span><span class="tag tag-missing">专题图预览</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-32 实时数据同步</div>
+        <div class="task-title">地图增删改自动同步目录</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:0%;background:#ff4d4f"></div>
+        </div>
+        <div class="progress-text" style="color:#ff4d4f">0%</div>
+        <span class="status-none">未实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">地图增删改自动同步目录</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">同步实时</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-08 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">realtimeSync</span><span class="tag tag-missing">watchLayer</span><span class="tag tag-missing">实时同步</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-33 告警 / 专题锁定目录</div>
+        <div class="task-title">定稿后锁定，仅可查看导出</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:67%;background:#faad14"></div>
+        </div>
+        <div class="progress-text" style="color:#faad14">67%</div>
+        <span class="status-partial">部分实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">定稿后锁定，仅可查看导出</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">锁定生效</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-11 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">taskLocked</span><span class="tag tag-done">锁定</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">lockReason</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-38 大文件上传处理</div>
+        <div class="task-title">≥50MB 使用预签名上传</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:67%;background:#faad14"></div>
+        </div>
+        <div class="progress-text" style="color:#faad14">67%</div>
+        <span class="status-partial">部分实现</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">≥50MB 使用预签名上传</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">上传稳定</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-12 ~ 2026-05-20</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">分片上传</span><span class="tag tag-done">presigned</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span class="tag tag-missing">chunkedUpload</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-41 动态图层时态保存</div>
+        <div class="task-title">保存 URL + 时间戳，历史可回放</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">保存 URL + 时间戳，历史可回放</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">回放正常</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-13 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">temporal</span><span class="tag tag-done">timeExtent</span><span class="tag tag-done">时态</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <div class="task-id">3-42 6 类附件管理</div>
+        <div class="task-title">封面、报告、导出、日志、数据、其他</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:100%;background:#52c41a"></div>
+        </div>
+        <div class="progress-text" style="color:#52c41a">100%</div>
+        <span class="status-done">基本完成</span>
+      </div>
+      <div class="task-body">
+        <div class="task-row">
+          <div class="task-label">工作内容：</div>
+          <div class="task-value">封面、报告、导出、日志、数据、其他</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">验收标准：</div>
+          <div class="task-value">分类正确</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">责任人：</div>
+          <div class="task-value">李冬梅</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label">计划时间：</div>
+          <div class="task-value">2026-05-13 ~ 2026-05-30</div>
+        </div>
+        <div class="task-row">
+          <div class="task-label implemented">✅ 已实现：</div>
+          <div class="task-value"><span class="tag tag-done">attachment</span><span class="tag tag-done">Attachment</span><span class="tag tag-done">附件类型</span></div>
+        </div>
+        <div class="task-row">
+          <div class="task-label missing">❌ 未实现：</div>
+          <div class="task-value"><span style="color:#999">无</span></div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</body>
+</html>

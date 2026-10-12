@@ -1,0 +1,11 @@
+import * as mars3d from "mars3d"
+
+let map: mars3d.Map | undefined
+
+export function onMounted(mapInstance: mars3d.Map): void {
+  map = mapInstance
+}
+
+export function onUnmounted(): void {
+  map = undefined
+}
