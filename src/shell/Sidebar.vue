@@ -335,8 +335,8 @@ const expandSvg = computed(() => {
   bottom: 0;
   width: var(--sidebar-expanded-width);
   transition: width var(--transition-mid);
-  background: #17233d;
-  border-right: 1px solid rgba(255 255 255 / 8%);
+  background: var(--syc-menu-bg);
+  border-right: 1px solid var(--layout-border);
   z-index: 20;
   overflow: hidden;
   display: flex;
@@ -361,7 +361,7 @@ const expandSvg = computed(() => {
 .sidebar-footer {
   flex-shrink: 0;
   padding: 0 10px 4px;
-  border-top: 1px solid rgba(255 255 255 / 8%);
+  border-top: 1px solid var(--layout-border);
   height: 38px;
   display: flex;
   align-items: center;
@@ -379,7 +379,7 @@ const expandSvg = computed(() => {
 
 .sidebar-footer:hover {
   color: var(--syc-menu-text);
-  background: rgba(255 255 255 / 0.06);
+  background: color-mix(in srgb, var(--syc-menu-active-bg) 60%, transparent);
 }
 
 .sidebar-footer:focus-visible {
@@ -436,7 +436,7 @@ const expandSvg = computed(() => {
 
 .sidebar .group-title:hover {
   color: var(--syc-menu-text);
-  background: rgba(255 255 255 / 0.04);
+  background: color-mix(in srgb, var(--syc-menu-active-bg) 45%, transparent);
   border-radius: var(--popup-radius, 8px);
 }
 
@@ -486,14 +486,14 @@ const expandSvg = computed(() => {
 .menu-divider {
   height: 1px;
   background: transparent;
-  border-bottom: 1px dashed rgba(255 255 255 / 0.25);
+  border-bottom: 1px dashed var(--layout-border);
   margin: 4px 8px;
   pointer-events: none;
 }
 
 .menu-placeholder {
   height: 0;
-  border-bottom: 1px dashed rgba(255 255 255 / 0.25);
+  border-bottom: 1px dashed var(--layout-border);
   margin: 4px 8px;
   pointer-events: none;
 }
@@ -529,13 +529,13 @@ const expandSvg = computed(() => {
 
 .menu-item:hover {
   color: var(--syc-menu-text);
-  background: rgba(255 255 255 / 0.06);
+  background: color-mix(in srgb, var(--syc-menu-active-bg) 60%, transparent);
 }
 
 /* SYC 规范：选中状态 - 左侧 #5cadff 高亮条 */
 .menu-item.active {
-  color: var(--syc-menu-text);
-  background: rgba(92 173 255 / 0.12);
+  color: var(--syc-submenu-active);
+  background: var(--syc-menu-active-bg);
   position: relative;
 }
 
@@ -563,9 +563,9 @@ const expandSvg = computed(() => {
 }
 
 .menu-icon.is-placeholder {
-  border: 1px solid rgba(255 255 255 / 0.28);
+  border: 1px solid color-mix(in srgb, var(--syc-menu-text) 28%, transparent);
   border-radius: 2px;
-  background: rgba(255 255 255 / 0.08);
+  background: color-mix(in srgb, var(--syc-menu-text) 8%, transparent);
 }
 
 .menu-icon :deep(svg) {
@@ -589,7 +589,7 @@ const expandSvg = computed(() => {
 
 .group-divider {
   height: 1px;
-  background: rgba(255 255 255 / 0.12);
+  background: var(--layout-border);
   margin: 6px 8px;
   flex-shrink: 0;
 }
@@ -638,12 +638,12 @@ const expandSvg = computed(() => {
 }
 
 .side-menu::-webkit-scrollbar-thumb {
-  background: rgba(255 255 255 / 0.15);
+  background: color-mix(in srgb, var(--syc-menu-text) 15%, transparent);
   border-radius: 2px;
 }
 
 .side-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(255 255 255 / 0.25);
+  background: color-mix(in srgb, var(--syc-menu-text) 25%, transparent);
 }
 
 @media (max-width: 900px) {

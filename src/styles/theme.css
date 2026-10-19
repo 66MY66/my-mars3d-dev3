@@ -30,15 +30,15 @@
   --nav-text: var(--color-dark);
   --nav-text-muted: var(--color-text-secondary);
   /* SYC 规范：顶部和侧边栏统一深色风格 */
-  --layout-header-bg: var(--color-dark);
-  --layout-header-height: 64px;
+  --layout-header-bg: #ffffff;
+  --layout-header-height: 54px;
   --layout-sidebar-bg: var(--color-dark);
   --layout-sidebar-sub: #2a3b57;
   --layout-sidebar-active: #eaf5ff;
   --layout-sidebar-accent: var(--color-primary);
   --layout-sidebar-text: var(--color-light);
   --layout-sidebar-text-muted: #b8c2d1;
-  --layout-border: rgba(255 255 255 / 12%);
+  --layout-border: #e5e6eb;
   --mars-base-bg: rgba(255 255 255 / 0.96);
   --mars-text-color: var(--color-dark);
   --mars-text-color-secondary: var(--text-secondary);
@@ -75,12 +75,12 @@
   --transition-fast: 150ms ease;
   --transition-mid: 200ms ease;
   /* SYC 规范菜单色彩 - Light主题适配 */
-  --syc-menu-bg: var(--color-dark);
-  --syc-menu-active-bg: #2f4367;
+  --syc-menu-bg: #ffffff;
+  --syc-menu-active-bg: #e8f3ff;
   --syc-submenu-bg: #2c4360;
-  --syc-submenu-active: var(--color-primary);
-  --syc-menu-text: var(--color-light);
-  --syc-menu-text-secondary: #b8c2d1;
+  --syc-submenu-active: #165dff;
+  --syc-menu-text: #1d2129;
+  --syc-menu-text-secondary: #1d2129;
   --syc-menu-icon-size: 16px;
   --syc-menu-icon-gap: 8px;
   --syc-menu-padding: 16px;

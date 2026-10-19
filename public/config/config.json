@@ -107,6 +107,7 @@
   "basemaps": [
     {
       "id": 10,
+      "pid": 110,
       "name": "eoAPI本地底图服务",
       "type": "group"
     },
@@ -261,7 +262,8 @@
     },
     {
       "id": 11,
-      "name": "在线底图服务（需外网）",
+      "pid": 110,
+      "name": "在线地图服务（需外网）",
       "type": "group"
     },
     {
@@ -442,7 +444,18 @@
   ],
   "layers": [
     {
+      "id": 100,
+      "name": "地震监测与评估",
+      "type": "group"
+    },
+    {
+      "id": 110,
+      "name": "底图与辅助",
+      "type": "group"
+    },
+    {
       "id": 51,
+      "pid": 110,
       "name": "辅助图层",
       "type": "group"
     },
@@ -967,6 +980,7 @@
     },
     {
       "id": 50,
+      "pid": 100,
       "name": "地震中短期宏观异常检测",
       "type": "group"
     },
@@ -984,6 +998,7 @@
     },
     {
       "id": 60,
+      "pid": 100,
       "name": "地震区域风险监测",
       "type": "group"
     },
@@ -1004,7 +1019,7 @@
     },
     {
       "id": 70,
-      "name": "热异常",
+      "name": "热异常与遥感异常监测",
       "type": "group"
     },
     {
@@ -1079,7 +1094,7 @@
     {
       "id": 7030,
       "pid": 70,
-      "name": "热异常识别图",
+      "name": "热异常识别",
       "type": "group"
     },
     {
@@ -1113,7 +1128,7 @@
     {
       "id": 7040,
       "pid": 70,
-      "name": "形变隐患识别图",
+      "name": "形变隐患识别",
       "type": "group"
     },
     {
@@ -1156,7 +1171,7 @@
     {
       "id": 7050,
       "pid": 70,
-      "name": "光学影像异常识别图",
+      "name": "光学影像异常识别",
       "type": "group"
     },
     {
@@ -1381,6 +1396,7 @@
     },
     {
       "id": 30,
+      "pid": 110,
       "name": "基础地图",
       "type": "group"
     },
@@ -1421,13 +1437,7 @@
       "popup": "名称：{NAME}<br />层数：{floor}"
     },
     {
-      "id": 3010,
-      "pid": 30,
-      "name": "高分辨遥感数据1级产品",
-      "type": "group"
-    },
-    {
-      "pid": 3010,
+      "pid": 90,
       "type": "arcgis_wfs",
       "name": "热红外遥感数据",
       "url": "//server.mars3d.cn/arcgis/rest/services/mars/hefei/MapServer/28",
@@ -1469,7 +1479,7 @@
       }
     },
     {
-      "pid": 3010,
+      "pid": 90,
       "type": "arcgis_wfs",
       "name": "气象遥感数据",
       "url": "//server.mars3d.cn/arcgis/rest/services/mars/hefei/MapServer/37",
@@ -2182,6 +2192,80 @@
       "id": 99,
       "name": "数据图层",
       "type": "group"
+    },
+    {
+      "id": 80,
+      "pid": 100,
+      "name": "地震灾害评估",
+      "type": "group"
+    },
+    {
+      "id": 8010,
+      "pid": 80,
+      "name": "地震异常区域",
+      "type": "graphic",
+      "data": [],
+      "show": false,
+      "hasOpacity": true
+    },
+    {
+      "id": 8020,
+      "pid": 80,
+      "name": "房屋抗震能力",
+      "type": "graphic",
+      "data": [],
+      "show": false,
+      "hasOpacity": true
+    },
+    {
+      "id": 8030,
+      "pid": 80,
+      "name": "人员伤亡分布",
+      "type": "graphic",
+      "data": [],
+      "show": false,
+      "hasOpacity": true
+    },
+    {
+      "id": 8040,
+      "pid": 80,
+      "name": "经济损失",
+      "type": "graphic",
+      "data": [],
+      "show": false,
+      "hasOpacity": true
+    },
+    {
+      "id": 90,
+      "name": "高分辨率遥感数据",
+      "type": "group"
+    },
+    {
+      "id": 9010,
+      "pid": 90,
+      "name": "高分辨率光学遥感数据",
+      "type": "graphic",
+      "data": [],
+      "show": false,
+      "hasOpacity": true
+    },
+    {
+      "id": 9020,
+      "pid": 90,
+      "name": "高分辨率 SAR 遥感数据",
+      "type": "graphic",
+      "data": [],
+      "show": false,
+      "hasOpacity": true
+    },
+    {
+      "id": 9030,
+      "pid": 90,
+      "name": "高分辨率多光谱遥感数据",
+      "type": "graphic",
+      "data": [],
+      "show": false,
+      "hasOpacity": true
     }
   ],
   "eoapiI18n": {

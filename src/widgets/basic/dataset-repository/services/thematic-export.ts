@@ -1,6 +1,15 @@
 import type { Artifact, ServiceRef, ThematicJob, ThematicJobResult, CreateJobParams } from "../types/eoapi-types"
 import { isLikely3DServiceRef } from "./service-ref"
 
+type ThematicServiceRef = Partial<ServiceRef> & {
+  name?: unknown
+  description?: unknown
+  metadata?: {
+    name?: unknown
+    description?: unknown
+  } | Record<string, unknown>
+}
+
 export type QualityPreset = "standard" | "high" | "print"
 
 export type ThematicCreateForm = {
@@ -205,7 +214,7 @@ export function buildThematicArchiveMetadata(
 
 export function resolveThematicServiceName(
   job: Partial<ThematicJob> | null | undefined,
-  serviceRef?: Partial<ServiceRef> | null
+  serviceRef?: ThematicServiceRef | null
 ): string {
   const parameters = (job?.parameters && typeof job.parameters === "object") ? job.parameters as Record<string, any> : {}
   return normalizeRichText(serviceRef?.name) ||
@@ -216,7 +225,7 @@ export function resolveThematicServiceName(
 
 export function resolveThematicServiceDescription(
   job: Partial<ThematicJob> | null | undefined,
-  serviceRef?: Partial<ServiceRef> | null
+  serviceRef?: ThematicServiceRef | null
 ): string {
   const parameters = (job?.parameters && typeof job.parameters === "object") ? job.parameters as Record<string, any> : {}
   return normalizeRichText(serviceRef?.description) ||

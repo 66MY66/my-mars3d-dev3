@@ -84,23 +84,28 @@ function onModuleClick(module: ModuleItem) {
 .modules-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .module-button {
-  height: 28px;
-  padding: 0 10px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 5px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   background: transparent;
-  color: var(--syc-menu-text-secondary, var(--text-secondary));
+  color: var(--syc-menu-text, #1d2129);
   cursor: pointer;
-  font-size: 12px;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  white-space: nowrap;
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .module-button:hover {
-  color: var(--syc-menu-text, var(--text-primary));
-  background: rgba(255 255 255 / 0.08);
+  color: var(--syc-submenu-active, #165dff);
+  background: var(--nav-active-box, #e8f3ff);
 }
 </style>

@@ -337,7 +337,7 @@ import {
 
 import { useWidget } from "@mars/common/store/widget"
 import { hasPermission } from "@/shell/permission"
-import { MARS3D_BRANDING_SELECTOR } from "./branding"
+import { installMarsLogoPrimitiveGuard, MARS3D_BRANDING_SELECTOR, sweepMarsLogoPrimitives } from "./branding"
 import * as echarts from "echarts"
 import * as XLSX from "xlsx"
 
@@ -381,7 +381,54 @@ const props = withDefaults(
 let map: mars3d.Map // 地图对象
 let watermarkObserver: MutationObserver | null = null
 let watermarkStyleEl: HTMLStyleElement | null = null
+let stopLogoPrimitiveGuard: (() => void) | null = null
 let mars3dVersionMatched = false
+
+function getMapPrimitives(mapInstance?: any) {
+  const scene = mapInstance?.scene || mapInstance?.viewer?.scene || mapInstance?._viewer?.scene
+  return scene?.primitives
+}
+
+function clearLogoPrimitiveGuard(): void {
+  if (!stopLogoPrimitiveGuard) {
+    return
+  }
+  try {
+    stopLogoPrimitiveGuard()
+  } catch {
+  }
+  stopLogoPrimitiveGuard = null
+}
+
+function startLogoPrimitiveGuard(mapInstance?: any): void {
+  clearLogoPrimitiveGuard()
+  let restore = () => {}
+  let installed = false
+  const timers: number[] = []
+  const sweep = () => {
+    const primitives = getMapPrimitives(mapInstance)
+    if (!primitives) {
+      return
+    }
+    if (!installed && typeof primitives.add === "function") {
+      restore = installMarsLogoPrimitiveGuard(primitives)
+      installed = true
+    }
+    try {
+      sweepMarsLogoPrimitives(primitives)
+    } catch {
+    }
+  }
+  sweep()
+  timers.push(window.setTimeout(sweep, 3500))
+  timers.push(window.setTimeout(sweep, 4500))
+  const interval = window.setInterval(sweep, 5000)
+  stopLogoPrimitiveGuard = () => {
+    timers.forEach((id) => window.clearTimeout(id))
+    window.clearInterval(interval)
+    restore()
+  }
+}
 
 function normalizeMars3dVersion(v: unknown): string | null {
   if (typeof v === "string") {
@@ -405,11 +452,8 @@ function ensureNoWatermarkStyle(): void {
   const style = document.createElement("style")
   style.setAttribute("data-mars-no-watermark", "1")
   style.textContent = `
-.mars3d-container .cesium-widget-credits,
-.mars3d-container .cesium-credit-logoContainer,
-.mars3d-container .cesium-credit-textContainer,
-.mars3d-container .cesium-credit-expand-link,
-.mars3d-container .cesium-credit-lightbox,
+.mars3d-container a[href*="mars3d.cn"],
+.cesium-credit-logoContainer,
 .mars3d-container .mars3d-locationbar a[href*="mars3d.cn"],
 .mars3d-container .mars3d-locationbar a[href*="marsgis"],
 .mars3d-container .mars3d-locationbar a[href*="mars3d"],
@@ -434,11 +478,7 @@ function hideIfBranding(el: Element): void {
     (href && /(mars3d\.cn|marsgis)/i.test(href)) ||
     (src && /(mars3d\.cn|marsgis)/i.test(src)) ||
     (text && /(火星科技|合肥火星科技有限公司|mars3d\.cn)/i.test(text)) ||
-    el.classList.contains("cesium-widget-credits") ||
-    el.classList.contains("cesium-credit-logoContainer") ||
-    el.classList.contains("cesium-credit-textContainer") ||
-    el.classList.contains("cesium-credit-expand-link") ||
-    el.classList.contains("cesium-credit-lightbox")
+    el.classList.contains("cesium-credit-logoContainer")
 
   if (!hit) {
     return
@@ -456,19 +496,6 @@ function hideIfBranding(el: Element): void {
 }
 
 function removeBrandingOnce(container: ParentNode | null, mapInstance?: any): void {
-  if (mapInstance) {
-    const viewer = mapInstance?.viewer || mapInstance?._viewer
-    const creditContainer = viewer?.cesiumWidget?.creditContainer || viewer?._cesiumWidget?._creditContainer
-    if (creditContainer) {
-      try {
-        creditContainer.style.setProperty("display", "none", "important")
-        creditContainer.style.setProperty("visibility", "hidden", "important")
-        creditContainer.style.setProperty("opacity", "0", "important")
-      } catch {
-      }
-    }
-  }
-
   const root: ParentNode = container || document
   try {
     const hits = (root as any).querySelectorAll ? (root as any).querySelectorAll(MARS3D_BRANDING_SELECTOR) : []
@@ -504,6 +531,7 @@ function startNoWatermarkGuard(container: HTMLElement | null, mapInstance?: any)
   if (!mars3dVersionMatched) {
     return
   }
+  startLogoPrimitiveGuard(mapInstance)
   ensureNoWatermarkStyle()
   removeBrandingOnce(container, mapInstance)
   if (document.body && document.body !== container) {
@@ -4060,6 +4088,7 @@ onMounted(() => {
 // 组件卸载之前销毁mars3d实例
 onUnmounted(() => {
   window.removeEventListener("resize", handleViewportResize)
+  clearLogoPrimitiveGuard()
   if (watermarkObserver) {
     try {
       watermarkObserver.disconnect()

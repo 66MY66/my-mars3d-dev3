@@ -9,7 +9,6 @@
         <span class="brand-divider" aria-hidden="true"></span>
         <div class="brand-text">
           <div class="brand-title">卫星遥感软件</div>
-          <div class="brand-subtitle">卫星遥感软件</div>
         </div>
       </div>
 
@@ -48,7 +47,7 @@ import TopNotificationsMenu from "@/shell/components/TopNotificationsMenu.vue"
 import { getStoredSidebarCollapsed, setStoredSidebarCollapsed } from "@/shell/sidebar"
 import { initTheme } from "@/shell/theme"
 import { useWidget } from "@mars/common/store/widget"
-import logoUrl from "@/assets/logo.svg?url"
+import logoUrl from "@/assets/logo.png?url"
 
 const sidebarCollapsed = ref(getStoredSidebarCollapsed())
 const viewportWidth = ref<number>(window.innerWidth)
@@ -192,12 +191,12 @@ function onGlobalKeydown(e: KeyboardEvent) {
   width: 100%;
   top: 0;
   height: var(--layout-header-height);
-  padding: 0 16px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 32px;
   /* SYC 规范：统一深色风格 */
-  border-bottom: 1px solid rgba(255 255 255 / 8%);
+  border-bottom: 1px solid var(--layout-border);
   background: var(--syc-menu-bg);
   z-index: 15;
 }
@@ -211,17 +210,19 @@ function onGlobalKeydown(e: KeyboardEvent) {
 }
 
 .brand-logo {
-  width: 34px;
-  height: 34px;
+  width: 24px;
+  height: 24px;
   display: block;
   object-fit: contain;
 }
 
 .brand-mark {
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.1;
-  letter-spacing: 0.08em;
+  width: 33px;
+  height: 24px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: 0;
   white-space: nowrap;
   color: var(--syc-menu-text);
 }
@@ -230,13 +231,14 @@ function onGlobalKeydown(e: KeyboardEvent) {
   width: 1px;
   height: 16px;
   flex-shrink: 0;
-  background: rgba(255 255 255 / 28%);
+  background: var(--layout-border);
 }
 
 .brand-title {
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.1;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: 0;
   white-space: nowrap;
   /* SYC 规范：白色文字 */
   color: var(--syc-menu-text);
@@ -299,17 +301,17 @@ function onGlobalKeydown(e: KeyboardEvent) {
 
 @media (max-width: 900px) {
   .header {
-    height: auto;
-    padding: 10px 12px;
-    flex-wrap: wrap;
+    height: var(--layout-header-height);
+    padding: 0 20px;
+    flex-wrap: nowrap;
   }
 
   .main {
-    top: 88px;
+    top: var(--layout-header-height);
   }
 
   .header-center {
-    width: 100%;
+    width: auto;
     justify-content: flex-start;
   }
 }
