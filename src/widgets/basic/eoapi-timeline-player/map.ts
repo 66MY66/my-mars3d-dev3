@@ -63,47 +63,48 @@ export function loadTimelineItem(collectionId: string, itemId: string): boolean 
   if (String(collectionId || "").startsWith("local_") && localGeojsonHref) {
     const isQuake = localGeojsonHref.includes("earthquake")
     const isRiver = localGeojsonHref.includes("rivers")
+    let popup = "名称：{name}"
+    let symbol: any = {
+      type: "polygon",
+      styleOptions: {
+        opacity: 0.45,
+        outline: true,
+        outlineColor: "#ffffff",
+        outlineWidth: 2,
+        clampToGround: true
+      }
+    }
+    if (isQuake) {
+      popup = "震级：{mag}<br/>地点：{place}<br/>时间：{time}<br/>深度：{depth_km} km<br/>来源：{source}"
+      symbol = {
+        type: "point",
+        styleOptions: {
+          color: "#ff4d4f",
+          pixelSize: 8,
+          outline: true,
+          outlineColor: "#ffffff",
+          outlineWidth: 1,
+          clampToGround: true
+        }
+      }
+    } else if (isRiver) {
+      popup = "河流：{name}"
+      symbol = {
+        type: "polyline",
+        styleOptions: {
+          color: "#40a9ff",
+          width: 3,
+          clampToGround: true
+        }
+      }
+    }
     layer = new mars3d.layer.GeoJsonLayer({
       id: layerId,
       name: `时间轴-${cached?.properties?.title || itemId}`,
       url: localGeojsonHref,
       show: true,
-      popup: isQuake
-        ? "震级：{mag}<br/>地点：{place}<br/>时间：{time}<br/>深度：{depth_km} km<br/>来源：{source}"
-        : isRiver
-          ? "河流：{name}"
-          : "名称：{name}",
-      symbol: isQuake
-        ? {
-            type: "point",
-            styleOptions: {
-              color: "#ff4d4f",
-              pixelSize: 8,
-              outline: true,
-              outlineColor: "#ffffff",
-              outlineWidth: 1,
-              clampToGround: true
-            }
-          }
-        : isRiver
-          ? {
-              type: "polyline",
-              styleOptions: {
-                color: "#40a9ff",
-                width: 3,
-                clampToGround: true
-              }
-            }
-          : {
-              type: "polygon",
-              styleOptions: {
-                opacity: 0.45,
-                outline: true,
-                outlineColor: "#ffffff",
-                outlineWidth: 2,
-                clampToGround: true
-              }
-            }
+      popup,
+      symbol
     })
     map.addLayer(layer)
     currentLayer = layer

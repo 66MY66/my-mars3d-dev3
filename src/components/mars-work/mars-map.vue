@@ -685,6 +685,7 @@ const chartInstances = new Map<string, echarts.ECharts>()
 let statsAutoTimer: number | null = null
 let statsOverlayLayer: any = null
 let statsOverlayByKey = new Map<string, any[]>()
+const statsOverlayLabels = new Map<any, any>()
 let statsOverlayCameraTimer: number | null = null
 let statsOverlayCameraHandler: (() => void) | null = null
 let statsThemeObserver: MutationObserver | null = null
@@ -1260,6 +1261,73 @@ function getStatsGradientColor(ratio: number) {
   return "#2f54eb"
 }
 
+function getStatsCategoryColor(key: StatsCardKey) {
+  const colors: Record<StatsCardKey, string> = {
+    population: "#F76560",
+    economy: "#FBE842",
+    housing: "#B5E241",
+    radiation: "#57A9FB",
+    vegetation: "#E13EDB"
+  }
+  return colors[key]
+}
+
+/** 相邻侧面固定明暗，顶面单独更亮，不随数值或视角改变 */
+const STATS_PRISM_FACE_SHADE = [0.08, 0.38, 0.18, 0.5]
+/** 柱身竖向高度相对原尺度的比例，只缩小上下尺寸 */
+const STATS_PRISM_HEIGHT_SCALE = 0.5
+/** 矩形底面阶段的面积比例，作为当前底面面积的基准 */
+const STATS_PRISM_FOOTPRINT_AREA_SCALE = 1 / 3
+/** 在当前底面面积上再缩小到 1/2，并改为正方形 */
+const STATS_PRISM_SQUARE_AREA_SCALE = 1 / 2
+
+function getStatsPrismTopColor(baseColor: string) {
+  return mixHexColor(baseColor, "#ffffff", 0.46)
+}
+
+function getStatsPrismFaceColor(baseColor: string, faceIndex: number) {
+  const shade = STATS_PRISM_FACE_SHADE[faceIndex] ?? 0.24
+  return mixHexColor(baseColor, "#141414", shade)
+}
+
+const statsPrismSideImages = new Map<string, string>()
+
+function getStatsPrismSideImage(faceColor: string) {
+  const cached = statsPrismSideImages.get(faceColor)
+  if (cached) {
+    return cached
+  }
+  const bottomColor = mixHexColor(faceColor, "#ffffff", 0.82)
+  const canvas = document.createElement("canvas")
+  canvas.width = 4
+  canvas.height = 128
+  const ctx = canvas.getContext("2d")
+  if (!ctx) {
+    return ""
+  }
+  const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0)
+  gradient.addColorStop(0, bottomColor)
+  gradient.addColorStop(1, faceColor)
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  const image = canvas.toDataURL("image/png")
+  statsPrismSideImages.set(faceColor, image)
+  return image
+}
+
+function applyOpaqueGradient(wallGraphic: any, faceColor: string) {
+  const Cesium = (mars3d as any).Cesium
+  const wall = wallGraphic?.entity?.wall
+  if (!wall || !Cesium) {
+    return
+  }
+  wall.material = new Cesium.ImageMaterialProperty({
+    image: getStatsPrismSideImage(faceColor),
+    color: Cesium.Color.WHITE,
+    transparent: false
+  })
+}
+
 /** 按统计区面积推算方柱底边与最大高度（原站三维柱尺度） */
 function hexToRgb(hex: string) {
   const normalized = String(hex || "").replace("#", "")
@@ -1289,26 +1357,6 @@ function mixHexColor(hex: string, target: string, weight: number) {
   )
 }
 
-function buildStatsGradientMaterial(baseColor: string) {
-  const topColor = mixHexColor(baseColor, "#081a5c", 0.18)
-  const middleColor = mixHexColor(baseColor, "#6fc6ff", 0.24)
-  const bottomColor = mixHexColor(baseColor, "#ffffff", 0.52)
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="256" viewBox="0 0 64 256">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${topColor}" />
-          <stop offset="36%" stop-color="${baseColor}" />
-          <stop offset="72%" stop-color="${middleColor}" />
-          <stop offset="100%" stop-color="${bottomColor}" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="256" rx="32" fill="url(#g)" />
-    </svg>
-  `.trim()
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
-}
-
 function getStatsPeakMetrics(cameraHeight = 50000) {
   return getAdaptiveStatsPeakMetrics(Number(metrics.areaM2) || 0, cameraHeight)
 }
@@ -1330,6 +1378,18 @@ function ensureStatsOverlayLayer() {
   }
   statsOverlayLayer = new mars3d.layer.GraphicLayer({ name: "综合统计上图" })
   map.addLayer(statsOverlayLayer)
+  statsOverlayLayer.on?.(mars3d.EventType.mouseOver, (event: any) => {
+    const label = statsOverlayLabels.get(event?.graphic)
+    if (label) {
+      label.show = true
+    }
+  })
+  statsOverlayLayer.on?.(mars3d.EventType.mouseOut, (event: any) => {
+    const label = statsOverlayLabels.get(event?.graphic)
+    if (label) {
+      label.show = true
+    }
+  })
 }
 
 function getRingBbox(ring: RingLonLat): [number, number, number, number] | null {
@@ -2151,7 +2211,10 @@ function clearOverlayForCard(key: string) {
   const list = statsOverlayByKey.get(key) || []
   if (statsOverlayLayer) {
     try {
-      list.forEach((g) => statsOverlayLayer.removeGraphic?.(g, true))
+      list.forEach((g) => {
+        statsOverlayLabels.delete(g)
+        statsOverlayLayer.removeGraphic?.(g, true)
+      })
     } catch {}
   }
   statsOverlayByKey.delete(key)
@@ -2190,79 +2253,106 @@ function renderOverlayForCard(key: StatsCardKey) {
   const Cesium = (mars3d as any).Cesium
   const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
   const lod = getStatsOverlayLod(cameraHeight)
-  const { radius, tipRadius, dotSize, maxHeight } = getStatsPeakMetrics(cameraHeight)
+  const { radius, dotSize, maxHeight } = getStatsPeakMetrics(cameraHeight)
   const peakMaxDistance = lod === "point" ? 140000 : 280000
+  const samplePoint = () => {
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const candidate = {
+        lng: (west as number) + rnd() * ((east as number) - (west as number)),
+        lat: (south as number) + rnd() * ((north as number) - (south as number))
+      }
+      if (!ring.length || pointInRing(candidate, ring)) {
+        return candidate
+      }
+    }
+    const centroid = getRingCentroid(ring)
+    return pointInRing(centroid, ring) ? centroid : { lng: west as number, lat: south as number }
+  }
   for (let i = 0; i < n; i++) {
-    const lng = (west as number) + rnd() * ((east as number) - (west as number))
-    const lat = (south as number) + rnd() * ((north as number) - (south as number))
+    const point = samplePoint()
+    const lng = point.lng
+    const lat = point.lat
     const row = rows[i] || {}
-    const label = getCardLabel(row)
     const numericValue = getCardValueByKey(key, row)
     const ratio = maxValue > 0 ? Math.max(0.08, Math.min(1, numericValue / maxValue)) : 0.1
     const height = Math.max(800, ratio * maxHeight)
-    const color = getStatsGradientColor(ratio)
-    const gradientMaterial = buildStatsGradientMaterial(color)
+    const color = getStatsCategoryColor(key)
     const tooltip = buildStatsTooltip(key, row, ratio)
-    const mainColumnHeight = height * 0.84
-    const tipHeight = Math.max(220, height * 0.16)
-    const columnGraphic = new mars3d.graphic.CylinderEntity({
-      position: [lng, lat, mainColumnHeight / 2],
-      style: {
-        topRadius: radius * 0.62,
-        bottomRadius: radius,
-        length: mainColumnHeight,
-        materialType: "Image",
-        image: gradientMaterial,
-        opacity: 0.98,
-        outline: true,
-        outlineColor: mixHexColor(color, "#ffffff", 0.68),
-        outlineWidth: 1,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, peakMaxDistance),
-        highlight: {
-          type: "click",
-          color: "#ffffff",
-          opacity: 0.95
-        }
-      },
-      tooltip,
-      popup: tooltip,
-      attr: {
-        statsKey: key,
-        row,
-        value: numericValue,
-        height,
-        ratio,
-        visualType: "peak-main"
+    const columnHeight = height * STATS_PRISM_HEIGHT_SCALE
+    const topColor = getStatsPrismTopColor(color)
+    let ground = 0
+    try {
+      const sampled = map.getHeight?.([lng, lat])
+      if (Number.isFinite(sampled)) {
+        ground = sampled
       }
+    } catch {
+      ground = 0
+    }
+    const topAlt = ground + columnHeight
+    const metersPerDegLat = 111320
+    const metersPerDegLng = Math.max(1, metersPerDegLat * Math.cos((lat * Math.PI) / 180))
+    const span = Math.max(radius * 6, maxHeight * 0.22) * Math.sqrt(STATS_PRISM_FOOTPRINT_AREA_SCALE)
+    const currentArea = span * (span * 0.72)
+    const squareSide = Math.sqrt(currentArea * STATS_PRISM_SQUARE_AREA_SCALE)
+    const halfLng = squareSide / 2 / metersPerDegLng
+    const halfLat = squareSide / 2 / metersPerDegLat
+    const footprint = [
+      [lng - halfLng, lat - halfLat],
+      [lng + halfLng, lat - halfLat],
+      [lng + halfLng, lat + halfLat],
+      [lng - halfLng, lat + halfLat]
+    ]
+    const columnAttr = {
+      statsKey: key,
+      row,
+      value: numericValue,
+      height,
+      ratio,
+      visualType: "peak-main"
+    }
+    footprint.forEach((corner, faceIndex) => {
+      const next = footprint[(faceIndex + 1) % footprint.length]
+      const faceColor = getStatsPrismFaceColor(color, faceIndex)
+      const wallGraphic = new mars3d.graphic.WallEntity({
+        positions: [
+          [corner[0], corner[1], ground],
+          [next[0], next[1], ground]
+        ],
+        style: {
+          diffHeight: columnHeight,
+          materialType: "Color",
+          color: faceColor,
+          opacity: 1,
+          outline: false,
+          closure: false,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, peakMaxDistance)
+        },
+        tooltip,
+        popup: tooltip,
+        attr: columnAttr
+      })
+      statsOverlayLayer.addGraphic(wallGraphic)
+      applyOpaqueGradient(wallGraphic, faceColor)
+      graphics.push(wallGraphic)
     })
-    statsOverlayLayer.addGraphic(columnGraphic)
-    graphics.push(columnGraphic)
-
-    const tipGraphic = new mars3d.graphic.CylinderEntity({
-      position: [lng, lat, mainColumnHeight + tipHeight / 2],
+    const topGraphic = new mars3d.graphic.PolygonEntity({
+      positions: footprint.map(([cornerLng, cornerLat]) => [cornerLng, cornerLat, topAlt]),
       style: {
-        topRadius: tipRadius,
-        bottomRadius: radius * 0.62,
-        length: tipHeight,
-        materialType: "Image",
-        image: gradientMaterial,
-        opacity: 0.98,
+        height: topAlt,
+        perPositionHeight: true,
+        color: topColor,
+        opacity: 1,
         outline: false,
+        clampToGround: false,
         distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, peakMaxDistance)
       },
       tooltip,
       popup: tooltip,
-      attr: {
-        statsKey: key,
-        row,
-        value: numericValue,
-        height,
-        ratio,
-        visualType: "peak-tip"
-      }
+      attr: columnAttr
     })
-    statsOverlayLayer.addGraphic(tipGraphic)
-    graphics.push(tipGraphic)
+    statsOverlayLayer.addGraphic(topGraphic)
+    graphics.push(topGraphic)
 
     const dotGraphic = new mars3d.graphic.PointEntity({
       position: [lng, lat, 8],
@@ -2291,26 +2381,25 @@ function renderOverlayForCard(key: StatsCardKey) {
     graphics.push(dotGraphic)
 
     const labelGraphic = new mars3d.graphic.PointEntity({
-      position: [lng, lat, height + 40],
+      position: [lng, lat, topAlt],
       style: {
-        color,
-        pixelSize: 4,
-        outline: true,
-        outlineColor: "#ffffff",
-        outlineWidth: 1,
+        color: topColor,
+        pixelSize: 1,
+        outline: false,
         clampToGround: false,
+        show: true,
         distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 180000),
         label: {
-          text: `${label}\n${formatCardValue(key, numericValue)}`,
-          color: "#ffffff",
+          text: formatCardValue(key, numericValue),
+          color: "#1a1a1a",
           outline: true,
-          outlineColor: "#000000",
+          outlineColor: "#ffffff",
           outlineWidth: 3,
           font_size: 13,
           font_weight: "bold",
           horizontalOrigin: (mars3d as any).Cesium?.HorizontalOrigin?.CENTER,
           verticalOrigin: (mars3d as any).Cesium?.VerticalOrigin?.BOTTOM,
-          pixelOffsetY: -8
+          pixelOffsetY: -4
         }
       },
       tooltip,
@@ -2326,6 +2415,7 @@ function renderOverlayForCard(key: StatsCardKey) {
     })
     statsOverlayLayer.addGraphic(labelGraphic)
     graphics.push(labelGraphic)
+    statsOverlayLabels.set(topGraphic, labelGraphic)
 
     // Keep overlay rendering side-effect free: drawing statistics must never
     // change the user's current map view or camera position.
@@ -2342,11 +2432,9 @@ function scheduleStatsOverlayCameraUpdate() {
     if (!map || !statsOverlayLayer) {
       return
     }
-    Object.keys(statsUi.onMap).forEach((key) => {
-      if (statsUi.onMap[key]) {
-        renderOverlayForCard(key as StatsCardKey)
-      }
-    })
+    // Keep existing graphics during camera motion. Rebuilding the layer here
+    // causes the columns to disappear briefly on every cameraChanged event.
+    map.scene?.requestRender?.()
   }, 120)
 }
 
