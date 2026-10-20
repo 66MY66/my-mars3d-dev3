@@ -1,4 +1,5 @@
 import * as mars3d from "mars3d"
+import { installMarsLogoPrimitiveGuard, sweepMarsLogoPrimitives } from "@mars/components/mars-work/branding"
 
 const Cesium: any = (mars3d as any).Cesium
 
@@ -11,6 +12,7 @@ let splitPosition = 0.5
 let dualViewMode = false
 let leftErrorOff: any = null
 let rightErrorOff: any = null
+let stopCompareLogoGuard: (() => void) | null = null
 
 /** 双视图时将 locationBar 挂到公共父容器，避免只落在左侧视图内 */
 let locationBarOriginalParent: HTMLElement | null = null
@@ -152,6 +154,7 @@ function ensureMapCompare(): void {
       sync: true
     })
     map.addControl(mapCompare)
+    installCompareBrandingGuard()
     compareContainerEl = resolveCompareContainerEl()
     applySplitLayout()
   } catch {
@@ -167,6 +170,8 @@ function destroyMapCompare(): void {
     return
   }
   try {
+    stopCompareLogoGuard?.()
+    stopCompareLogoGuard = null
     if (mapCompare) {
       map.removeControl(mapCompare)
     }
@@ -176,6 +181,20 @@ function destroyMapCompare(): void {
     compareContainerEl = null
     resetMapContainerLayout()
   }
+}
+
+function installCompareBrandingGuard(): void {
+  stopCompareLogoGuard?.()
+  stopCompareLogoGuard = null
+
+  const viewer = getRightViewer()
+  const primitives = viewer?.scene?.primitives
+  if (!primitives) {
+    return
+  }
+
+  stopCompareLogoGuard = installMarsLogoPrimitiveGuard(primitives)
+  sweepMarsLogoPrimitives(primitives)
 }
 
 function resolveCompareContainerEl(): HTMLElement | null {

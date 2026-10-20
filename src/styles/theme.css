@@ -291,6 +291,38 @@ body {
   background-color: var(--mars-hover-color);
 }
 
+:root[data-theme="light"] .mars3d-sub-menu li > a {
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="light"] .mars3d-sub-menu {
+  background: color-mix(in srgb, var(--bg-elevated) 75%, transparent) !important;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400 !important;
+  line-height: 1.4;
+  left: 100% !important;
+}
+
+:root[data-theme="light"] .mars3d-sub-menu li {
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="light"] .mars3d-sub-menu li > a {
+  color: var(--text-primary) !important;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400 !important;
+  line-height: 1.4;
+}
+
+:root[data-theme="light"] .mars3d-sub-menu li:hover > a,
+:root[data-theme="light"] .mars3d-sub-menu li > a:hover,
+:root[data-theme="light"] .mars3d-sub-menu li > a:focus {
+  color: #ffffff !important;
+  background-color: var(--mars-hover-color) !important;
+}
+
 :root[data-theme="light"] .mars3d-popup-background,
 :root[data-theme="light"] .mars3d-popup-content-wrapper,
 :root[data-theme="light"] .mars3d-popup-tip,
@@ -1279,6 +1311,11 @@ body {
 
 :root[data-theme="light"] .mars3d-sub-menu li.is-disabled:hover {
   background-color: transparent !important;
+}
+
+/* 二级菜单与一级菜单紧贴，板块间距为 0 */
+:root[data-theme="light"] .mars3d-contextmenu-hasChildren:hover .mars3d-sub-menu {
+  left: 100% !important;
 }
 
 .ant-dropdown-menu {

@@ -3417,7 +3417,13 @@ function renderContextMenuItems(menuItems: any[], cm: any, eventArg: any) {
         li.appendChild(subUl)
 
         li.addEventListener("mouseenter", () => {
+          subUl.style.display = "block"
           requestAnimationFrame(() => adjustContextSubMenuPosition(li))
+        })
+
+        li.addEventListener("mouseleave", () => {
+          subUl.style.display = "none"
+          subUl.style.visibility = "hidden"
         })
       }
 
