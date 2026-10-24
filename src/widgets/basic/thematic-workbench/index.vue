@@ -1774,7 +1774,8 @@ import type { ThematicTemplate } from "../dataset-repository/types/eoapi-types"
 import ThematicJobs from "../dataset-repository/components/ThematicJobs.vue"
 import { isPublishDescriptionValid, MIN_PUBLISH_DESCRIPTION_LENGTH, publishDescriptionLength } from "../dataset-repository/services/publish-description"
 import { SAFE_MARGIN, SNAP_DISTANCE, SCALE_PRESETS, snapRect } from "./cartography-layout"
-import { cartographySettings, cartographyContext } from "./cartography-state"
+import { cartographySettings, cartographyContext, cartographySnapshot } from "./cartography-state"
+import { loadThematicJobDraft, saveThematicJobDraft } from "./thematic-job-draft"
 import CartographyComposer from "./CartographyComposer.vue"
 import CartographySymbolIcon from "./CartographySymbolIcon.vue"
 import TemplateMapEditor from "./TemplateMapEditor.vue"
@@ -2726,6 +2727,7 @@ const props = withDefaults(defineProps<{
   visible?: boolean
   datasetId?: string
   datasetName?: string
+  jobId?: string
   source?: string
   targetName?: string
   initialTab?: WorkbenchTab
@@ -3548,8 +3550,12 @@ function buildDefaultDraft(): DraftState {
 function loadDraft() {
   const fallback = buildDefaultDraft()
   try {
-    const raw = localStorage.getItem(getDraftStorageKey()) || ""
-    if (raw) {
+    const jobDraft = props.jobId ? loadThematicJobDraft(effectiveDatasetId.value, props.jobId) : null
+    const raw = jobDraft ? "" : localStorage.getItem(getDraftStorageKey()) || ""
+    if (jobDraft) {
+      applyDraft({ ...fallback, ...(jobDraft as any).draft })
+      if (jobDraft.settings) Object.assign(cartographySettings, jobDraft.settings)
+    } else if (raw) {
       const parsed = JSON.parse(raw) as Partial<DraftState>
       applyDraft({
         ...fallback,
@@ -6458,6 +6464,9 @@ function saveDraft() {
     return
   }
   localStorage.setItem(getDraftStorageKey(), JSON.stringify(snapshotDraft()))
+  if (props.jobId) {
+    saveThematicJobDraft(effectiveDatasetId.value, props.jobId, { ...cartographySnapshot(), draft: snapshotDraft() } as any)
+  }
   savedDraftJson.value = JSON.stringify(snapshotDraft())
   $message("专题草稿已保存", "success")
 }
