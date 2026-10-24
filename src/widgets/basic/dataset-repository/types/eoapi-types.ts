@@ -316,9 +316,10 @@ export interface JobProgress {
 
 /** 发布参数 */
 export interface PublishParams {
-  type: "xyz" | "wms" | "wmts" | "none"
+  type: "xyz" | "mvt" | "wms" | "wmts" | "none"
   name?: string
   description?: string
+  metadata?: Record<string, any>
 }
 
 /** 专题图生成任务 */
@@ -354,7 +355,10 @@ export interface CreateJobParams {
 
 /** 服务引用（XYZ 瓦片服务） */
 export interface ServiceRef {
-  type: "xyz" | "wms" | "wmts"
+  type: "xyz" | "mvt" | "wms" | "wmts" | "3dtiles"
+  name?: string
+  description?: string
+  metadata?: Record<string, any>
   serviceId: string
   urlTemplate: string
   minZoom: number

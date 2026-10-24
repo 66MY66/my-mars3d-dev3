@@ -59,19 +59,7 @@ const { activate, disable, getWidget } = useWidget()
 const visibleWidgetStack = ref<string[]>([])
 
 const collapsedWidth = 64
-const expandedWidth = computed(() => {
-  const w = viewportWidth.value
-  if (w >= 2560) {
-    return 208
-  }
-  if (w >= 1920) {
-    return 176
-  }
-  if (w >= 1366) {
-    return 144
-  }
-  return 112
-})
+const expandedWidth = computed(() => 240)
 
 const shellStyle = computed(() => {
   const visible = isSidebarIconOnly.value ? collapsedWidth : expandedWidth.value

@@ -157,11 +157,12 @@ function buildLocalMock(datasetId?: string): { job: ThematicJob; result: Themati
 export async function getTemplates(params?: {
   category?: string
   limit?: number
-}): Promise<ApiResponse<ThematicTemplatesResponse>> {
+}, options: { localFallback?: boolean } = {}): Promise<ApiResponse<ThematicTemplatesResponse>> {
   const result = await eoapiGet<ThematicTemplatesResponse>("/thematics/templates", { params })
   if (result.success) {
     return result
   }
+  if (options.localFallback === false) { return result }
   const mock = buildLocalMock(undefined)
   return { success: true, data: { templates: mock.templates, total: mock.templates.length } }
 }
@@ -217,17 +218,7 @@ export async function getJobs(params?: {
   if (result.success) {
     return result
   }
-  const mock = buildLocalMock(params?.datasetId)
-  let list: ThematicJob[] = [mock.job]
-  if (params?.status) {
-    list = list.filter((j) => j.status === params.status)
-  }
-  if (params?.templateId) {
-    list = list.filter((j) => j.templateId === params.templateId)
-  }
-  const offset = typeof params?.offset === "number" ? Math.max(0, Math.floor(params.offset)) : 0
-  const limit = typeof params?.limit === "number" ? Math.max(1, Math.floor(params.limit)) : list.length
-  return { success: true, data: list.slice(offset, offset + limit) }
+  return result
 }
 
 /**
@@ -238,11 +229,6 @@ export async function getJob(jobId: string): Promise<ApiResponse<ThematicJob>> {
   const result = await eoapiGet<ThematicJob>(`/thematics/jobs/${jobId}`)
   if (result.success) {
     return result
-  }
-  if (String(jobId || "").startsWith("local_job_")) {
-    const datasetId = String(jobId).replace("local_job_", "")
-    const mock = buildLocalMock(datasetId)
-    return { success: true, data: mock.job }
   }
   return result
 }
@@ -264,13 +250,7 @@ export async function getJobResult(jobId: string): Promise<ApiResponse<ThematicJ
   if (result.success) {
     return result
   }
-  if (String(jobId || "").startsWith("local_job_")) {
-    const datasetId = String(jobId).replace("local_job_", "")
-    const mock = buildLocalMock(datasetId)
-    return { success: true, data: mock.result }
-  }
-  const mock = buildLocalMock(undefined)
-  return { success: true, data: { ...mock.result, jobId } as any }
+  return result
 }
 
 /**

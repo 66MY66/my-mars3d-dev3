@@ -656,6 +656,38 @@ export function addXyzLayer(id: string, url: string, options?: any) {
   return layer
 }
 
+export async function addThematicProtocolLayer(id: string, type: string, url: string, options: any = {}) {
+  if (!map) { throw new Error("地图尚未初始化") }
+  const existing = map.getLayerById(id)
+  if (existing) { existing.show = true; return existing }
+  let layer: any
+  if (type === "wms") {
+    if (!options.layers) { throw new Error("WMS 服务缺少 layers 元数据") }
+    layer = new mars3d.layer.WmsLayer({ ...options, id, url, layers: options.layers, parameters: { transparent: true, format: "image/png", ...options.parameters } })
+  } else if (type === "wmts") {
+    if (!options.layer || !options.tileMatrixSetID) { throw new Error("WMTS 服务缺少 layer 或 tileMatrixSetID 元数据") }
+    layer = new mars3d.layer.WmtsLayer({ ...options, id, url })
+  } else if (type === "mvt") {
+    if (!["{z}", "{x}", "{y}"].every(tag => url.includes(tag))) { throw new Error("MVT 服务需要包含 {z}/{x}/{y} 的瓦片地址") }
+    const { paintVectorTile } = await import("./services/thematic-mvt")
+    const Cesium = mars3d.Cesium
+    class MvtLayer extends mars3d.layer.BaseTileLayer {
+      async _createImageryProvider() {
+        const provider = new Cesium.UrlTemplateImageryProvider({ url, maximumLevel: options.maxZoom || 18, ...(options.bounds ? { rectangle: Cesium.Rectangle.fromDegrees(...options.bounds) } : {}) })
+        provider.requestImage = (x: number, y: number, z: number, request: any) => {
+          const resource = new Cesium.Resource({ url: url.replaceAll("{x}", String(x)).replaceAll("{y}", String(y)).replaceAll("{z}", String(z)), request })
+          const pending = resource.fetchArrayBuffer()
+          return pending?.then(buffer => paintVectorTile(buffer, options)) as any
+        }
+        return provider
+      }
+    }
+    layer = new MvtLayer({ ...options, id })
+  } else { throw new Error(`不支持的服务类型：${type}`) }
+  map.addLayer(layer)
+  return layer
+}
+
 export function addGeoJsonLayer(id: string, data: any, options?: any) {
   if (!map) {
     return null

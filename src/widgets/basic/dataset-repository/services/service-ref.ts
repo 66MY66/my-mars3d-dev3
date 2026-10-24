@@ -46,14 +46,28 @@ export function resolveServiceRefUrl(
     if (fallback) {
       return String(fallback).trim()
     }
+    return ""
   }
 
   return String(anyRef?.urlTemplate || anyRef?.url || "").trim()
 }
 
 export function canAddServiceRefToMap(serviceRef: Partial<ServiceRef> | null | undefined): boolean {
-  const type = String((serviceRef as any)?.type || "").trim().toLowerCase()
-  return type === "xyz"
+  const type = resolveServiceRefType(serviceRef)
+  if (isLikely3DServiceRef(serviceRef) && !resolveServiceRefUrl(serviceRef)) { return false }
+  return ["xyz", "wms", "wmts", "mvt"].includes(type)
+}
+
+export function resolveServiceRefType(serviceRef: Partial<ServiceRef> | null | undefined): string {
+  if (!isLikely3DServiceRef(serviceRef)) { return normalizeText(serviceRef?.type) }
+  const ref = serviceRef as any
+  const declared = normalizeText(ref?.fallback2d?.type || ref?.metadata?.fallback2d?.type || ref?.metadata?.type2d)
+  if (declared) { return declared }
+  const url = resolveServiceRefUrl(serviceRef)
+  if (/service=wmts/i.test(url)) { return "wmts" }
+  if (/service=wms/i.test(url)) { return "wms" }
+  if (/\{[zxy]\}/i.test(url)) { return /\.(pbf|mvt)(\?|$)/i.test(url) ? "mvt" : "xyz" }
+  return ""
 }
 
 export async function copyServiceRefUrl(serviceRef: Partial<ServiceRef> | null | undefined): Promise<boolean> {

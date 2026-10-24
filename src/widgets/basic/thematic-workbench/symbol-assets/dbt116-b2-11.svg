@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100pt" height="11.95pt" viewBox="0 0 100 11.95" version="1.2">
+<defs>
+<clipPath id="clip1">
+  <path d="M 5.550781 5.417969 L 27 5.417969 L 27 6.382812 L 5.550781 6.382812 Z M 5.550781 5.417969 "/>
+</clipPath>
+<clipPath id="clip2">
+  <path d="M 25 5.417969 L 28 5.417969 L 28 6.382812 L 25 6.382812 Z M 25 5.417969 "/>
+</clipPath>
+<clipPath id="clip3">
+  <path d="M 28 5.417969 L 51 5.417969 L 51 6.382812 L 28 6.382812 Z M 28 5.417969 "/>
+</clipPath>
+<clipPath id="clip4">
+  <path d="M 48 5.417969 L 51 5.417969 L 51 6.382812 L 48 6.382812 Z M 48 5.417969 "/>
+</clipPath>
+<clipPath id="clip5">
+  <path d="M 51 5.417969 L 74 5.417969 L 74 6.382812 L 51 6.382812 Z M 51 5.417969 "/>
+</clipPath>
+<clipPath id="clip6">
+  <path d="M 71 5.417969 L 74 5.417969 L 74 6.382812 L 71 6.382812 Z M 71 5.417969 "/>
+</clipPath>
+<clipPath id="clip7">
+  <path d="M 74 5.417969 L 96.550781 5.417969 L 96.550781 6.382812 L 74 6.382812 Z M 74 5.417969 "/>
+</clipPath>
+<clipPath id="clip8">
+  <path d="M 95 5.417969 L 96.550781 5.417969 L 96.550781 6.382812 L 95 6.382812 Z M 95 5.417969 "/>
+</clipPath>
+</defs>
+<g id="surface1">
+<g clip-path="url(#clip1)" clip-rule="nonzero">
+<path style="fill:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(13.729858%,12.159729%,12.548828%);stroke-opacity:1;stroke-dasharray:7,2,7,2,1,2;stroke-miterlimit:10;" d="M -0.00119874 0.499801 L 20.886615 0.499801 " transform="matrix(0.995833,0,0,-0.975917,5.551975,6.382296)"/>
+</g>
+<g clip-path="url(#clip2)" clip-rule="nonzero">
+<path style="fill:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(13.729858%,12.159729%,12.548828%);stroke-opacity:1;stroke-dasharray:7,2,7,2,1,2;stroke-miterlimit:10;" d="M 21.561301 0.499801 L 20.584575 0.499801 " transform="matrix(0.995833,0,0,-0.975917,5.551975,6.382296)"/>
+</g>
+<g clip-path="url(#clip3)" clip-rule="nonzero">
+<path style="fill:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(13.729858%,12.159729%,12.548828%);stroke-opacity:1;stroke-dasharray:7,2,7,2,1,2;stroke-miterlimit:10;" d="M 23.291165 0.499801 L 44.175056 0.499801 " transform="matrix(0.995833,0,0,-0.975917,5.551975,6.382296)"/>
+</g>
+<g clip-path="url(#clip4)" clip-rule="nonzero">
+<path style="fill:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(13.729858%,12.159729%,12.548828%);stroke-opacity:1;stroke-dasharray:7,2,7,2,1,2;stroke-miterlimit:10;" d="M 44.853665 0.499801 L 43.876939 0.499801 " transform="matrix(0.995833,0,0,-0.975917,5.551975,6.382296)"/>
+</g>
+<g clip-path="url(#clip5)" clip-rule="nonzero">
+<path style="fill:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(13.729858%,12.159729%,12.548828%);stroke-opacity:1;stroke-dasharray:7,2,7,2,1,2;stroke-miterlimit:10;" d="M 46.548226 0.499801 L 67.432117 0.499801 " transform="matrix(0.995833,0,0,-0.975917,5.551975,6.382296)"/>
+</g>
+<g clip-path="url(#clip6)" clip-rule="nonzero">
+<path style="fill:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(13.729858%,12.159729%,12.548828%);stroke-opacity:1;stroke-dasharray:7,2,7,2,1,2;stroke-miterlimit:10;" d="M 68.110726 0.499801 L 67.134 0.499801 " transform="matrix(0.995833,0,0,-0.975917,5.551975,6.382296)"/>
+</g>
+<g clip-path="url(#clip7)" clip-rule="nonzero">
+<path style="fill:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(13.729858%,12.159729%,12.548828%);stroke-opacity:1;stroke-dasharray:7,2,7,2,1,2;stroke-miterlimit:10;" d="M 69.836667 0.499801 L 90.724481 0.499801 " transform="matrix(0.995833,0,0,-0.975917,5.551975,6.382296)"/>
+</g>
+<g clip-path="url(#clip8)" clip-rule="nonzero">
+<path style="fill:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(13.729858%,12.159729%,12.548828%);stroke-opacity:1;stroke-dasharray:7,2,7,2,1,2;stroke-miterlimit:10;" d="M 91.40309 0.499801 L 90.426364 0.499801 " transform="matrix(0.995833,0,0,-0.975917,5.551975,6.382296)"/>
+</g>
+</g>
+</svg>

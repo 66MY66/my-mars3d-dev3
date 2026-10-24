@@ -1,0 +1,247 @@
+{
+  "dbt116-b1-01.png": {
+    "source": "dbt116-b1-01.svg",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "sha256": "d02bf2dd59b7efc882b4427f54ef5e37c7d22ff8c120b8451c4df5d7e075ef9e"
+  },
+  "dbt116-b1-02.png": {
+    "source": "dbt116-b1-02.svg",
+    "width": 1024,
+    "height": 935,
+    "alpha": true,
+    "sha256": "82d86a2c86b7e1b9f667a4ec0ea8a4f2bc62f8a4a3bc0d66b0a4d15e59517f4c"
+  },
+  "dbt116-b1-03.png": {
+    "source": "dbt116-b1-03.svg",
+    "width": 1024,
+    "height": 935,
+    "alpha": true,
+    "sha256": "9c50ab272358d5ea1f148d4c546fb27cd5f9d567cc6eeb6129a9021a8dc7b0e0"
+  },
+  "dbt116-b1-04.png": {
+    "source": "dbt116-b1-04.svg",
+    "width": 1024,
+    "height": 935,
+    "alpha": true,
+    "sha256": "161235a0f075019abdef47978281879c3f71d9366921a150e6466c3762057152"
+  },
+  "dbt116-b1-05.png": {
+    "source": "dbt116-b1-05.svg",
+    "width": 1024,
+    "height": 840,
+    "alpha": true,
+    "sha256": "a590a4c02c34f8fb98ef0d790f9a2212037d0cf0e872cde197d568acd6917797"
+  },
+  "dbt116-b1-06.png": {
+    "source": "dbt116-b1-06.svg",
+    "width": 661,
+    "height": 1024,
+    "alpha": true,
+    "sha256": "e18568a5d5760f30a86823587ab01a0b6223d0126e4db20fb93eeac34388a1eb"
+  },
+  "dbt116-b1-07.png": {
+    "source": "dbt116-b1-07.svg",
+    "width": 1024,
+    "height": 694,
+    "alpha": true,
+    "sha256": "27e647b4f2ef305f9672548e7e53a6a13ca7cd58c4830db2c8cfcc02ec52baa4"
+  },
+  "dbt116-b1-08.png": {
+    "source": "dbt116-b1-08.svg",
+    "width": 1024,
+    "height": 93,
+    "alpha": true,
+    "sha256": "65be611836f8645fd18a05bfadcbabd3b7f50a72200ce440699e42d35fa9c456"
+  },
+  "dbt116-b1-09.png": {
+    "source": "dbt116-b1-09.svg",
+    "width": 1024,
+    "height": 722,
+    "alpha": true,
+    "sha256": "e45493360f99f8458a6cc67f65097051eadc75e7181613241b6d9d606fb979b5"
+  },
+  "dbt116-b1-10.png": {
+    "source": "dbt116-b1-10.svg",
+    "width": 1024,
+    "height": 722,
+    "alpha": true,
+    "sha256": "62b65de4a6166da1186b270c6e0b2589c841ab8c01ca419755e27e83766a1c2b"
+  },
+  "dbt116-b1-11.png": {
+    "source": "dbt116-b1-11.svg",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "sha256": "28ac8df07ea7da54fbba6ba9d0c0d3ad7fec9b262c60fd1528e97a45a7ce3f62"
+  },
+  "dbt116-b1-12.png": {
+    "source": "dbt116-b1-12.svg",
+    "width": 1024,
+    "height": 928,
+    "alpha": true,
+    "sha256": "3a734aa995519144120ff23dab3dd5550e818da079c92d590f523ee7de27aee1"
+  },
+  "dbt116-b1-13.png": {
+    "source": "dbt116-b1-13.svg",
+    "width": 1024,
+    "height": 993,
+    "alpha": true,
+    "sha256": "609d680a28bd094c28bf48371a3a470c44ab581c58b98961de1e983e2e368d78"
+  },
+  "dbt116-b1-14.png": {
+    "source": "dbt116-b1-14.svg",
+    "width": 1024,
+    "height": 962,
+    "alpha": true,
+    "sha256": "07c2a616f37f7704e92e270a2f79d13c9c2fc48fc068229459a6e50ab955f1b2"
+  },
+  "dbt116-b2-01.png": {
+    "source": "dbt116-b2-01.svg",
+    "width": 1024,
+    "height": 936,
+    "alpha": true,
+    "sha256": "a08091f3477b67a05593ce44878d39d658fc38809bcac6c7f600733a700c8b20"
+  },
+  "dbt116-b2-02.png": {
+    "source": "dbt116-b2-02.svg",
+    "width": 1024,
+    "height": 731,
+    "alpha": true,
+    "sha256": "773eab1bc73bb76e06ed6743b1a434c55effc5a2f8453a99595c4a2d3e2d6216"
+  },
+  "dbt116-b2-03.png": {
+    "source": "dbt116-b2-03.svg",
+    "width": 1024,
+    "height": 614,
+    "alpha": true,
+    "sha256": "4922c5942e842163061933433fc67da106d0d31f26c6b2e851a83033989ca1dd"
+  },
+  "dbt116-b2-04.png": {
+    "source": "dbt116-b2-04.svg",
+    "width": 1024,
+    "height": 585,
+    "alpha": true,
+    "sha256": "b4203f4dd64c8e823be224f9f5557711043b0043ac5298b7c3683117fcc3d1fe"
+  },
+  "dbt116-b2-05.png": {
+    "source": "dbt116-b2-05.svg",
+    "width": 1024,
+    "height": 527,
+    "alpha": true,
+    "sha256": "033446c1900015d72f53479f0ed89b43a66519509d56fb12c366600fc4ea6744"
+  },
+  "dbt116-b2-06.png": {
+    "source": "dbt116-b2-06.svg",
+    "width": 1024,
+    "height": 556,
+    "alpha": true,
+    "sha256": "87b78615f1f3f5e1fc0cce16f9ec3b43143661b6f3f5c21fca327a1d820b7981"
+  },
+  "dbt116-b2-07.png": {
+    "source": "dbt116-b2-07.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "be2ce48ba2b2ec4d304ffef9eba77daf3e65a8b7f88e32eb261d468050030137"
+  },
+  "dbt116-b2-08.png": {
+    "source": "dbt116-b2-08.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "ec2d24791ad326e08d538297894d74e04117886d6ab873abaeb7117f78df75d5"
+  },
+  "dbt116-b2-09.png": {
+    "source": "dbt116-b2-09.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "221ee1cbaa3d4ef2d9a4a209ba3dd9fd9a9f2b017e34d122f1193c750e341b32"
+  },
+  "dbt116-b2-10.png": {
+    "source": "dbt116-b2-10.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "5a1b66efd525e90d5cc53b0ecdca71de5cbd9e28810dda3dcf9611fd587d7740"
+  },
+  "dbt116-b2-11.png": {
+    "source": "dbt116-b2-11.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "ea51940bb5e8202bad771ead9f595054c87ce5682f388ca372863c94913c67b8"
+  },
+  "dbt116-b2-12.png": {
+    "source": "dbt116-b2-12.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "ad4554b42ab04314de7d87292cbc2e0866f8f60fbec6865c8728a539fc9e7fa0"
+  },
+  "dbt116-b2-13.png": {
+    "source": "dbt116-b2-13.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "18d84f5dcf11ecc00efe9a4b3f964868044c4ab0c00b24ce940042982e91892e"
+  },
+  "dbt116-b2-14.png": {
+    "source": "dbt116-b2-14.svg",
+    "width": 1024,
+    "height": 239,
+    "alpha": true,
+    "sha256": "c385739c10036f923f018323d253f16b11314e5de7b56f3a618122b66a620c8e"
+  },
+  "dbt116-b2-15.png": {
+    "source": "dbt116-b2-15.svg",
+    "width": 1024,
+    "height": 231,
+    "alpha": true,
+    "sha256": "19e748301816316f9d5b91d7c38b57f3063e8105a54a47fd954824ef004d6f43"
+  },
+  "dbt116-b2-16.png": {
+    "source": "dbt116-b2-16.svg",
+    "width": 1024,
+    "height": 131,
+    "alpha": true,
+    "sha256": "4fef4c0f631c750868fb4083fd6dced6087dcc595a03a45b6d0905fc3a393b5a"
+  },
+  "dbt116-b2-17.png": {
+    "source": "dbt116-b2-17.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "89b8a0688ec45afa111796a083c6b0c73934e45c878bf9a615dd56166a3e4159"
+  },
+  "dbt116-b2-18.png": {
+    "source": "dbt116-b2-18.svg",
+    "width": 1024,
+    "height": 123,
+    "alpha": true,
+    "sha256": "190b79a63b0aa1488d1c652273e96db703155da319cb8cd48edfcda00c371f6a"
+  },
+  "dbt116-b2-19.png": {
+    "source": "dbt116-b2-19.svg",
+    "width": 1024,
+    "height": 377,
+    "alpha": true,
+    "sha256": "8ac2d8539dc09584989057dc597abee70ae1874629353ed3d6bf4cafeff350a7"
+  },
+  "dbt116-b2-20.png": {
+    "source": "dbt116-b2-20.svg",
+    "width": 1024,
+    "height": 878,
+    "alpha": true,
+    "sha256": "a36ed687dfa4eba90f6fc1b55e8471ade79d0192d758bf02cc438db294a1c562"
+  },
+  "dbt116-b2-21.png": {
+    "source": "dbt116-b2-21.svg",
+    "width": 763,
+    "height": 1024,
+    "alpha": true,
+    "sha256": "6bb9305c8c014ca9e7e8c6ec08e5170cccc145469bd46a993ff2d3f34e99a7a1"
+  }
+}

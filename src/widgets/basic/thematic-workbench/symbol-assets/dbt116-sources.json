@@ -1,0 +1,462 @@
+{
+  "standard": "DB/T 116-2026",
+  "source": "DBT116-2026FDIS.pdf",
+  "sha256": "9dada85ef766f5189fff3a3f0a2a682cc48f6eed744b3579e8d29d375d822063",
+  "symbols": [
+    {
+      "file": "dbt116-b1-01.svg",
+      "table": "B.1",
+      "row": 1,
+      "pdfPage": 16,
+      "cropPoints": [
+        274,
+        266,
+        291,
+        283
+      ],
+      "sha256": "89fa99e176e95e016f2e8a688b4889db77f3ba364df87caee26b24035b978178"
+    },
+    {
+      "file": "dbt116-b1-02.svg",
+      "table": "B.1",
+      "row": 2,
+      "pdfPage": 16,
+      "cropPoints": [
+        274,
+        294,
+        291,
+        310
+      ],
+      "sha256": "1868374d48a9bd3998f77af221351e0e132b8542666984d91a926d4a9b1943e0"
+    },
+    {
+      "file": "dbt116-b1-03.svg",
+      "table": "B.1",
+      "row": 3,
+      "pdfPage": 16,
+      "cropPoints": [
+        274,
+        317,
+        291,
+        333
+      ],
+      "sha256": "064c96a52ca226b92fca0c68b97193e611e2fd48a73c82cc90f833192085e51c"
+    },
+    {
+      "file": "dbt116-b1-04.svg",
+      "table": "B.1",
+      "row": 4,
+      "pdfPage": 16,
+      "cropPoints": [
+        274,
+        340,
+        291,
+        356
+      ],
+      "sha256": "9bc7d605b538567f2353346b8ec4a5d293786730362b2d22e7497d3d298d79f4"
+    },
+    {
+      "file": "dbt116-b1-05.svg",
+      "table": "B.1",
+      "row": 5,
+      "pdfPage": 16,
+      "cropPoints": [
+        267,
+        371,
+        296,
+        395
+      ],
+      "sha256": "d169ed6c70daa9586f0109152f24555916a39ea5886cbdbddc925a5fa84217dc"
+    },
+    {
+      "file": "dbt116-b1-06.svg",
+      "table": "B.1",
+      "row": 6,
+      "pdfPage": 16,
+      "cropPoints": [
+        275,
+        409,
+        290,
+        432
+      ],
+      "sha256": "e0f098ea4164a99bc1b06c411f9720231a6f9c8e22bb9f5e9647071b5c2055e9"
+    },
+    {
+      "file": "dbt116-b1-07.svg",
+      "table": "B.1",
+      "row": 7,
+      "pdfPage": 16,
+      "cropPoints": [
+        260,
+        438,
+        304,
+        468
+      ],
+      "sha256": "adf33636f5f22ac672e17215b4b4ad47a3fa3fb1b41d279b5591de7f79672879"
+    },
+    {
+      "file": "dbt116-b1-08.svg",
+      "table": "B.1",
+      "row": 8,
+      "pdfPage": 16,
+      "cropPoints": [
+        253,
+        477,
+        311,
+        482
+      ],
+      "sha256": "e974576789c32f1e824530f162a36fd409492d509e3b881d127e4ef979ac7c31"
+    },
+    {
+      "file": "dbt116-b1-09.svg",
+      "table": "B.1",
+      "row": 9,
+      "pdfPage": 16,
+      "cropPoints": [
+        259,
+        492,
+        305,
+        524
+      ],
+      "sha256": "66f21cb5f1b531e2078f6ae73cb79d49de82f76f04e5be41a8ffcd469109ef48"
+    },
+    {
+      "file": "dbt116-b1-10.svg",
+      "table": "B.1",
+      "row": 10,
+      "pdfPage": 16,
+      "cropPoints": [
+        259,
+        532,
+        305,
+        564
+      ],
+      "sha256": "97b2427adac083ed5549c7139a1dc8b775e7828fbd89a177ca181c9c2f797db9"
+    },
+    {
+      "file": "dbt116-b1-11.svg",
+      "table": "B.1",
+      "row": 11,
+      "pdfPage": 16,
+      "cropPoints": [
+        267,
+        582,
+        298,
+        613
+      ],
+      "sha256": "c60bd72059eca20771dbfac7f5593483cff65ab9425882daaa893fad7e331773"
+    },
+    {
+      "file": "dbt116-b1-12.svg",
+      "table": "B.1",
+      "row": 12,
+      "pdfPage": 16,
+      "cropPoints": [
+        270,
+        633,
+        294,
+        655
+      ],
+      "sha256": "d4640726d3de7d11eceef433d4cebd4ceaac24d3cd042dda7f06bf6cea645e27"
+    },
+    {
+      "file": "dbt116-b1-13.svg",
+      "table": "B.1",
+      "row": 13,
+      "pdfPage": 16,
+      "cropPoints": [
+        270,
+        663,
+        295,
+        687
+      ],
+      "sha256": "28b2aaff7419702a319ae1b90ad1c215b8191640e277bfc054591c5f0db350c5"
+    },
+    {
+      "file": "dbt116-b1-14.svg",
+      "table": "B.1",
+      "row": 14,
+      "pdfPage": 16,
+      "cropPoints": [
+        270,
+        694,
+        295,
+        717
+      ],
+      "sha256": "958f1dd07703cbc91dccd2d9c627fd1a723a3ad3c41572ab63e79995f834fd1f"
+    },
+    {
+      "file": "dbt116-b2-01.svg",
+      "table": "B.2",
+      "row": 1,
+      "pdfPage": 17,
+      "cropPoints": [
+        306,
+        168,
+        332,
+        191.89
+      ],
+      "sha256": "8f80653850cfb59b5a2a9db5ee4dd4fb172f1a7026f00624e53fd8c84c1cdda9"
+    },
+    {
+      "file": "dbt116-b2-02.svg",
+      "table": "B.2",
+      "row": 2,
+      "pdfPage": 17,
+      "cropPoints": [
+        306,
+        197.89,
+        332,
+        216.93
+      ],
+      "sha256": "ded6a97c002184f04634a7092ac7c899b1eee52c95e6ebd18c89de5144ca5da6"
+    },
+    {
+      "file": "dbt116-b2-03.svg",
+      "table": "B.2",
+      "row": 3,
+      "pdfPage": 17,
+      "cropPoints": [
+        306,
+        222.93,
+        332,
+        238.86
+      ],
+      "sha256": "18724857211616bbebfca139766b125b9a622d4b0ea6d67de42a0d988e3361d9"
+    },
+    {
+      "file": "dbt116-b2-04.svg",
+      "table": "B.2",
+      "row": 4,
+      "pdfPage": 17,
+      "cropPoints": [
+        306,
+        244.86,
+        332,
+        260.01
+      ],
+      "sha256": "46d15680e04f436e37f7aea7ff3d1f746f8f08d898157bbecf7e3a8ca3e0f929"
+    },
+    {
+      "file": "dbt116-b2-05.svg",
+      "table": "B.2",
+      "row": 5,
+      "pdfPage": 17,
+      "cropPoints": [
+        306,
+        266.01,
+        332,
+        279.71
+      ],
+      "sha256": "331377d85a61c88e9167f53c966c3ff1a60a3afee99ddd3e965a6f38f56243f9"
+    },
+    {
+      "file": "dbt116-b2-06.svg",
+      "table": "B.2",
+      "row": 6,
+      "pdfPage": 17,
+      "cropPoints": [
+        306,
+        285.71,
+        332,
+        299.89
+      ],
+      "sha256": "c54c723a12ae0329884a950548919210ab5af571bc2c5da2158c898ef1070262"
+    },
+    {
+      "file": "dbt116-b2-07.svg",
+      "table": "B.2",
+      "row": 7,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        305.89,
+        368,
+        317.84
+      ],
+      "sha256": "d3e940ade2dc549417441a9903046443d13ad81c52d1e2b82ad174d7a131c59b"
+    },
+    {
+      "file": "dbt116-b2-08.svg",
+      "table": "B.2",
+      "row": 8,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        323.84,
+        368,
+        335.79
+      ],
+      "sha256": "1920460c09ccf4f32891ad22a3672078398dbab89899bb3cc0d183f0af721e3f"
+    },
+    {
+      "file": "dbt116-b2-09.svg",
+      "table": "B.2",
+      "row": 9,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        341.79,
+        368,
+        353.74
+      ],
+      "sha256": "509867e921a479fa035d8af1900c7714cc378bbc74198e37fcfd7cc74cf79d87"
+    },
+    {
+      "file": "dbt116-b2-10.svg",
+      "table": "B.2",
+      "row": 10,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        359.74,
+        368,
+        371.7
+      ],
+      "sha256": "3122875c07aa2dd8a8509d2b6f40a87bbdfb0909e722bdc137221c42b26dd950"
+    },
+    {
+      "file": "dbt116-b2-11.svg",
+      "table": "B.2",
+      "row": 11,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        377.7,
+        368,
+        389.65
+      ],
+      "sha256": "731bdef381098fd5b106c962fe27e8d2adcbec834332055b071fb81e99d574cf"
+    },
+    {
+      "file": "dbt116-b2-12.svg",
+      "table": "B.2",
+      "row": 12,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        395.65,
+        368,
+        407.6
+      ],
+      "sha256": "e9cae2af8531616d85c89617b21213b79f37dc1d819b723d5b3021946746c2cd"
+    },
+    {
+      "file": "dbt116-b2-13.svg",
+      "table": "B.2",
+      "row": 13,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        413.6,
+        368,
+        425.55
+      ],
+      "sha256": "9f684f0a9605876cce7cbf34e7996ec017a0da16977d2c0e6fc75c5fd3401291"
+    },
+    {
+      "file": "dbt116-b2-14.svg",
+      "table": "B.2",
+      "row": 14,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        431.55,
+        368,
+        455.15
+      ],
+      "sha256": "07485c448c9ed0762468d94f84449f4b1f70652405d3635e9cf617b900c78757"
+    },
+    {
+      "file": "dbt116-b2-15.svg",
+      "table": "B.2",
+      "row": 15,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        461.15,
+        368,
+        483.77
+      ],
+      "sha256": "ab8e13f6683286a008b925745b8ad25ab1febc7a7c0b73879aeb415daa5196e7"
+    },
+    {
+      "file": "dbt116-b2-16.svg",
+      "table": "B.2",
+      "row": 16,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        489.77,
+        368,
+        502.4
+      ],
+      "sha256": "5ff2eb733c4d2f37d0e7d7fb27b90f25d9c2dfa1b93d53ec188ae60650f603d8"
+    },
+    {
+      "file": "dbt116-b2-17.svg",
+      "table": "B.2",
+      "row": 17,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        508.4,
+        368,
+        520.35
+      ],
+      "sha256": "7f5113bbeb44f285483996330d1993f4bc1e77973480e0dee9a86e696a07781a"
+    },
+    {
+      "file": "dbt116-b2-18.svg",
+      "table": "B.2",
+      "row": 18,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        526.35,
+        368,
+        538.31
+      ],
+      "sha256": "2082e306f99a6a2af9cf02252612d75855d0b9dea3adcb940c95e3bcfdbf60b8"
+    },
+    {
+      "file": "dbt116-b2-19.svg",
+      "table": "B.2",
+      "row": 19,
+      "pdfPage": 17,
+      "cropPoints": [
+        268,
+        544.31,
+        368,
+        581.1
+      ],
+      "sha256": "df066c21e1c9035b2d1ad87bf5554de028a7b442787c7079f3f3ea2f742838a6"
+    },
+    {
+      "file": "dbt116-b2-20.svg",
+      "table": "B.2",
+      "row": 20,
+      "pdfPage": 17,
+      "cropPoints": [
+        306,
+        587.1,
+        332,
+        609.24
+      ],
+      "sha256": "37260f9cd5e305b9c4b73e70ab0606b57dd61e35dff3c14b74b623b65a8ef122"
+    },
+    {
+      "file": "dbt116-b2-21.svg",
+      "table": "B.2",
+      "row": 21,
+      "pdfPage": 17,
+      "cropPoints": [
+        306,
+        615.24,
+        332,
+        650.28
+      ],
+      "sha256": "7e511e550c7c79967cbc0d004db6885fcd50d0b1a38f242d42de6ca9b9aff554"
+    }
+  ]
+}

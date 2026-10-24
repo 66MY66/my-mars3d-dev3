@@ -64,6 +64,7 @@
       @keydown.enter="$emit('toggle')"
     >
       <span class="toggle-icon" v-html="collapsed ? expandSvg : collapseSvg"></span>
+      <span v-if="!collapsed" class="toggle-text">收起菜单</span>
     </div>
   </aside>
 </template>
@@ -331,12 +332,13 @@ const expandSvg = computed(() => {
 .sidebar {
   position: absolute;
   left: 0;
-  top: var(--layout-header-height);
+  top: 54px;
   bottom: 0;
-  width: var(--sidebar-expanded-width);
+  width: 240px;
+  box-sizing: border-box;
   transition: width var(--transition-mid);
   background: var(--syc-menu-bg);
-  border-right: 1px solid var(--layout-border);
+  border-right: 1px solid #e5e6eb;
   z-index: 20;
   overflow: hidden;
   display: flex;
@@ -351,21 +353,25 @@ const expandSvg = computed(() => {
   flex: 1;
   min-height: 0;
   /* SYC 规范：内边距 8px 基础间距 */
-  padding: 6px;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  justify-content: space-between;
 }
 
 /* 底部收起/展开按钮 */
 .sidebar-footer {
   flex-shrink: 0;
-  padding: 0 10px 4px;
-  border-top: 1px solid var(--layout-border);
-  height: 38px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 42px;
+  padding: 13px 12px;
+  border-top: none;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  gap: 8px;
   cursor: pointer;
   color: var(--syc-menu-text-secondary);
   transition: color var(--transition-fast), background var(--transition-fast);
@@ -401,9 +407,16 @@ const expandSvg = computed(() => {
   height: 16px;
 }
 
+.toggle-text {
+  color: #4e5969;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
 .sidebar.collapsed .sidebar-footer {
-  padding: 0 3px 4px;
-  height: 40px;
+  padding: 13px 12px;
   justify-content: center;
 }
 
@@ -419,14 +432,16 @@ const expandSvg = computed(() => {
 /* 一级分组标题：左侧箭头 + Caption 字阶，点击展开/收起子菜单 */
 .sidebar .group-title {
   width: 100%;
-  margin: 4px 0 2px;
-  padding: 0 8px;
+  height: 42px;
+  min-height: 42px;
+  margin: 0 0 2px;
+  padding: 10px 12px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
+  gap: 8px;
   border: none;
+  border-radius: 3px;
   background: transparent;
   cursor: pointer;
   color: var(--syc-menu-text-secondary);
@@ -437,12 +452,12 @@ const expandSvg = computed(() => {
 .sidebar .group-title:hover {
   color: var(--syc-menu-text);
   background: color-mix(in srgb, var(--syc-menu-active-bg) 45%, transparent);
-  border-radius: var(--popup-radius, 8px);
+  border-radius: 3px;
 }
 
 .group-title-arrow {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -461,9 +476,9 @@ const expandSvg = computed(() => {
 .group-title-text {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
   letter-spacing: 0.01em;
   color: inherit;
   white-space: nowrap;

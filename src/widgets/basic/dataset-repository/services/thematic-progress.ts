@@ -67,6 +67,8 @@ export function getThematicProgressMessage(
   progress?: Partial<JobProgress> | null,
   status?: JobStatus | null
 ): string {
+  if (status === "succeeded") { return "生成完成" }
+  if (status === "cancelled") { return "已取消" }
   const label = getThematicProgressStageLabel(progress, status)
   const message = String(progress?.message || "").trim()
   if (message) {
@@ -84,7 +86,8 @@ export function getThematicProgressMessage(
 
 export function buildThematicProgressSteps(
   progress?: Partial<JobProgress> | null,
-  status?: JobStatus | null
+  status?: JobStatus | null,
+  archiveCompleted = false
 ): ThematicProgressStepItem[] {
   const activeKey = resolveThematicProgressStepKey(progress, status)
   const activeIndex = THEMATIC_PROGRESS_STEPS.findIndex((step) => step.key === activeKey)
@@ -93,7 +96,7 @@ export function buildThematicProgressSteps(
   return THEMATIC_PROGRESS_STEPS.map((step, stepIndex) => {
     let state: ThematicProgressStepState = "pending"
     if (status === "succeeded") {
-      state = "done"
+      state = step.key === "archive" && !archiveCompleted ? "pending" : "done"
     } else if (status === "failed" || status === "cancelled") {
       if (stepIndex < index) {
         state = "done"

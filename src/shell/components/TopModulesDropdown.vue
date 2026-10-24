@@ -4,6 +4,7 @@
       v-for="module in modules"
       :key="module.id"
       class="module-button"
+      :class="{ active: activeModuleId === module.id }"
       type="button"
       @click="onModuleClick(module)"
     >
@@ -13,6 +14,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue"
 import { useWidget } from "@mars/common/store/widget"
 
 type ModuleItem = {
@@ -32,7 +34,10 @@ const modules: ModuleItem[] = [
 const ANOMALY_LAYER_NAME = "演化过程演示"
 const LOSS_WIDGET = "loss-assessment-blank"
 
+const ACTIVE_MODULE_STORAGE_KEY = "top_module_active"
+
 const { activate, disable, disableAll, isActivate } = useWidget()
+const activeModuleId = ref(localStorage.getItem(ACTIVE_MODULE_STORAGE_KEY) || modules[0].id)
 
 function goToFreshMap() {
   disableAll(true)
@@ -53,6 +58,9 @@ function reloadInitial3DView() {
 }
 
 function onModuleClick(module: ModuleItem) {
+  activeModuleId.value = module.id
+  localStorage.setItem(ACTIVE_MODULE_STORAGE_KEY, module.id)
+
   if (module.id === "visualization") {
     reloadInitial3DView()
     return
@@ -107,5 +115,11 @@ function onModuleClick(module: ModuleItem) {
 .module-button:hover {
   color: var(--syc-submenu-active, #165dff);
   background: var(--nav-active-box, #e8f3ff);
+}
+
+.module-button.active {
+  color: var(--syc-submenu-active, #165dff);
+  background: var(--nav-active-box, #e8f3ff);
+  border-radius: 2px;
 }
 </style>

@@ -1,15 +1,6 @@
 import type { Artifact, ServiceRef, ThematicJob, ThematicJobResult, CreateJobParams } from "../types/eoapi-types"
 import { isLikely3DServiceRef } from "./service-ref"
 
-type ThematicServiceRef = Partial<ServiceRef> & {
-  name?: unknown
-  description?: unknown
-  metadata?: {
-    name?: unknown
-    description?: unknown
-  } | Record<string, unknown>
-}
-
 export type QualityPreset = "standard" | "high" | "print"
 
 export type ThematicCreateForm = {
@@ -165,6 +156,7 @@ export function buildThematicArchiveMetadata(
     serviceDescription: publishDesc || notes || undefined,
     description: publishDesc || notes || undefined,
     thematicTemplate: {
+      ...(parameters.templateSnapshot || {}),
       templateId: String(job?.templateId || "").trim() || undefined,
       templateVersion: String(job?.templateVersion || "").trim() || undefined
     },
@@ -181,6 +173,7 @@ export function buildThematicArchiveMetadata(
 : undefined,
     serviceRefSnapshot: serviceRef
 ? {
+      ...serviceRef,
       type: String(serviceRef.type || "").trim() || undefined,
       serviceId: String((serviceRef as any)?.serviceId || "").trim() || undefined,
       urlTemplate: String((serviceRef as any)?.urlTemplate || "").trim() || undefined,
@@ -214,7 +207,7 @@ export function buildThematicArchiveMetadata(
 
 export function resolveThematicServiceName(
   job: Partial<ThematicJob> | null | undefined,
-  serviceRef?: ThematicServiceRef | null
+  serviceRef?: Partial<ServiceRef> | null
 ): string {
   const parameters = (job?.parameters && typeof job.parameters === "object") ? job.parameters as Record<string, any> : {}
   return normalizeRichText(serviceRef?.name) ||
@@ -225,7 +218,7 @@ export function resolveThematicServiceName(
 
 export function resolveThematicServiceDescription(
   job: Partial<ThematicJob> | null | undefined,
-  serviceRef?: ThematicServiceRef | null
+  serviceRef?: Partial<ServiceRef> | null
 ): string {
   const parameters = (job?.parameters && typeof job.parameters === "object") ? job.parameters as Record<string, any> : {}
   return normalizeRichText(serviceRef?.description) ||

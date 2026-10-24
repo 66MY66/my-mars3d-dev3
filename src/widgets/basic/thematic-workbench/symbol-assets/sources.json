@@ -1,0 +1,92 @@
+[
+  {
+    "filename": "ocha-Location.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Location.svg",
+    "sha256": "781acdffdbd5271f121a73095060c63fd812b390b0abe99778b0f46649108c5c"
+  },
+  {
+    "filename": "ocha-Urban.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Urban.svg",
+    "sha256": "bea9293987319d205ecd553dd2c518ac82dd59c1b2fa01fe4e587767a86ac072"
+  },
+  {
+    "filename": "ocha-Road.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Road.svg",
+    "sha256": "d4c309136ad0b7d03a24436e87e8eb4487779d3120b5b1f0b24c1e92ae133a15"
+  },
+  {
+    "filename": "ocha-Water-source.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Water-source.svg",
+    "sha256": "b0a6a05547234a1d9ddcf8fe582c2ae9a645da85f561d5d88ba02d131a676df2"
+  },
+  {
+    "filename": "ocha-Bridge.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Bridge.svg",
+    "sha256": "256aa9c94ab40b3f54c410b39b10346fa8767baf50b81c81f0b448cdb21be620"
+  },
+  {
+    "filename": "ocha-Hospital.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Hospital.svg",
+    "sha256": "70409a5ba9c51118384c5e8d1ebd0f823311a2439767b57923ac96db731537e3"
+  },
+  {
+    "filename": "ocha-Satellite-dish.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Satellite-dish.svg",
+    "sha256": "3143d7a77b124e21feaf7e79aa8df04cf3cfd685d374dc4fca1cb9f3b69494b1"
+  },
+  {
+    "filename": "ocha-Cell-tower.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Cell-tower.svg",
+    "sha256": "756360189fb3029464bf8c08854c86794b2c3f810b57e5c6daa02286a5412037"
+  },
+  {
+    "filename": "ocha-Earthquake.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Earthquake.svg",
+    "sha256": "b3968245d892a915e9edc3558a1133a29de61f665a8fa3edd2330de17f853104"
+  },
+  {
+    "filename": "ocha-Alert.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Alert.svg",
+    "sha256": "a72731ae7986d5c956551d13c5a89b7d8df33a2de76d372d4567027d0b93889d"
+  },
+  {
+    "filename": "ocha-Landslide-mudslide.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Landslide-mudslide.svg",
+    "sha256": "9c861310646e877f0d384e20e273672c2a1ff04f6edcff04a43bbcafd3de2b93"
+  },
+  {
+    "filename": "ocha-Search-and-rescue.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Search-and-rescue.svg",
+    "sha256": "b80e828ae8687796a7a0449dabd880460680c7d002bd6554a87c6a5998c5632c"
+  },
+  {
+    "filename": "ocha-Shelter.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Shelter.svg",
+    "sha256": "b3d09c4a6abaf65f36a9d012c49eab20c29829e240b510507e160dcb4110fd39"
+  },
+  {
+    "filename": "ocha-Road-destroyed.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Road-destroyed.svg",
+    "sha256": "70a8ae11c7a874abc31cbb8aa3df9feaa8b30a0acbda5daa68ac22bab8e0318f"
+  },
+  {
+    "filename": "ocha-Flood.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Flood.svg",
+    "sha256": "b3ccbe23113a2b222dfa7625be31485549d002730af69fce7808e39c4055a077"
+  },
+  {
+    "filename": "ocha-Fire.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Fire.svg",
+    "sha256": "6a1ffb8262f4b15c3857ed7b9acccccf65b8b64b023c1de20a5b611dc63919c7"
+  },
+  {
+    "filename": "ocha-Heatwave.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Heatwave.svg",
+    "sha256": "6e25e6874fdc40ed57a2b6b0dada0a5faf687906db40263ec8f2943af3707825"
+  },
+  {
+    "filename": "ocha-Assembly-point.svg",
+    "source": "https://raw.githubusercontent.com/UN-OCHA/humanitarian-icons/main/SVG/black/Assembly-point.svg",
+    "sha256": "1de1d899cb169ddb173eba7e9557ceb1fe8c806a2f666d5514054ccec80b7691"
+  }
+]
