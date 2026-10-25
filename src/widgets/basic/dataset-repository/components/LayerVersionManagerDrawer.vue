@@ -152,7 +152,23 @@
             <div v-else class="layer-list">
               <a-empty v-if="layerLines.length === 0" description="该版本暂无图层" />
               <div v-else class="layer-list__items">
-                <div v-for="line in layerLines" :key="line.id" class="layer-row" :class="{ 'is-group': line.isGroup }">
+                <div
+                  v-for="line in layerLines"
+                  :key="line.id"
+                  class="layer-row"
+                  :class="{
+                    'is-group': line.isGroup,
+                    'is-dragging': draggingLayerId === line.id,
+                    'is-drag-over-before': dragOverLayerId === line.id && dragOverPosition === 'before',
+                    'is-drag-over-after': dragOverLayerId === line.id && dragOverPosition === 'after'
+                  }"
+                  :draggable="editable"
+                  @dragstart="handleDragStart(line.id, $event)"
+                  @dragover.prevent="handleDragOver(line.id, $event)"
+                  @dragleave="handleDragLeave(line.id)"
+                  @drop.prevent="handleDrop(line.id)"
+                  @dragend="clearDragState"
+                >
                   <div class="layer-row__head">
                     <span class="layer-name" :title="line.name">{{ line.name }}</span>
                     <div class="layer-row__meta">
@@ -277,6 +293,7 @@ import {
   withdrawDatasetPublish
 } from "../services/eoapi-datasets"
 import { getDatasetPublishStatus, requestDatasetShare, withdrawDatasetShare } from "../services/publish-status"
+import { reorderLayerByDrop, type DropPosition } from "../services/layer-reorder"
 import { serializeWorkspace } from "../workspace/serialize"
 import * as mapWork from "../map"
 
@@ -334,6 +351,9 @@ const saving = ref(false)
 const deletingRevision = ref(false)
 const publishing = ref(false)
 const publishHint = ref("")
+const draggingLayerId = ref("")
+const dragOverLayerId = ref("")
+const dragOverPosition = ref<DropPosition>("before")
 
 const activeManifest = ref<Manifest | null>(null)
 const layersDraft = ref<any[]>([])
@@ -835,6 +855,51 @@ function moveDown(layerId: string) {
   reorderSibling(layerId, 1)
 }
 
+function handleDragStart(layerId: string, event: DragEvent): void {
+  if (!editable.value) {
+    return
+  }
+  draggingLayerId.value = String(layerId)
+  event.dataTransfer?.setData("text/plain", String(layerId))
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move"
+  }
+}
+
+function handleDragOver(layerId: string, event: DragEvent): void {
+  const target = event.currentTarget as HTMLElement | null
+  if (!target || !draggingLayerId.value || draggingLayerId.value === String(layerId)) {
+    return
+  }
+  const rect = target.getBoundingClientRect()
+  dragOverLayerId.value = String(layerId)
+  dragOverPosition.value = event.clientY - rect.top < rect.height / 2 ? "before" : "after"
+}
+
+function handleDragLeave(layerId: string): void {
+  if (dragOverLayerId.value === String(layerId)) {
+    dragOverLayerId.value = ""
+  }
+}
+
+function handleDrop(targetId: string): void {
+  const draggedId = draggingLayerId.value
+  if (!draggedId || draggedId === String(targetId)) {
+    clearDragState()
+    return
+  }
+  const next = reorderLayerByDrop(layersDraft.value as any, draggedId, String(targetId), dragOverPosition.value)
+  if (next !== layersDraft.value) {
+    layersDraft.value = next as any
+  }
+  clearDragState()
+}
+
+function clearDragState(): void {
+  draggingLayerId.value = ""
+  dragOverLayerId.value = ""
+}
+
 function reorderSibling(layerId: string, delta: -1 | 1) {
   const id = String(layerId || "")
   const current = layersDraft.value.find((x: any) => String(x?.id || "") === id)
@@ -1267,6 +1332,7 @@ watch(
 
 /* 图层列表项：目录与叶子项统一左对齐（不再按 depth 递增缩进） */
 .layer-row {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -1277,6 +1343,36 @@ watch(
   padding: 12px;
   background: var(--mars-control-bg, rgba(255, 255, 255, 0.04));
   box-sizing: border-box;
+  cursor: grab;
+  transition: border-color 160ms ease, background 160ms ease, opacity 160ms ease;
+}
+
+.layer-row:active {
+  cursor: grabbing;
+}
+
+.layer-row.is-dragging {
+  opacity: 0.45;
+}
+
+.layer-row.is-drag-over-before::before,
+.layer-row.is-drag-over-after::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--mars-primary-color, #1677ff);
+  pointer-events: none;
+}
+
+.layer-row.is-drag-over-before::before {
+  top: -5px;
+}
+
+.layer-row.is-drag-over-after::after {
+  bottom: -5px;
 }
 
 .layer-row.is-group {
