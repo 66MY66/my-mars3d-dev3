@@ -22,11 +22,25 @@ describe("service-ref", () => {
     } as any)).toBe(true)
   })
 
-  it("supports map add only for xyz service", () => {
-    expect(canAddServiceRefToMap({ type: "xyz" } as any)).toBe(true)
-    expect(canAddServiceRefToMap({ type: "wms" } as any)).toBe(false)
-    expect(canAddServiceRefToMap({ type: "wmts" } as any)).toBe(false)
-    expect(canAddServiceRefToMap({ type: "mvt" } as any)).toBe(false)
+  it("supports the service types currently handled by the map adapter", () => {
+    for (const type of ["xyz", "wms", "wmts", "mvt"]) {
+      expect(canAddServiceRefToMap({ type, url: "https://example.com/service" } as any)).toBe(true)
+    }
+  })
+
+  it("rejects unsupported services and service refs without usable URLs", () => {
+    expect(canAddServiceRefToMap({ type: "unsupported", url: "https://example.com/service" } as any)).toBe(false)
+    expect(canAddServiceRefToMap({ type: "xyz" } as any)).toBe(false)
+    expect(canAddServiceRefToMap({ type: "wms", url: "" } as any)).toBe(false)
+    expect(canAddServiceRefToMap({ type: "3dtiles", url: "https://example.com/3d/tileset.json" } as any)).toBe(false)
+  })
+
+  it("allows a 3D service when it provides a usable 2D fallback", () => {
+    expect(canAddServiceRefToMap({
+      type: "3dtiles",
+      url: "https://example.com/3d/tileset.json",
+      fallbackUrl: "https://example.com/{z}/{x}/{y}.png"
+    } as any)).toBe(true)
   })
 
   it("opens service url in new tab", () => {

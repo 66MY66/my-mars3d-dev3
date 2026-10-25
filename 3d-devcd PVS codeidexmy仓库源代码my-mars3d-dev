@@ -1,0 +1,215 @@
+ .project-backups/my-mars3d-dev-20261021-052815.zip |   Bin [31m0[m -> [32m107758616[m bytes
+ ...7\271\345\272\224\345\233\236\347\255\224.docx" |   Bin [31m0[m -> [32m38618[m bytes
+ "analysis/Rust_WASM\345\216\237\346\226\207.docx"  |   Bin [31m0[m -> [32m36890[m bytes
+ ...237\223\345\274\225\346\223\216\357\274\211.md" |   425 [32m+[m
+ .../plans/2026-10-25-thematic-job-draft-linkage.md |    76 [32m+[m
+ package.json                                       |     7 [32m+[m
+ public/test-data/multi-layer-dataset.json          |    31 [32m+[m
+ src/shell/ShellLayout.vue                          |    14 [32m+[m[31m-[m
+ src/shell/Sidebar.vue                              |    55 [32m+[m[31m-[m
+ src/shell/components/TopModulesDropdown.vue        |    14 [32m+[m
+ .../components/LayerVersionManagerDrawer.vue       |    98 [32m+[m[31m-[m
+ .../components/ThematicJobs.test.ts                |   140 [32m+[m[31m-[m
+ .../dataset-repository/components/ThematicJobs.vue |   565 [32m+[m[31m-[m
+ src/widgets/basic/dataset-repository/map.ts        |    82 [32m+[m[31m-[m
+ .../dataset-repository/services/eoapi-client.ts    |    17 [32m+[m[31m-[m
+ .../dataset-repository/services/eoapi-datasets.ts  |    78 [32m+[m
+ .../dataset-repository/services/eoapi-thematics.ts |    28 [32m+[m[31m-[m
+ .../services/layer-reorder.test.ts                 |    19 [32m+[m
+ .../dataset-repository/services/layer-reorder.ts   |    44 [32m+[m
+ .../services/publish-description.ts                |    10 [32m+[m
+ .../dataset-repository/services/service-ref.ts     |    18 [32m+[m[31m-[m
+ .../dataset-repository/services/thematic-export.ts |    15 [32m+[m[31m-[m
+ .../dataset-repository/services/thematic-mvt.ts    |    30 [32m+[m
+ .../services/thematic-progress.ts                  |     7 [32m+[m[31m-[m
+ .../basic/dataset-repository/types/eoapi-types.ts  |     8 [32m+[m[31m-[m
+ .../thematic-workbench/CartographyComposer.vue     |   981 [32m++[m
+ .../thematic-workbench/CartographySymbolIcon.vue   |    20 [32m+[m
+ .../thematic-workbench/CompositionNumberInput.vue  |    22 [32m+[m
+ .../basic/thematic-workbench/DbtStandardEditor.vue |   316 [32m+[m
+ .../thematic-workbench/DbtTemplateLibrary.vue      |    39 [32m+[m
+ .../basic/thematic-workbench/DisplaySettings.vue   |   424 [32m+[m
+ .../basic/thematic-workbench/EarthquakePalette.vue |    26 [32m+[m
+ .../EmergencyTemplatePreview.vue                   |    63 [32m+[m
+ .../basic/thematic-workbench/MapMediaExport.vue    |    50 [32m+[m
+ .../StandardCartographyWorkbench.vue               |    41 [32m+[m
+ .../thematic-workbench/TemplateDataRenderer.vue    |   179 [32m+[m
+ .../basic/thematic-workbench/TemplateMapEditor.vue |   321 [32m+[m
+ .../thematic-workbench/TemplateVisualPreview.vue   |    31 [32m+[m
+ .../thematic-workbench/background-analysis.test.ts |    52 [32m+[m
+ .../thematic-workbench/background-analysis.ts      |   155 [32m+[m
+ .../thematic-workbench/cartography-layout.test.ts  |    49 [32m+[m
+ .../basic/thematic-workbench/cartography-layout.ts |    94 [32m+[m
+ .../basic/thematic-workbench/cartography-png.ts    |    23 [32m+[m
+ .../cartography-standard-layout.ts                 |    51 [32m+[m
+ .../basic/thematic-workbench/cartography-state.ts  |    29 [32m+[m
+ .../catalog-template-preview.test.ts               |    88 [32m+[m
+ .../thematic-workbench/catalog-template-preview.ts |   178 [32m+[m
+ .../catalog-template-samples.test.ts               |    62 [32m+[m
+ .../thematic-workbench/catalog-template-samples.ts |    55 [32m+[m
+ .../basic/thematic-workbench/composer-dock.test.ts |    34 [32m+[m
+ .../basic/thematic-workbench/composer-dock.ts      |    22 [32m+[m
+ .../composition-adornments.test.ts                 |    61 [32m+[m
+ .../thematic-workbench/composition-adornments.ts   |    78 [32m+[m
+ .../thematic-workbench/composition-history.test.ts |    47 [32m+[m
+ .../thematic-workbench/composition-history.ts      |    26 [32m+[m
+ .../basic/thematic-workbench/composition-layout.ts |    53 [32m+[m
+ .../thematic-workbench/composition-model.test.ts   |    77 [32m+[m
+ .../basic/thematic-workbench/composition-model.ts  |   159 [32m+[m
+ .../composition-number-input.test.ts               |    34 [32m+[m
+ .../thematic-workbench/composition-raster.test.ts  |    55 [32m+[m
+ .../composition-rotation.test.ts                   |    33 [32m+[m
+ .../thematic-workbench/composition-rotation.ts     |    22 [32m+[m
+ .../thematic-workbench/composition-symbols.test.ts |    70 [32m+[m
+ .../thematic-workbench/composition-symbols.ts      |    52 [32m+[m
+ .../composition-template.test.ts                   |    85 [32m+[m
+ .../thematic-workbench/composition-template.ts     |    18 [32m+[m
+ .../thematic-workbench/dbt-cartography-rules.ts    |   162 [32m+[m
+ .../thematic-workbench/dbt-draft-preview.test.ts   |    28 [32m+[m
+ .../basic/thematic-workbench/dbt-draft-preview.ts  |    55 [32m+[m
+ .../basic/thematic-workbench/dbt116-export.ts      |    32 [32m+[m
+ .../basic/thematic-workbench/dbt116-renderer.ts    |   269 [32m+[m
+ .../thematic-workbench/dbt116-standard.test.ts     |   109 [32m+[m
+ .../basic/thematic-workbench/dbt116-standard.ts    |   229 [32m+[m
+ .../basic/thematic-workbench/dbt116-symbols.ts     |    42 [32m+[m
+ .../basic/thematic-workbench/display-model.test.ts |    38 [32m+[m
+ .../basic/thematic-workbench/display-model.ts      |    77 [32m+[m
+ .../thematic-workbench/earthquake-analysis.test.ts |    91 [32m+[m
+ .../thematic-workbench/earthquake-analysis.ts      |   275 [32m+[m
+ .../thematic-workbench/earthquake-palette.test.ts  |    70 [32m+[m
+ .../basic/thematic-workbench/earthquake-palette.ts |    75 [32m+[m
+ .../basic/thematic-workbench/export-media.ts       |    90 [32m+[m
+ src/widgets/basic/thematic-workbench/gifenc.d.ts   |     5 [32m+[m
+ src/widgets/basic/thematic-workbench/index.vue     | 10360 [32m++++++++++++++++[m[31m---[m
+ .../thematic-workbench/map-adornments.test.ts      |    23 [32m+[m
+ .../basic/thematic-workbench/map-adornments.ts     |   131 [32m+[m
+ src/widgets/basic/thematic-workbench/map.ts        |   892 [32m+[m[31m-[m
+ .../thematic-workbench/numeric-transform.test.ts   |    49 [32m+[m
+ .../basic/thematic-workbench/numeric-transform.ts  |   136 [32m+[m
+ .../thematic-workbench/polygon-source.test.ts      |    53 [32m+[m
+ .../basic/thematic-workbench/polygon-source.ts     |    73 [32m+[m
+ .../thematic-workbench/raster-analysis.test.ts     |    35 [32m+[m
+ .../basic/thematic-workbench/raster-analysis.ts    |   258 [32m+[m
+ .../basic/thematic-workbench/render-style.test.ts  |    33 [32m+[m
+ .../basic/thematic-workbench/render-style.ts       |    90 [32m+[m
+ .../thematic-workbench/screenshot-analysis.test.ts |    66 [32m+[m
+ .../thematic-workbench/screenshot-analysis.ts      |   154 [32m+[m
+ .../thematic-workbench/signal-analysis.test.ts     |    51 [32m+[m
+ .../basic/thematic-workbench/signal-analysis.ts    |   578 [32m++[m
+ .../thematic-workbench/spatial-analysis.test.ts    |    59 [32m+[m
+ .../basic/thematic-workbench/spatial-analysis.ts   |   346 [32m+[m
+ .../standard-composition.test.ts                   |    62 [32m+[m
+ .../thematic-workbench/standard-composition.ts     |    52 [32m+[m
+ .../thematic-workbench/statistics-analysis.test.ts |    61 [32m+[m
+ .../thematic-workbench/statistics-analysis.ts      |   333 [32m+[m
+ .../symbol-assets/DBT116-SOURCE.md                 |    11 [32m+[m
+ .../thematic-workbench/symbol-assets/README.md     |    15 [32m+[m
+ .../symbol-assets/dbt116-b1-01.png                 |   Bin [31m0[m -> [32m67391[m bytes
+ .../symbol-assets/dbt116-b1-01.svg                 |    19 [32m+[m
+ .../symbol-assets/dbt116-b1-02.png                 |   Bin [31m0[m -> [32m43753[m bytes
+ .../symbol-assets/dbt116-b1-02.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b1-03.png                 |   Bin [31m0[m -> [32m65078[m bytes
+ .../symbol-assets/dbt116-b1-03.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b1-04.png                 |   Bin [31m0[m -> [32m74450[m bytes
+ .../symbol-assets/dbt116-b1-04.svg                 |    21 [32m+[m
+ .../symbol-assets/dbt116-b1-05.png                 |   Bin [31m0[m -> [32m315609[m bytes
+ .../symbol-assets/dbt116-b1-05.svg                 |     9 [32m+[m
+ .../symbol-assets/dbt116-b1-06.png                 |   Bin [31m0[m -> [32m24477[m bytes
+ .../symbol-assets/dbt116-b1-06.svg                 |    19 [32m+[m
+ .../symbol-assets/dbt116-b1-07.png                 |   Bin [31m0[m -> [32m150233[m bytes
+ .../symbol-assets/dbt116-b1-07.svg                 |   164 [32m+[m
+ .../symbol-assets/dbt116-b1-08.png                 |   Bin [31m0[m -> [32m9002[m bytes
+ .../symbol-assets/dbt116-b1-08.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b1-09.png                 |   Bin [31m0[m -> [32m69005[m bytes
+ .../symbol-assets/dbt116-b1-09.svg                 |    56 [32m+[m
+ .../symbol-assets/dbt116-b1-10.png                 |   Bin [31m0[m -> [32m59624[m bytes
+ .../symbol-assets/dbt116-b1-10.svg                 |    60 [32m+[m
+ .../symbol-assets/dbt116-b1-11.png                 |   Bin [31m0[m -> [32m59181[m bytes
+ .../symbol-assets/dbt116-b1-11.svg                 |    22 [32m+[m
+ .../symbol-assets/dbt116-b1-12.png                 |   Bin [31m0[m -> [32m74824[m bytes
+ .../symbol-assets/dbt116-b1-12.svg                 |     9 [32m+[m
+ .../symbol-assets/dbt116-b1-13.png                 |   Bin [31m0[m -> [32m73117[m bytes
+ .../symbol-assets/dbt116-b1-13.svg                 |     9 [32m+[m
+ .../symbol-assets/dbt116-b1-14.png                 |   Bin [31m0[m -> [32m50783[m bytes
+ .../symbol-assets/dbt116-b1-14.svg                 |     9 [32m+[m
+ .../symbol-assets/dbt116-b2-01.png                 |   Bin [31m0[m -> [32m48959[m bytes
+ .../symbol-assets/dbt116-b2-01.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b2-02.png                 |   Bin [31m0[m -> [32m66205[m bytes
+ .../symbol-assets/dbt116-b2-02.svg                 |    15 [32m+[m
+ .../symbol-assets/dbt116-b2-03.png                 |   Bin [31m0[m -> [32m43379[m bytes
+ .../symbol-assets/dbt116-b2-03.svg                 |    20 [32m+[m
+ .../symbol-assets/dbt116-b2-04.png                 |   Bin [31m0[m -> [32m43231[m bytes
+ .../symbol-assets/dbt116-b2-04.svg                 |    14 [32m+[m
+ .../symbol-assets/dbt116-b2-05.png                 |   Bin [31m0[m -> [32m34762[m bytes
+ .../symbol-assets/dbt116-b2-05.svg                 |    14 [32m+[m
+ .../symbol-assets/dbt116-b2-06.png                 |   Bin [31m0[m -> [32m34090[m bytes
+ .../symbol-assets/dbt116-b2-06.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b2-07.png                 |   Bin [31m0[m -> [32m4942[m bytes
+ .../symbol-assets/dbt116-b2-07.svg                 |   107 [32m+[m
+ .../symbol-assets/dbt116-b2-08.png                 |   Bin [31m0[m -> [32m3654[m bytes
+ .../symbol-assets/dbt116-b2-08.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b2-09.png                 |   Bin [31m0[m -> [32m3452[m bytes
+ .../symbol-assets/dbt116-b2-09.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b2-10.png                 |   Bin [31m0[m -> [32m3590[m bytes
+ .../symbol-assets/dbt116-b2-10.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b2-11.png                 |   Bin [31m0[m -> [32m3842[m bytes
+ .../symbol-assets/dbt116-b2-11.svg                 |    55 [32m+[m
+ .../symbol-assets/dbt116-b2-12.png                 |   Bin [31m0[m -> [32m3556[m bytes
+ .../symbol-assets/dbt116-b2-12.svg                 |    54 [32m+[m
+ .../symbol-assets/dbt116-b2-13.png                 |   Bin [31m0[m -> [32m35834[m bytes
+ .../symbol-assets/dbt116-b2-13.svg                 |    14 [32m+[m
+ .../symbol-assets/dbt116-b2-14.png                 |   Bin [31m0[m -> [32m69797[m bytes
+ .../symbol-assets/dbt116-b2-14.svg                 |    14 [32m+[m
+ .../symbol-assets/dbt116-b2-15.png                 |   Bin [31m0[m -> [32m68338[m bytes
+ .../symbol-assets/dbt116-b2-15.svg                 |    14 [32m+[m
+ .../symbol-assets/dbt116-b2-16.png                 |   Bin [31m0[m -> [32m30749[m bytes
+ .../symbol-assets/dbt116-b2-16.svg                 |    14 [32m+[m
+ .../symbol-assets/dbt116-b2-17.png                 |   Bin [31m0[m -> [32m3551[m bytes
+ .../symbol-assets/dbt116-b2-17.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b2-18.png                 |   Bin [31m0[m -> [32m3778[m bytes
+ .../symbol-assets/dbt116-b2-18.svg                 |    13 [32m+[m
+ .../symbol-assets/dbt116-b2-19.png                 |   Bin [31m0[m -> [32m144823[m bytes
+ .../symbol-assets/dbt116-b2-19.svg                 |     9 [32m+[m
+ .../symbol-assets/dbt116-b2-20.png                 |   Bin [31m0[m -> [32m265930[m bytes
+ .../symbol-assets/dbt116-b2-20.svg                 |    14 [32m+[m
+ .../symbol-assets/dbt116-b2-21.png                 |   Bin [31m0[m -> [32m302356[m bytes
+ .../symbol-assets/dbt116-b2-21.svg                 |    14 [32m+[m
+ .../symbol-assets/dbt116-png.json                  |   247 [32m+[m
+ .../symbol-assets/dbt116-sources.json              |   462 [32m+[m
+ .../symbol-assets/ocha-Alert.svg                   |     1 [32m+[m
+ .../symbol-assets/ocha-Assembly-point.svg          |     1 [32m+[m
+ .../symbol-assets/ocha-Bridge.svg                  |     1 [32m+[m
+ .../symbol-assets/ocha-Cell-tower.svg              |     1 [32m+[m
+ .../symbol-assets/ocha-Earthquake.svg              |     1 [32m+[m
+ .../thematic-workbench/symbol-assets/ocha-Fire.svg |     1 [32m+[m
+ .../symbol-assets/ocha-Flood.svg                   |     1 [32m+[m
+ .../symbol-assets/ocha-Heatwave.svg                |     1 [32m+[m
+ .../symbol-assets/ocha-Hospital.svg                |     1 [32m+[m
+ .../symbol-assets/ocha-LICENSE.txt                 |   121 [32m+[m
+ .../symbol-assets/ocha-Landslide-mudslide.svg      |     1 [32m+[m
+ .../symbol-assets/ocha-Location.svg                |     1 [32m+[m
+ .../symbol-assets/ocha-Road-destroyed.svg          |     1 [32m+[m
+ .../thematic-workbench/symbol-assets/ocha-Road.svg |     1 [32m+[m
+ .../symbol-assets/ocha-Satellite-dish.svg          |     1 [32m+[m
+ .../symbol-assets/ocha-Search-and-rescue.svg       |     1 [32m+[m
+ .../symbol-assets/ocha-Shelter.svg                 |     1 [32m+[m
+ .../symbol-assets/ocha-Urban.svg                   |     1 [32m+[m
+ .../symbol-assets/ocha-Water-source.svg            |     1 [32m+[m
+ .../thematic-workbench/symbol-assets/sources.json  |    92 [32m+[m
+ .../template-admin-source.test.ts                  |    49 [32m+[m
+ .../thematic-workbench/template-admin-source.ts    |    89 [32m+[m
+ .../template-icon-registry.test.ts                 |    66 [32m+[m
+ .../thematic-workbench/template-icon-registry.ts   |   150 [32m+[m
+ .../basic/thematic-workbench/template-map.test.ts  |    66 [32m+[m
+ .../basic/thematic-workbench/template-map.ts       |    97 [32m+[m
+ .../basic/thematic-workbench/template-palettes.ts  |    19 [32m+[m
+ .../thematic-workbench/template-renderer.test.ts   |   167 [32m+[m
+ .../basic/thematic-workbench/template-renderer.ts  |   342 [32m+[m
+ .../thematic-workbench/temporal-analysis.test.ts   |    43 [32m+[m
+ .../basic/thematic-workbench/temporal-analysis.ts  |   246 [32m+[m
+ .../basic/thematic-workbench/thematic-3d.ts        |   345 [32m+[m
+ .../thematic-workbench/thematic-job-draft.test.ts  |    22 [32m+[m
+ .../basic/thematic-workbench/thematic-job-draft.ts |    27 [32m+[m
+ .../workbench-template-catalog.test.ts             |    37 [32m+[m
+ .../workbench-template-catalog.ts                  |    38 [32m+[m
+ 214 files changed, 23526 insertions(+), 1740 deletions(-)

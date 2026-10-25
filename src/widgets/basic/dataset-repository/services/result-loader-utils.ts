@@ -26,11 +26,13 @@ export function inferResultFileKind(file: File) {
   if (mime === "application/pdf" || DOC_EXTENSIONS.includes(ext)) {
     return "document"
   }
-  if (mime.includes("json") || VECTOR_EXTENSIONS.includes(ext)) {
-    return "geojson"
-  }
+  // GLTF JSON uses a JSON-like MIME (`model/gltf+json`), so model detection
+  // must happen before the generic JSON/vector branch.
   if (MODEL_EXTENSIONS.includes(ext) || mime.includes("model/gltf")) {
     return "model"
+  }
+  if (mime.includes("json") || VECTOR_EXTENSIONS.includes(ext)) {
+    return "geojson"
   }
   return "unsupported"
 }

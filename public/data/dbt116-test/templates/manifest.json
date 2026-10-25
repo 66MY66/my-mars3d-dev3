@@ -1,0 +1,187 @@
+{
+  "usage": "test",
+  "bounds": {
+    "west": 104.8,
+    "south": 28.2,
+    "east": 106.6,
+    "north": 29.7
+  },
+  "templates": [
+    {
+      "kind": "choropleth",
+      "name": "分级设色",
+      "file": "choropleth.geojson",
+      "unit": "人/km²",
+      "count": 18,
+      "description": "合成分区人口密度；数值分级，不是行政区面积。"
+    },
+    {
+      "kind": "unique-value",
+      "name": "唯一值分类",
+      "file": "unique-value.geojson",
+      "unit": "地类",
+      "count": 18,
+      "description": "合成地类分区；类别互异，不表示数值大小。"
+    },
+    {
+      "kind": "graduated-symbol",
+      "name": "分级符号",
+      "file": "graduated-symbol.geojson",
+      "unit": "条",
+      "count": 15,
+      "description": "合成站点报告数；点径随数值增大，不代表影响半径。"
+    },
+    {
+      "kind": "point-heat",
+      "name": "点热力",
+      "file": "point-heat.geojson",
+      "unit": "权重",
+      "count": 130,
+      "description": "合成报告点加权热力；核半径为显示像素，不是灾害风险。"
+    },
+    {
+      "kind": "raster-ramp",
+      "name": "栅格色带",
+      "file": "raster-ramp.geojson",
+      "unit": "m（合成高程）",
+      "count": 1008,
+      "description": "合成连续高程场；相邻采样值按连续色带渲染。"
+    },
+    {
+      "kind": "raster-threshold",
+      "name": "栅格阈值",
+      "file": "raster-threshold.geojson",
+      "unit": "m（合成高程）",
+      "count": 1008,
+      "description": "同一合成高程场按数值断点分段；非告警阈值。"
+    },
+    {
+      "kind": "contour",
+      "name": "等值线",
+      "file": "contour.geojson",
+      "unit": "m（合成高程）",
+      "count": 1008,
+      "description": "完整规则采样网格提取等值线；非真实地形。"
+    },
+    {
+      "kind": "trajectory",
+      "name": "轨迹回放",
+      "file": "trajectory.geojson",
+      "unit": "m/s",
+      "count": 42,
+      "description": "两辆合成车辆按时刻连线；颜色表示早晚，速度由距离/时间差计算。"
+    },
+    {
+      "kind": "flow-direction",
+      "name": "流向",
+      "file": "flow-direction.geojson",
+      "unit": "m³/s",
+      "count": 9,
+      "description": "合成有向河段；箭头沿坐标顺序，线宽与色级表示流量。"
+    },
+    {
+      "kind": "risk-overlay",
+      "name": "风险叠加",
+      "file": "risk-overlay.geojson",
+      "unit": "0–1",
+      "count": 18,
+      "description": "合成 H×E×V 相对筛查指数，不是概率或正式灾害评估。"
+    },
+    {
+      "kind": "time-compare",
+      "name": "时序对比",
+      "file": "time-compare.geojson",
+      "unit": "条",
+      "count": 18,
+      "description": "同一分区两期报告数差值；蓝为减少、红为增加，不是影像变化检测。"
+    },
+    {
+      "kind": "chart-linkage",
+      "name": "图表联动",
+      "file": "chart-linkage.geojson",
+      "unit": "条",
+      "count": 18,
+      "description": "分区与统计条形图使用同一组报告数；地图和列表可关联选择。"
+    },
+    {
+      "kind": "anomaly-composite",
+      "name": "异常综合",
+      "file": "anomaly-composite.geojson",
+      "unit": "0–1",
+      "count": 18,
+      "description": "三项合成归一化指标加权均值；不是地震发生概率。"
+    },
+    {
+      "kind": "thermal-infrared",
+      "name": "热红外",
+      "file": "thermal-infrared.geojson",
+      "unit": "σ",
+      "count": 1008,
+      "description": "合成 LST 相对基线的 Z 分数；剔除云点，不执行亮温反演。"
+    },
+    {
+      "kind": "post-quake-risk",
+      "name": "震后风险",
+      "file": "post-quake-risk.geojson",
+      "unit": "0–1",
+      "count": 18,
+      "description": "展示合成风险指数的空间分布；模板不计算伤亡和救援优先级。"
+    },
+    {
+      "kind": "swarm-trajectory",
+      "name": "震群轨迹",
+      "file": "swarm-trajectory.geojson",
+      "unit": "km",
+      "count": 26,
+      "description": "合成地震事件按时刻连接；点径为震级、颜色为深度，不是传播预测。"
+    },
+    {
+      "kind": "insar-deformation",
+      "name": "InSAR 形变",
+      "file": "insar-deformation.geojson",
+      "unit": "mm",
+      "count": 1008,
+      "description": "合成 LOS 双叶形变场；剔除低相干点，不是干涉条纹或反演结果。"
+    },
+    {
+      "kind": "intensity-distribution",
+      "name": "烈度分布",
+      "file": "intensity-distribution.geojson",
+      "unit": "度",
+      "count": 4,
+      "description": "合成 VI–IX 度等震分区，用于测试成果显示；并非真实评定或衰减模型。"
+    },
+    {
+      "kind": "secondary-hazard",
+      "name": "次生灾害",
+      "file": "secondary-hazard.geojson",
+      "unit": "灾种 / 等级",
+      "count": 15,
+      "description": "局部灾害点与影响面；颜色区分灾种、点径区分1–3级，不填满分区。"
+    },
+    {
+      "kind": "building-resilience",
+      "name": "房屋抗震",
+      "file": "building-resilience.geojson",
+      "unit": "脆弱性0–1",
+      "count": 88,
+      "description": "合成建筑外轮廓与脆弱性指数；不是结构验算或抗震鉴定。"
+    },
+    {
+      "kind": "population-exposure",
+      "name": "人口经济暴露",
+      "file": "population-exposure.geojson",
+      "unit": "人",
+      "count": 18,
+      "description": "筛选烈度≥VI的合成分区完整人口数；可切换资产，不等于伤亡或损失。"
+    },
+    {
+      "kind": "emergency-command",
+      "name": "应急指挥",
+      "file": "emergency-command.geojson",
+      "unit": "状态",
+      "count": 9,
+      "description": "资源点和通道状态来自合成记录；不是自动路线规划或实时指挥数据。"
+    }
+  ]
+}

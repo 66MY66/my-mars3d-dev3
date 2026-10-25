@@ -48,8 +48,11 @@ function readText(file: File): Promise<string> {
 }
 
 function buildLayerId(datasetId: string | undefined) {
-  const datasetToken = normalizeLayerIdToken(datasetId || "local", "dataset")
-  return `${datasetToken}_${generateLayerId()}`
+  // Layer IDs are shared across the dataset repository and workspace restore.
+  // Keep the canonical generator format; dataset identity belongs to the
+  // source registry/group metadata, not the map-layer ID itself.
+  void datasetId
+  return generateLayerId()
 }
 
 function resolveGroupName(kind: string, datasetName: string): string {

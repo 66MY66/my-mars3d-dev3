@@ -8,6 +8,7 @@ import { Manifest } from "../types/eoapi-types"
 import { RestoreStrategy, applyRestoreStrategy, ConflictResolution } from "./strategies"
 import { applyDefaultRasterStyleOptions } from "../services/layer-style-defaults"
 import { ensureUniqueMapLayerId, normalizeLayerIdToken } from "../services/layer-id"
+import { findSourceRegistryEntry } from "../services/source-registry"
 
 const Cesium = mars3d.Cesium
 
@@ -74,6 +75,20 @@ export async function restoreWorkspace(
   } = options
 
   try {
+    if (strategy !== "replace" && Array.isArray(manifest.layers)) {
+      const source = manifest.layers
+        .map((layer: any) => layer?.options)
+        .find((layerOptions: any) => String(layerOptions?.sourceRegistryKey || "").trim())
+      const sourceKey = String(source?.sourceRegistryKey || "").trim()
+      if (sourceKey) {
+        const existing = findSourceRegistryEntry(map, sourceKey)
+        if (existing) {
+          const label = String(source?.sourceRegistryLabel || existing.label || sourceKey).trim()
+          throw new Error(`${label}已在地图中加载，禁止重复实例化`)
+        }
+      }
+    }
+
     // 应用恢复策略（准备工作区）
     await applyRestoreStrategy(map, strategy, manifest)
 

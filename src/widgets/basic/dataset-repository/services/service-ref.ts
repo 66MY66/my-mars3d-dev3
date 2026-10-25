@@ -54,7 +54,8 @@ export function resolveServiceRefUrl(
 
 export function canAddServiceRefToMap(serviceRef: Partial<ServiceRef> | null | undefined): boolean {
   const type = resolveServiceRefType(serviceRef)
-  if (isLikely3DServiceRef(serviceRef) && !resolveServiceRefUrl(serviceRef)) { return false }
+  const url = resolveServiceRefUrl(serviceRef)
+  if (!url) { return false }
   return ["xyz", "wms", "wmts", "mvt"].includes(type)
 }
 

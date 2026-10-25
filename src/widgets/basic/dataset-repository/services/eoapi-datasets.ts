@@ -149,7 +149,17 @@ export async function getCollection(collectionId: string): Promise<ApiResponse<S
       return { success: false, code: 404, message: "未找到本地数据集" }
     }
   }
-  return eoapiGet<StacCollection>(`/collections/${collectionId}`)
+  const result = await eoapiGet<StacCollection>(`/collections/${collectionId}`)
+  const draft = remoteDatasetDrafts.get(collectionId)
+  if (result.success && result.data && draft) {
+    result.data = {
+      ...result.data,
+      description: draft.description ?? result.data.description,
+      keywords: draft.tags ?? result.data.keywords,
+      summaries: { ...(result.data.summaries || {}), updatedAt: draft.updatedAt || result.data.summaries?.updatedAt }
+    }
+  }
+  return result
 }
 
 // ============ Item (条目/产品) API ============
@@ -2069,4 +2079,51 @@ export function updateLocalDataset(
   } catch {
     return false
   }
+}
+
+type DatasetDraft = { description?: string; tags?: string[]; updatedAt?: number }
+const remoteDatasetDrafts = new Map<string, DatasetDraft>()
+
+export function __resetDatasetDraftStateForTest(): void {
+  remoteDatasetDrafts.clear()
+}
+
+export function getRemoteDatasetDraft(datasetId: string): DatasetDraft | null {
+  return remoteDatasetDrafts.get(String(datasetId)) || null
+}
+
+export async function updateDatasetContent(
+  datasetId: string,
+  payload: {
+    manifest?: Manifest
+    description?: string
+    tags?: string[]
+    coverUrl?: string
+    createNewVersion?: boolean
+    message?: string
+    artifactRefs?: string[]
+  }
+): Promise<ApiResponse<{ mode: "local" | "remote"; createdNewVersion: boolean; metadataScope?: string; coverScope?: string; revisionId?: string }>> {
+  const cleanTags = Array.isArray(payload.tags) ? payload.tags.filter((tag) => typeof tag === "string" && tag.trim()) : undefined
+  if (datasetId.startsWith("local_")) {
+    const ok = updateLocalDataset(datasetId, { ...payload, tags: cleanTags })
+    if (!ok) return { success: false, message: "未找到本地数据集" }
+    emitDatasetSync({ datasetId, reason: "refresh", source: "updateDatasetContent:local", payload: { metadataChanged: payload.description !== undefined || payload.tags !== undefined, coverChanged: payload.coverUrl !== undefined } })
+    return { success: true, data: { mode: "local", createdNewVersion: !!payload.createNewVersion } }
+  }
+
+  // Probe the dataset collection endpoint before writing a remote revision so
+  // callers can distinguish a remote dataset from a local overlay.
+  await eoapiGet("/datasets")
+  const revision = await createRevision(datasetId, {
+    message: payload.message || "更新",
+    manifest: payload.manifest,
+    artifactRefs: payload.artifactRefs
+  } as any)
+  if (!revision.success || !revision.data) return revision as any
+  const draft: DatasetDraft = { description: payload.description, tags: cleanTags, updatedAt: Date.now() }
+  remoteDatasetDrafts.set(datasetId, draft)
+  if (payload.coverUrl) await setPersistedDatasetCover(datasetId, payload.coverUrl)
+  emitDatasetSync({ datasetId, reason: "refresh", source: "updateDatasetContent:remote", payload: { metadataScope: "local", coverScope: payload.coverUrl ? "local" : undefined } })
+  return { success: true, data: { mode: "remote", createdNewVersion: true, metadataScope: "local", coverScope: payload.coverUrl ? "local" : undefined, revisionId: (revision.data as any).revisionId } }
 }
