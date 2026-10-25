@@ -61,6 +61,7 @@ function isLockApiPath(url: string): boolean {
 type DegradedApiBucket = "management" | "directory-locks"
 
 const degradedApiCooldownMs = 60_000
+const degradedManagementRequestTimeoutMs = 5000
 const degradedApiStorageKey = "eoapi_degraded_api_cooldown_v1"
 const degradedApiHealthyStorageKey = "eoapi_degraded_api_health_v1"
 const degradedApiCooldownMap = new Map<DegradedApiBucket, number>()
@@ -319,19 +320,33 @@ export async function eoapiGet<T>(url: string, config?: AxiosRequestConfig): Pro
     }
   }
   try {
-    const response: AxiosResponse<T> = await eoapiClient.get(url, config)
+    const requestConfig = getManagementRequestConfig(url, config)
+    const response: AxiosResponse<T> = await eoapiClient.get(url, requestConfig)
     updateDegradedApiState(url, response.status, true)
     return {
       success: true,
       data: response.data
     }
   } catch (error: any) {
+    if (isManagementApiPath(url) && (error?.code === "ECONNABORTED" || error?.code === "ETIMEDOUT")) {
+      markDegradedApiUnavailable("management")
+    }
     updateDegradedApiState(url, error.response?.status, false)
     return {
       success: false,
       message: error.response?.data?.detail || error.response?.data?.message || error.message || "请求失败",
       code: error.response?.status
     }
+  }
+}
+
+function getManagementRequestConfig(url: string, config?: AxiosRequestConfig): AxiosRequestConfig | undefined {
+  if (!isManagementApiPath(url)) {
+    return config
+  }
+  return {
+    ...(config || {}),
+    timeout: Math.min(Number(config?.timeout) || eoApiConfig.timeout, degradedManagementRequestTimeoutMs)
   }
 }
 

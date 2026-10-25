@@ -1576,6 +1576,72 @@ const YUNNAN_BBOX = [97.5, 21, 105.5, 32]
 const MODIS_TRUECOLOR_APRIL = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2024-04-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg"
 const MODIS_TRUECOLOR_OCTOBER = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2024-10-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg"
 const ESRI_WORLD_IMAGERY = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+const MULTI_LAYER_DATASET_ID = "local_multi_layer_test"
+
+function bundledMultiLayerManifest(): Manifest {
+  return {
+    manifestVersion: "1.0",
+    viewState: { center: { longitude: 104.0665, latitude: 30.5728 }, zoom: 8, heading: 0, pitch: -45 },
+    layers: [
+      { id: "group-base-map", name: "Base Maps", sourceType: "group", sourceRef: "", visible: true, opacity: 1, order: 0 },
+      { id: "layer-osm", name: "Street Map", sourceType: "xyz", sourceRef: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", pid: "group-base-map", visible: true, opacity: 1, order: 0 },
+      { id: "layer-esri-world", name: "Satellite Imagery", sourceType: "xyz", sourceRef: ESRI_WORLD_IMAGERY, pid: "group-base-map", visible: false, opacity: 1, order: 1 },
+      { id: "group-analysis", name: "Thematic Analysis", sourceType: "group", sourceRef: "", visible: true, opacity: 1, order: 1 },
+      {
+        id: "layer-analysis-area",
+name: "Focus Analysis Area",
+sourceType: "geojson",
+sourceRef: "",
+pid: "group-analysis",
+visible: true,
+opacity: 0.65,
+order: 0,
+        data: { type: "FeatureCollection", features: [{ type: "Feature", properties: { name: "Chengdu Focus Area", level: "focus", risk: 0.82 }, geometry: { type: "Polygon", coordinates: [[[103.85, 30.75], [104.25, 30.75], [104.25, 30.4], [103.85, 30.4], [103.85, 30.75]]] } }] }
+      },
+      {
+        id: "layer-monitor-points",
+name: "Monitoring Points",
+sourceType: "geojson",
+sourceRef: "",
+pid: "group-analysis",
+visible: true,
+opacity: 1,
+order: 1,
+        data: {
+ type: "FeatureCollection",
+features: [
+          { type: "Feature", properties: { name: "Chengdu Point A", status: "normal", value: 12.6 }, geometry: { type: "Point", coordinates: [104.0665, 30.5728] } },
+          { type: "Feature", properties: { name: "Dujiangyan Point B", status: "watch", value: 28.4 }, geometry: { type: "Point", coordinates: [103.619, 30.996] } },
+          { type: "Feature", properties: { name: "Meishan Point C", status: "alert", value: 46.8 }, geometry: { type: "Point", coordinates: [103.848, 30.075] } }
+        ] 
+}
+      },
+      { id: "group-results", name: "Monitoring Results", sourceType: "group", sourceRef: "", visible: true, opacity: 1, order: 2 },
+      {
+        id: "layer-result-line",
+name: "Deformation Trend",
+sourceType: "geojson",
+sourceRef: "",
+pid: "group-results",
+visible: true,
+opacity: 0.9,
+order: 0,
+        data: { type: "FeatureCollection", features: [{ type: "Feature", properties: { name: "Northern Trend", rate: 3.8, unit: "mm/year" }, geometry: { type: "LineString", coordinates: [[103.72, 30.85], [103.95, 30.72], [104.18, 30.62], [104.42, 30.48]] } }] }
+      },
+      {
+        id: "layer-result-zone",
+name: "Risk Zone",
+sourceType: "geojson",
+sourceRef: "",
+pid: "group-results",
+visible: true,
+opacity: 0.5,
+order: 1,
+        data: { type: "FeatureCollection", features: [{ type: "Feature", properties: { name: "High Risk Zone", level: "high", score: 91 }, geometry: { type: "Polygon", coordinates: [[[104, 30.66], [104.15, 30.66], [104.15, 30.5], [104, 30.5], [104, 30.66]]] } }] }
+      }
+    ]
+  }
+}
 
 function bundledViewManifest(createdAt: number, layers: any[]): Manifest {
   return {
@@ -1652,6 +1718,18 @@ function ensureBundledDemoDatasets() {
   }
 
   const years = [2023, 2024, 2025]
+  const multiLayerManifest = bundledMultiLayerManifest()
+  rememberDataset(saved, MULTI_LAYER_DATASET_ID, {
+    name: "Multi-layer UI Test Dataset",
+    description: "Frontend test dataset with nested groups, XYZ basemaps and GeoJSON point/line/polygon layers.",
+    visibility: "private",
+    tags: ["test", "multi-layer", "drag-sort"],
+    manifest: multiLayerManifest,
+    revisionManifests: { "multi-layer-v1": multiLayerManifest },
+    revisions: [{ revisionId: "multi-layer-v1", message: "Initial multi-layer test dataset", createdAt: Date.parse("2026-01-01T00:00:00Z") }],
+    createdAt: Date.parse("2026-01-01T00:00:00Z"),
+    updatedAt: Date.parse("2026-01-01T00:00:00Z")
+  })
   const earthquakeRevisions: Record<string, Manifest> = {}
   const earthquakeRevisionRows = years.map((year) => {
     const revisionId = `eq-${year}`

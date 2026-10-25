@@ -5,6 +5,7 @@
 
 import * as mars3d from "mars3d"
 import { applyDefaultRasterStyleOptions } from "./services/layer-style-defaults"
+import { buildThermalHeatLayerOptions, shouldRenderThermalHeatmap } from "./services/thermal-heatmap"
 const Cesium = mars3d.Cesium
 
 let map: mars3d.Map // 地图对象
@@ -15,6 +16,42 @@ let viewChangeLastAt = 0
 let viewChangeTimer: number | null = null
 const TITILER_RGB_BIDX_QUERY = "bidx=1&bidx=2&bidx=3"
 const EOAPI_TITILER_URL = import.meta.env.VITE_EOAPI_TITILER_URL || "http://192.168.0.15:5955"
+
+function appendRasterRenderingHints(url: string, options: any): { url: string; options: any } {
+  const profile = String(options?.styleProfile || "").toLowerCase()
+  if (!profile || !url) {
+    return { url, options }
+  }
+
+  const nextOptions = { ...(options || {}) }
+  const params = new URLSearchParams()
+  const queryIndex = url.indexOf("?")
+  const base = queryIndex >= 0 ? url.slice(0, queryIndex) : url
+  const query = queryIndex >= 0 ? new URLSearchParams(url.slice(queryIndex + 1)) : params
+
+  if (profile === "sar") {
+    if (!query.has("bidx") && !query.has("asset_bidx")) {
+      query.set("bidx", "1")
+    }
+    if (!query.has("colormap_name")) {
+      query.set("colormap_name", "gray")
+    }
+    nextOptions.colorRamp = nextOptions.colorRamp || "gray"
+  } else if (profile === "deformation") {
+    if (!query.has("colormap_name")) {
+      query.set("colormap_name", "rdbu")
+    }
+    nextOptions.colorRamp = nextOptions.colorRamp || "blue-red"
+  } else if (profile === "thermal") {
+    if (!query.has("colormap_name")) {
+      query.set("colormap_name", "inferno")
+    }
+    nextOptions.colorRamp = nextOptions.colorRamp || "inferno"
+  }
+
+  const suffix = query.toString()
+  return { url: suffix ? `${base}?${suffix}` : base, options: nextOptions }
+}
 
 // #region debug-point dataset-cover-stac-load
 type TraeDebugEvent = {
@@ -650,7 +687,9 @@ export function addXyzLayer(id: string, url: string, options?: any) {
   }
 
   // 创建 XYZ 图层
-  const layer = new mars3d.layer.XyzLayer(normalizeXyzLayerOptions(id, url, options))
+  const normalized = normalizeXyzLayerOptions(id, url, options)
+  const rendered = appendRasterRenderingHints(url, normalized)
+  const layer = new mars3d.layer.XyzLayer({ ...rendered.options, url: rendered.url })
 
   map.addLayer(layer)
   return layer
@@ -700,10 +739,17 @@ export function addGeoJsonLayer(id: string, data: any, options?: any) {
     }
     return existingLayer
   }
+  if (shouldRenderThermalHeatmap(data, options?.name, options?.styleProfile, options?.renderProfile)) {
+    const heatOptions = buildThermalHeatLayerOptions(id, data, options)
+    const layer = new mars3d.layer.HeatLayer(heatOptions as any)
+    map.addLayer(layer)
+    return layer
+  }
   const layer = new mars3d.layer.GeoJsonLayer({
     id,
     name: options?.name || id,
-    data,
+    ...(data != null ? { data } : {}),
+    ...(options?.url ? { url: options.url } : {}),
     pid: options?.pid ?? undefined,
     symbol: options?.symbol || {
       type: "polygon",

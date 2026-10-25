@@ -3554,7 +3554,7 @@ function loadDraft() {
     const raw = jobDraft ? "" : localStorage.getItem(getDraftStorageKey()) || ""
     if (jobDraft) {
       applyDraft({ ...fallback, ...(jobDraft as any).draft })
-      if (jobDraft.settings) Object.assign(cartographySettings, jobDraft.settings)
+      if (jobDraft.settings) { Object.assign(cartographySettings, jobDraft.settings) }
     } else if (raw) {
       const parsed = JSON.parse(raw) as Partial<DraftState>
       applyDraft({

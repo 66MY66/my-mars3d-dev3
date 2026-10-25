@@ -1,0 +1,31 @@
+{
+  "manifestVersion": "1.0",
+  "viewState": { "center": { "longitude": 104.0665, "latitude": 30.5728 }, "zoom": 8, "heading": 0, "pitch": -45 },
+  "layers": [
+    { "id": "group-base-map", "name": "Base Maps", "sourceType": "group", "sourceRef": "", "visible": true, "opacity": 1, "order": 0 },
+    { "id": "layer-osm", "name": "Street Map", "sourceType": "xyz", "sourceRef": "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "pid": "group-base-map", "visible": true, "opacity": 1, "order": 0 },
+    { "id": "layer-esri-world", "name": "Satellite Imagery", "sourceType": "xyz", "sourceRef": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", "pid": "group-base-map", "visible": false, "opacity": 1, "order": 1 },
+    { "id": "group-analysis", "name": "Thematic Analysis", "sourceType": "group", "sourceRef": "", "visible": true, "opacity": 1, "order": 1 },
+    {
+      "id": "layer-analysis-area", "name": "Focus Analysis Area", "sourceType": "geojson", "sourceRef": "", "pid": "group-analysis", "visible": true, "opacity": 0.65, "order": 0,
+      "data": { "type": "FeatureCollection", "features": [ { "type": "Feature", "properties": { "name": "Chengdu Focus Area", "level": "重点", "risk": 0.82 }, "geometry": { "type": "Polygon", "coordinates": [ [ [103.85, 30.75], [104.25, 30.75], [104.25, 30.4], [103.85, 30.4], [103.85, 30.75] ] ] } } ] }
+    },
+    {
+      "id": "layer-monitor-points", "name": "Monitoring Points", "sourceType": "geojson", "sourceRef": "", "pid": "group-analysis", "visible": true, "opacity": 1, "order": 1,
+      "data": { "type": "FeatureCollection", "features": [
+        { "type": "Feature", "properties": { "name": "Chengdu Point A", "status": "normal", "value": 12.6 }, "geometry": { "type": "Point", "coordinates": [104.0665, 30.5728] } },
+        { "type": "Feature", "properties": { "name": "Dujiangyan Point B", "status": "watch", "value": 28.4 }, "geometry": { "type": "Point", "coordinates": [103.619, 30.996] } },
+        { "type": "Feature", "properties": { "name": "Meishan Point C", "status": "alert", "value": 46.8 }, "geometry": { "type": "Point", "coordinates": [103.848, 30.075] } }
+      ] }
+    },
+    { "id": "group-results", "name": "Monitoring Results", "sourceType": "group", "sourceRef": "", "visible": true, "opacity": 1, "order": 2 },
+    {
+      "id": "layer-result-line", "name": "Deformation Trend", "sourceType": "geojson", "sourceRef": "", "pid": "group-results", "visible": true, "opacity": 0.9, "order": 0,
+      "data": { "type": "FeatureCollection", "features": [ { "type": "Feature", "properties": { "name": "Northern Trend", "rate": 3.8, "unit": "mm/year" }, "geometry": { "type": "LineString", "coordinates": [ [103.72, 30.85], [103.95, 30.72], [104.18, 30.62], [104.42, 30.48] ] } } ] }
+    },
+    {
+      "id": "layer-result-zone", "name": "Risk Zone", "sourceType": "geojson", "sourceRef": "", "pid": "group-results", "visible": true, "opacity": 0.5, "order": 1,
+      "data": { "type": "FeatureCollection", "features": [ { "type": "Feature", "properties": { "name": "High Risk Zone", "level": "high", "score": 91 }, "geometry": { "type": "Polygon", "coordinates": [ [ [104, 30.66], [104.15, 30.66], [104.15, 30.5], [104, 30.5], [104, 30.66] ] ] } } ] }
+    }
+  ]
+}
