@@ -6,7 +6,12 @@
       </div>
       <template v-if="loaded">
         <template v-for="comp in widgets" :key="comp.key">
-          <mars-widget v-if="aliveWidgets.includes(comp.name)" v-model:visible="comp.visible" :widget="comp" />
+          <mars-widget
+            v-if="aliveWidgets.includes(comp.name)"
+            v-model:visible="comp.visible"
+            :widget="comp"
+            @load-error="onWidgetLoadError(comp.name)"
+          />
         </template>
       </template>
     </div>
@@ -33,6 +38,10 @@ const widgetStore = useWidgetStore()
 
 const widgets = computed(() => widgetStore.state.widgets)
 const aliveWidgets = computed(() => widgetStore.state.openAtStart)
+
+function onWidgetLoadError(name: string) {
+  widgetStore.dispatch("loadError", name)
+}
 
 const props = withDefaults(
   defineProps<{

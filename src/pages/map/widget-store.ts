@@ -3,9 +3,10 @@
  * @copyright 火星科技 mars3d.cn
  * @author 火星渣渣灰 2022-02-19
  */
-import { defineAsyncComponent, markRaw } from "vue"
+import { markRaw } from "vue"
 import { WidgetState } from "@mars/common/store/widget"
 import { StoreOptions } from "vuex"
+import { createAsyncWidgetComponent as defineAsyncComponent } from "./async-widget"
 
 const store: StoreOptions<WidgetState> = {
   state: {

@@ -224,8 +224,8 @@ function isItemActive(item: any) {
     return false
   }
   const widget = item?.action?.widget
-  if (widget && isActivate(widget)) {
-    return true
+  if (widget) {
+    return isActivate(widget)
   }
   return activeId.value === item.id
 }

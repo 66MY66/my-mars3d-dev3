@@ -47,11 +47,10 @@ function readText(file: File): Promise<string> {
   })
 }
 
-function buildLayerId(datasetId: string | undefined) {
+function buildLayerId() {
   // Layer IDs are shared across the dataset repository and workspace restore.
   // Keep the canonical generator format; dataset identity belongs to the
   // source registry/group metadata, not the map-layer ID itself.
-  void datasetId
   return generateLayerId()
 }
 
@@ -128,7 +127,7 @@ export async function loadResultFile(file: File, options: ResultLoaderOptions = 
   }
 
   emitProgress(options, { stage: "reading", percent: 40, text: "正在解析成果文件" })
-  const desiredLayerId = buildLayerId(options.datasetId)
+  const desiredLayerId = buildLayerId()
   const layerId = ensureUniqueMapLayerId(map as any, desiredLayerId, { fallbackBase: "local_result" })
   const datasetName = String(options.datasetName || options.datasetId || "本地成果")
   const groupId = options.groupId || `local_result_group_${normalizeLayerIdToken(options.datasetId || "local", "dataset")}`

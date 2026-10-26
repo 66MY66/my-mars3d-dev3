@@ -97,6 +97,9 @@ export const injectState = (options: StoreOptions<WidgetState>): Store<WidgetSta
           state.openAtStart.push(value)
         }
       },
+      removeAlive(state, value: string) {
+        state.openAtStart = state.openAtStart.filter((name) => name !== value)
+      },
       ...options.mutations
     },
     actions: {
@@ -166,6 +169,15 @@ export const injectState = (options: StoreOptions<WidgetState>): Store<WidgetSta
           pannel.visible = false
           dispatchWidgetVisibleEvent(value, false)
         }
+      },
+      loadError({ commit, state }, widget: string) {
+        const pannel = state.widgets.find((item) => item.name === widget)
+        if (pannel) {
+          pannel.visible = false
+          pannel.key = uuidV4()
+        }
+        commit("removeAlive", widget)
+        dispatchWidgetVisibleEvent(widget, false)
       },
       disableAll({ state }, hasAll: boolean) {
         state.widgets.forEach((item: Widget) => {

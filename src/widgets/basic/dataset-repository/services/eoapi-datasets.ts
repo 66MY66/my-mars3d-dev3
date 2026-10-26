@@ -2107,7 +2107,9 @@ export async function updateDatasetContent(
   const cleanTags = Array.isArray(payload.tags) ? payload.tags.filter((tag) => typeof tag === "string" && tag.trim()) : undefined
   if (datasetId.startsWith("local_")) {
     const ok = updateLocalDataset(datasetId, { ...payload, tags: cleanTags })
-    if (!ok) return { success: false, message: "未找到本地数据集" }
+    if (!ok) {
+      return { success: false, message: "未找到本地数据集" }
+    }
     emitDatasetSync({ datasetId, reason: "refresh", source: "updateDatasetContent:local", payload: { metadataChanged: payload.description !== undefined || payload.tags !== undefined, coverChanged: payload.coverUrl !== undefined } })
     return { success: true, data: { mode: "local", createdNewVersion: !!payload.createNewVersion } }
   }
@@ -2120,10 +2122,14 @@ export async function updateDatasetContent(
     manifest: payload.manifest,
     artifactRefs: payload.artifactRefs
   } as any)
-  if (!revision.success || !revision.data) return revision as any
+  if (!revision.success || !revision.data) {
+    return revision as any
+  }
   const draft: DatasetDraft = { description: payload.description, tags: cleanTags, updatedAt: Date.now() }
   remoteDatasetDrafts.set(datasetId, draft)
-  if (payload.coverUrl) await setPersistedDatasetCover(datasetId, payload.coverUrl)
+  if (payload.coverUrl) {
+    await setPersistedDatasetCover(datasetId, payload.coverUrl)
+  }
   emitDatasetSync({ datasetId, reason: "refresh", source: "updateDatasetContent:remote", payload: { metadataScope: "local", coverScope: payload.coverUrl ? "local" : undefined } })
   return { success: true, data: { mode: "remote", createdNewVersion: true, metadataScope: "local", coverScope: payload.coverUrl ? "local" : undefined, revisionId: (revision.data as any).revisionId } }
 }

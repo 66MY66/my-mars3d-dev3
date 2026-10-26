@@ -98,4 +98,20 @@ describe("Sidebar a11y", () => {
     await buttons[buttons.length - 1].trigger("keydown", { key: "Home" })
     expect(document.activeElement).toBe(buttons[0].element)
   })
+
+  it("does not keep a widget highlighted when the widget store reports it closed", async () => {
+    const wrapper = mount(Sidebar, {
+      props: { collapsed: false },
+      global: {
+        stubs: {
+          "a-tooltip": { template: "<span><slot /></span>" }
+        }
+      }
+    })
+
+    const button = wrapper.find("button.menu-item")
+    await button.trigger("click")
+
+    expect(button.classes()).not.toContain("active")
+  })
 })
