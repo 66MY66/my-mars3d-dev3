@@ -91,6 +91,7 @@
             <div class="card-head">
               <div class="card-head-left">
                 <span class="card-name">{{ c.title }}</span>
+                <span class="card-division">{{ getStatsDivisionLabel(c.key) }}</span>
                 <span v-if="statsUi.collapsed[c.key]" class="card-brief">{{ getCardBrief(c.key) }}</span>
               </div>
               <div class="card-head-actions">
@@ -306,6 +307,7 @@ import type { ContextMenuOptions } from "@mars/utils/contextmenu/types"
 
 import { computed, nextTick, onUnmounted, onMounted, reactive, ref, toRaw, watch } from "vue"
 import { getAdaptiveStatsPeakMetrics, getStatsOverlayLod } from "@/utils/stats-overlay-metrics"
+import { buildStatsChartOption, getStatsDivisionLabel } from "@/utils/stats-chart-model"
 import { getIdentifyFocusAction } from "@/utils/identify-focus"
 import { $alert, $message } from "@mars/components/mars-ui/index"
 import { logInfo } from "@mars/utils/mars-util"
@@ -659,7 +661,7 @@ const statsUi = reactive<{
 const statsCards = [
   { key: "population", title: "人口分布统计", hasLevel: true },
   { key: "economy", title: "经济分布统计", hasLevel: true },
-  { key: "housing", title: "房屋抗震系数分布", hasLevel: true },
+  { key: "housing", title: "房屋抗震等级分布", hasLevel: false },
   { key: "radiation", title: "热辐射时序变化", hasLevel: false },
   { key: "vegetation", title: "植被覆盖变化", hasLevel: false }
 ] as const
@@ -1213,7 +1215,7 @@ function getThemeName(): string | undefined {
 }
 
 function getCardLabel(row: Record<string, any>) {
-  return String(row["区划"] ?? row["月份"] ?? "未命名")
+  return String(row["区划"] ?? row["分类"] ?? row["月份"] ?? "未命名")
 }
 
 function getCardValueByKey(key: StatsCardKey, row: Record<string, any>) {
@@ -1224,7 +1226,10 @@ function getCardValueByKey(key: StatsCardKey, row: Record<string, any>) {
     return Math.max(0, Number(row["经济"] || 0))
   }
   if (key === "housing") {
-    return Math.max(0, Number(row["抗震系数"] || 0))
+    return Math.max(0, Number(row["高风险"] || 0) + Number(row["较高风险"] || 0))
+  }
+  if (key === "vegetation") {
+    return Math.max(0, Number(row.NDVI || 0))
   }
   return Math.max(0, Number(row["数值"] || 0))
 }
@@ -1237,7 +1242,7 @@ function formatCardValue(key: StatsCardKey, value: number) {
     return formatMoney(value, unitPrefs.money)
   }
   if (key === "housing") {
-    return `${value.toFixed(2)}`
+    return `${value.toFixed(1)}% 高风险`
   }
   if (key === "radiation") {
     return `${value.toFixed(2)}`
@@ -1748,7 +1753,39 @@ function buildCardData(key: StatsCardKey): Array<Record<string, any>> {
       const seasonal = Math.sin((i / 12) * Math.PI * 2) * amp
       const noise = (rnd() - 0.5) * amp * 0.25
       const v = Math.max(0, base + seasonal + noise)
-      rows.push({ 月份: label, 数值: key === "radiation" ? Number(v.toFixed(2)) : Number(v.toFixed(3)) })
+      if (key === "radiation") {
+        const baseline = Math.max(0, base + seasonal * 0.72)
+        const tolerance = Math.max(3, amp * 0.32)
+        const lower = Math.max(0, baseline - tolerance)
+        const upper = baseline + tolerance
+        rows.push({
+          月份: label,
+          数值: Number(v.toFixed(2)),
+          基准值: Number(baseline.toFixed(2)),
+          正常下限: Number(lower.toFixed(2)),
+          正常上限: Number(upper.toFixed(2)),
+          异常: v < lower || v > upper
+        })
+      } else {
+        const ndvi = Math.max(0, Math.min(1, v))
+        const high = Math.max(5, Math.min(65, ndvi * 72 + (rnd() - 0.5) * 5))
+        const mediumHigh = Math.max(8, 24 + ndvi * 10 + (rnd() - 0.5) * 4)
+        const medium = Math.max(8, 32 - ndvi * 16 + (rnd() - 0.5) * 4)
+        const low = Math.max(4, 22 - ndvi * 14 + (rnd() - 0.5) * 3)
+        const bare = Math.max(2, 14 - ndvi * 10 + (rnd() - 0.5) * 2)
+        const sum = high + mediumHigh + medium + low + bare
+        const percentages = [bare, low, medium, mediumHigh, high].map((item) => Number(((item / sum) * 100).toFixed(1)))
+        percentages[4] = Number((100 - percentages.slice(0, 4).reduce((total, item) => total + item, 0)).toFixed(1))
+        rows.push({
+          月份: label,
+          无植被: percentages[0],
+          低覆盖: percentages[1],
+          中覆盖: percentages[2],
+          中高覆盖: percentages[3],
+          高覆盖: percentages[4],
+          NDVI: Number(ndvi.toFixed(3))
+        })
+      }
     }
     statsUpdatedAtByKey.set(key, now)
     // #region debug-point D:build-card-output-timeseries
@@ -1758,6 +1795,26 @@ function buildCardData(key: StatsCardKey): Array<Record<string, any>> {
       sample: rows.slice(0, 2)
     })
     // #endregion
+    return rows
+  }
+
+  if (key === "housing") {
+    const structures = ["砖木结构", "砖混结构", "框架结构", "钢结构"]
+    const rows = structures.map((name, index) => {
+      const riskBias = Math.max(0.14, 0.66 - index * 0.14)
+      const raw = [
+        8 + riskBias * 34 + rnd() * 7,
+        12 + riskBias * 22 + rnd() * 7,
+        22 + rnd() * 9,
+        14 + (1 - riskBias) * 18 + rnd() * 7,
+        8 + (1 - riskBias) * 28 + rnd() * 7
+      ]
+      const sum = raw.reduce((total, item) => total + item, 0)
+      const values = raw.map((item) => Number(((item / sum) * 100).toFixed(1)))
+      values[4] = Number((100 - values.slice(0, 4).reduce((total, item) => total + item, 0)).toFixed(1))
+      return { 分类: name, 高风险: values[0], 较高风险: values[1], 中风险: values[2], 较低风险: values[3], 低风险: values[4] }
+    })
+    statsUpdatedAtByKey.set(key, now)
     return rows
   }
 
@@ -1777,14 +1834,15 @@ function buildCardData(key: StatsCardKey): Array<Record<string, any>> {
     let value: number
     if (key === "population") {
       value = Math.round(total * share)
-      return { 区划: name, 人口: value }
+      const areaShare = Math.max(0.08, share * (0.72 + rnd() * 0.56))
+      const areaKm2 = Math.max(0.01, (Number(metrics.areaM2) / 1_000_000) * areaShare)
+      return { 区划: name, 人口: value, 人口密度: Math.round(value / areaKm2) }
     }
     if (key === "economy") {
       value = Math.round(total * share)
       return { 区划: name, 经济: value }
     }
-    value = Number((0.1 + rnd() * 0.9).toFixed(2))
-    return { 区划: name, 抗震系数: value }
+    return { 区划: name, 数值: 0 }
   })
 
   statsUpdatedAtByKey.set(key, now)
@@ -1797,61 +1855,6 @@ function buildCardData(key: StatsCardKey): Array<Record<string, any>> {
   })
   // #endregion
   return rows
-}
-
-function buildEChartsOption(key: StatsCardKey, rows: Array<Record<string, any>>) {
-  if (key === "radiation" || key === "vegetation") {
-    const x = rows.map((r) => r["月份"])
-    const y = rows.map((r) => r["数值"])
-    return {
-      animation: false,
-      tooltip: { trigger: "axis" },
-      grid: { left: 40, right: 18, top: 24, bottom: 32 },
-      xAxis: { type: "category", data: x, axisLabel: { rotate: 0 } },
-      yAxis: { type: "value" },
-      series: [
-        {
-          type: "line",
-          data: y,
-          smooth: true,
-          symbol: "circle",
-          symbolSize: 6,
-          lineStyle: { width: 2 }
-        }
-      ]
-    }
-  }
-
-  const nameKey = "区划"
-  let valueKey = "抗震系数"
-  if (key === "population") {
-    valueKey = "人口"
-  } else if (key === "economy") {
-    valueKey = "经济"
-  }
-  const x = rows.map((r) => r[nameKey])
-  const y = rows.map((r) => r[valueKey])
-  let color = "#722ed1"
-  if (key === "population") {
-    color = "#2f54eb"
-  } else if (key === "economy") {
-    color = "#13c2c2"
-  }
-  return {
-    animation: false,
-    tooltip: { trigger: "axis" },
-    grid: { left: 46, right: 18, top: 24, bottom: 40 },
-    xAxis: { type: "category", data: x, axisLabel: { rotate: 0 } },
-    yAxis: { type: "value" },
-    series: [
-      {
-        type: "bar",
-        data: y,
-        itemStyle: { color },
-        barMaxWidth: 26
-      }
-    ]
-  }
 }
 
 function getCardBrief(key: string): string {
@@ -1964,7 +1967,7 @@ function renderCard(key: StatsCardKey) {
       // #endregion
       return
     }
-    const option = buildEChartsOption(key, rows)
+    const option = buildStatsChartOption(key, rows)
     // #region debug-point C:set-option-before
     statsBlankChartDebug("C", "renderCard before setOption", {
       key,
@@ -4485,6 +4488,17 @@ onUnmounted(() => {
   font-weight: 650;
   color: var(--text-primary);
   font-size: 13px;
+  white-space: nowrap;
+}
+
+.card-division {
+  padding: 2px 6px;
+  border: 1px solid rgba(45, 140, 240, 0.24);
+  border-radius: 999px;
+  background: rgba(45, 140, 240, 0.08);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
   white-space: nowrap;
 }
 

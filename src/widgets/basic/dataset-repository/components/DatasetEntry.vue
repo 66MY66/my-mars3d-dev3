@@ -188,6 +188,26 @@
     >
       <template #headerRight>
         <button
+          type="button"
+          class="mars-popup-header-btn cover-preview-text-btn cover-preview-upload-btn"
+          :disabled="coverPreviewBusy"
+          :aria-busy="coverPreviewBusy"
+          title="导入当前版本的全部图层"
+          @click.stop="handlePreviewUpload"
+        >
+          上图
+        </button>
+        <button
+          type="button"
+          class="mars-popup-header-btn cover-preview-text-btn cover-preview-locate-btn"
+          :disabled="coverPreviewBusy"
+          :aria-busy="coverPreviewBusy"
+          title="定位到数据集范围"
+          @click.stop="handlePreviewLocate"
+        >
+          定位
+        </button>
+        <button
           v-if="coverPreviewUrl"
           type="button"
           class="mars-popup-header-btn cover-preview-download-btn"
@@ -211,8 +231,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { $message } from "@mars/components/mars-ui/index"
-import { getCollectionsAll, getLocalDataset, getLocalManifests, updateLocalDataset } from "../services/eoapi-datasets"
-import { StacCollection, DatasetVisibility } from "../types/eoapi-types"
+import { getCollectionsAll, getLatestDatasetManifest, getLocalDataset, getLocalManifests, updateLocalDataset } from "../services/eoapi-datasets"
+import { StacCollection, DatasetVisibility, Manifest } from "../types/eoapi-types"
 import { resolveEoapiHref } from "../services/eoapi-client"
 import { ensureEoapiI18nConfig, pickCollectionText } from "../services/eoapi-i18n"
 import {
@@ -229,6 +249,11 @@ import { eoApiConfig } from "../services/eoapi-config"
 import { onDatasetSync } from "../services/dataset-sync"
 import { highlightText } from "../utils/highlight"
 import { normalizeDatasetText } from "../utils/dataset-text"
+import * as mapWork from "../map"
+import { captureCoverImage } from "../map"
+import { serializeWorkspace } from "../workspace/serialize"
+import { restoreWorkspace } from "../workspace/restore"
+import { createCoverPreviewSession } from "../services/cover-preview-session"
 
 const emit = defineEmits<{
   select: [collection: StacCollection]
@@ -903,15 +928,225 @@ function showTotal(total: number) {
 
 const coverPreviewVisible = ref(false)
 const coverPreviewUrl = ref<string>("")
+const coverPreviewBusy = ref(false)
+const coverPreviewCollection = ref<StacCollection | null>(null)
 
-function openCoverPreview(collection: StacCollection) {
-  coverPreviewUrl.value = getCoverUrl(collection) || ""
-  coverPreviewVisible.value = true
+type CoverPreviewMapSnapshot = {
+  manifest: Manifest
+  camera: {
+    destination: any
+    heading: number
+    pitch: number
+    roll: number
+  } | null
 }
 
-function closeCoverPreview() {
+function cloneCameraPosition(position: any) {
+  if (!position) {
+    return position
+  }
+  return typeof position.clone === "function" ? position.clone() : { ...position }
+}
+
+function capturePreviewMapState(): CoverPreviewMapSnapshot {
+  const map = mapWork.getMap()
+  if (!map) {
+    throw new Error("地图未初始化")
+  }
+  const camera: any = map.camera
+  return {
+    manifest: serializeWorkspace(map, {
+      includeViewState: true,
+      includeLayers: true,
+      includeDrawFeatures: true
+    }),
+    camera: camera
+      ? {
+          destination: cloneCameraPosition(camera.positionWC || camera.position),
+          heading: Number(camera.heading) || 0,
+          pitch: Number(camera.pitch) || 0,
+          roll: Number(camera.roll) || 0
+        }
+      : null
+  }
+}
+
+async function restorePreviewMapState(snapshot: CoverPreviewMapSnapshot) {
+  const map = mapWork.getMap()
+  if (!map) {
+    return
+  }
+  await restoreWorkspace(map, snapshot.manifest, {
+    strategy: "replace",
+    restoreView: false,
+    restoreLayers: true,
+    restoreDrawFeatures: true,
+    clearExistingDrawFeatures: true,
+    flyDuration: 0
+  })
+  if (snapshot.camera?.destination) {
+    map.camera?.setView?.({
+      destination: snapshot.camera.destination,
+      orientation: {
+        heading: snapshot.camera.heading,
+        pitch: snapshot.camera.pitch,
+        roll: snapshot.camera.roll
+      }
+    })
+  }
+  map.scene?.requestRender?.()
+  window.dispatchEvent(new CustomEvent("mars3d_layersChanged"))
+}
+
+async function nextMapFrame() {
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+}
+
+async function waitForMapSettled(map: any) {
+  const moveEnd = map?.camera?.moveEnd
+  if (moveEnd?.addEventListener) {
+    await new Promise<void>((resolve) => {
+      let finished = false
+      let timeoutId: number | null = null
+      const listener = { remove: () => {} }
+      const finish = () => {
+        if (finished) {
+          return
+        }
+        finished = true
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId)
+        }
+        listener.remove()
+        resolve()
+      }
+      const removeListener = moveEnd.addEventListener(finish)
+      listener.remove = typeof removeListener === "function" ? removeListener : () => {}
+      if (finished) {
+        listener.remove()
+      } else {
+        timeoutId = window.setTimeout(finish, 2200)
+      }
+    })
+  }
+  map?.scene?.requestRender?.()
+  await nextMapFrame()
+  await nextMapFrame()
+}
+
+async function captureCurrentPreviewCover() {
+  const map = mapWork.getMap()
+  if (!map) {
+    throw new Error("地图未初始化")
+  }
+  map.scene?.requestRender?.()
+  await nextMapFrame()
+  await nextMapFrame()
+  const blob = await captureCoverImage({
+    mime: "image/png",
+    targetWidth: 1024,
+    targetHeight: 768,
+    title: getCollectionTitle(coverPreviewCollection.value as StacCollection)
+  }, map)
+  return URL.createObjectURL(blob)
+}
+
+const coverPreviewSession = createCoverPreviewSession<CoverPreviewMapSnapshot>({
+  captureState: capturePreviewMapState,
+  restoreState: restorePreviewMapState,
+  captureCover: captureCurrentPreviewCover,
+  releaseCover: (url) => URL.revokeObjectURL(url),
+  onCoverChange: (url) => { coverPreviewUrl.value = url },
+  onBusyChange: (busy) => { coverPreviewBusy.value = busy }
+})
+
+function openCoverPreview(collection: StacCollection) {
+  try {
+    coverPreviewCollection.value = collection
+    coverPreviewSession.open(getCoverUrl(collection) || "")
+    coverPreviewVisible.value = true
+  } catch (error: any) {
+    coverPreviewCollection.value = null
+    $message(error?.message || "封面预览打开失败")
+  }
+}
+
+async function closeCoverPreview() {
   coverPreviewVisible.value = false
-  coverPreviewUrl.value = ""
+  try {
+    await coverPreviewSession.close()
+  } catch (error: any) {
+    $message(error?.message || "地图状态恢复失败")
+  } finally {
+    coverPreviewCollection.value = null
+  }
+}
+
+function clonePreviewManifest(manifest: Manifest, sessionPrefix: string): Manifest {
+  const cloned = JSON.parse(JSON.stringify(manifest)) as Manifest
+  cloned.layers = (cloned.layers || []).map((layer: any) => ({
+    ...layer,
+    options: layer?.options?.sourceRegistryKey
+      ? { ...layer.options, sourceRegistryKey: `${sessionPrefix}${layer.options.sourceRegistryKey}` }
+      : layer?.options
+  }))
+  return cloned
+}
+
+async function handlePreviewUpload() {
+  const collection = coverPreviewCollection.value
+  if (!collection) {
+    return
+  }
+  try {
+    await coverPreviewSession.runAction(async () => {
+      const map = mapWork.getMap()
+      if (!map) {
+        throw new Error("地图未初始化")
+      }
+      const result = await getLatestDatasetManifest(collection.id)
+      if (!result.success || !result.data?.manifest) {
+        throw new Error(result.message || "未找到当前版本")
+      }
+      const prefix = `cover_preview_${Date.now()}_`
+      const manifest = clonePreviewManifest(result.data.manifest, prefix)
+      await restoreWorkspace(map, manifest, {
+        strategy: "overlay",
+        conflictResolution: "rename",
+        layerIdPrefix: prefix,
+        layerNamePrefix: "[封面预览] ",
+        drawIdPrefix: prefix,
+        restoreView: true,
+        restoreLayers: true,
+        restoreDrawFeatures: true,
+        flyDuration: 1.2
+      })
+      await waitForMapSettled(map)
+      window.dispatchEvent(new CustomEvent("mars3d_layersChanged"))
+    })
+  } catch (error: any) {
+    $message(error?.message || "上图失败")
+  }
+}
+
+async function handlePreviewLocate() {
+  const bbox = coverPreviewCollection.value?.extent?.spatial?.bbox?.[0]
+  if (!bbox || bbox.length < 4) {
+    $message("该数据集暂无可定位范围")
+    return
+  }
+  try {
+    await coverPreviewSession.runAction(async () => {
+      const map = mapWork.getMap()
+      if (!map) {
+        throw new Error("地图未初始化")
+      }
+      mapWork.flyToBbox(bbox as [number, number, number, number])
+      await waitForMapSettled(map)
+    })
+  } catch (error: any) {
+    $message(error?.message || "定位失败")
+  }
 }
 
 async function downloadPreviewCover() {
@@ -1050,6 +1285,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  coverPreviewSession.close().catch(() => {})
   if (favoriteBounceTimer) {
     window.clearTimeout(favoriteBounceTimer)
     favoriteBounceTimer = null
@@ -1545,6 +1781,19 @@ onUnmounted(() => {
     stroke-width: 1.6;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+}
+
+.cover-preview-text-btn {
+  width: auto;
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 24px;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.55;
   }
 }
 
