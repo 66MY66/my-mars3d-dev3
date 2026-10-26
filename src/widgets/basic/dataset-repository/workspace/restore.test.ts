@@ -337,6 +337,44 @@ describe("workspace/restore raster branches", () => {
     expect(applyRestoreStrategy).not.toHaveBeenCalled()
   })
 
+  it("does not treat the current import parent group as an existing source instance", async () => {
+    const map = createMapFixture()
+    map.addLayer({
+      id: "current_import_group",
+      name: "本次导入分组",
+      options: {
+        sourceRegistryKey: "revision::dataset::multi-layer-v1::saved",
+        sourceRegistryLabel: "成果版本/multi-layer-v1",
+        sourceRegistryKind: "revision",
+        sourceRegistryGroupId: "current_import_group"
+      }
+    })
+
+    await restoreWorkspace(map as any, {
+      manifestVersion: "1.0",
+      layers: [
+        {
+          id: "new_layer",
+          name: "首次导入图层",
+          sourceType: "xyz",
+          sourceRef: "https://example.com/{z}/{x}/{y}.png",
+          options: {
+            sourceRegistryKey: "revision::dataset::multi-layer-v1::saved",
+            sourceRegistryLabel: "成果版本/multi-layer-v1",
+            sourceRegistryKind: "revision"
+          }
+        } as any
+      ]
+    } as any, {
+      strategy: "overlay",
+      layerParentId: "current_import_group",
+      restoreView: false,
+      restoreDrawFeatures: false
+    })
+
+    expect(map.getLayerById("new_layer")).toBeTruthy()
+  })
+
   it("allows same source restore when workspace strategy is replace", async () => {
     const map = createMapFixture()
     map.addLayer({

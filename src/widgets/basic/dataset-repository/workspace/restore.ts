@@ -83,8 +83,15 @@ export async function restoreWorkspace(
       if (sourceKey) {
         const existing = findSourceRegistryEntry(map, sourceKey)
         if (existing) {
-          const label = String(source?.sourceRegistryLabel || existing.label || sourceKey).trim()
-          throw new Error(`${label}已在地图中加载，禁止重复实例化`)
+          const currentParentId = String(layerParentId ?? "").trim()
+          const isCurrentImportGroup =
+            !!currentParentId &&
+            existing.layerIds.length > 0 &&
+            existing.layerIds.every((layerId) => String(layerId).trim() === currentParentId)
+          if (!isCurrentImportGroup) {
+            const label = String(source?.sourceRegistryLabel || existing.label || sourceKey).trim()
+            throw new Error(`${label}已在地图中加载，禁止重复实例化`)
+          }
         }
       }
     }
