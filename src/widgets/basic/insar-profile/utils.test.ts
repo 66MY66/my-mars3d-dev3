@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   buildProfileSummary,
+  applyTerrainHeights,
   computeLineLengthMeters,
   interpolateProfilePoints,
   profileSamplesToCsv,
@@ -54,5 +55,27 @@ describe("insar-profile utils", () => {
     const csv = profileSamplesToCsv(samples)
     expect(csv).toContain("index,distanceM,lng,lat,elevationM")
     expect(csv).toContain("2,100.00,101.000000,30.000000,15.00")
+  })
+
+  it("applies every sampled terrain height without changing profile coordinates", () => {
+    const samples = interpolateProfilePoints([
+      { lng: 100, lat: 30 },
+      { lng: 101, lat: 30 }
+    ], 4)
+
+    const result = applyTerrainHeights(samples, [120, 185, 142, 210])
+
+    expect(result.map((item) => item.elevationM)).toEqual([120, 185, 142, 210])
+    expect(result.map((item) => item.distanceM)).toEqual(samples.map((item) => item.distanceM))
+    expect(result.map((item) => [item.lng, item.lat])).toEqual(samples.map((item) => [item.lng, item.lat]))
+  })
+
+  it("keeps the original elevation when a terrain response is invalid", () => {
+    const samples = interpolateProfilePoints([
+      { lng: 100, lat: 30, height: 12 },
+      { lng: 101, lat: 30, height: 24 }
+    ], 2)
+
+    expect(applyTerrainHeights(samples, [88, Number.NaN]).map((item) => item.elevationM)).toEqual([88, 24])
   })
 })

@@ -18,6 +18,10 @@ let lastPointItems: Array<{
 let lastSelectedGraphic: any = null
 let drawLayer: any = null
 let lastTargetGraphic: any = null
+let linkedSourceGraphic: any = null
+let linkedSourceHandler: ((event?: any) => void) | null = null
+let linkedRemoveHandler: ((event?: any) => void) | null = null
+let analysisRequestId = 0
 
 // 初始化当前业务
 export function onMounted(mapInstance: mars3d.Map): void {
@@ -26,6 +30,7 @@ export function onMounted(mapInstance: mars3d.Map): void {
 
 // 释放当前业务
 export function onUnmounted(): void {
+  unlinkSourceGraphic()
   try {
     if (polygonLayer) {
       map?.removeLayer(polygonLayer, true)
@@ -74,6 +79,11 @@ function ensureDrawLayer() {
 }
 
 export function clearAnalysisResult() {
+  analysisRequestId += 1
+  clearAnalysisLayers()
+}
+
+function clearAnalysisLayers() {
   ensureLayers()
   polygonLayer?.clear?.()
   pointLayer?.clear?.()
@@ -105,16 +115,22 @@ export function clearTargetGraphic() {
   } catch {}
 }
 
-function tryGetRingFromGraphic(graphic: any): Array<[number, number]> | null {
+export function getAnalysisTargetFromGraphic(graphic: any): AnalysisTarget | null {
   try {
     const gj = graphic?.toGeoJSON?.()
+    if (gj?.geometry?.type === "Point" && Array.isArray(gj.geometry.coordinates)) {
+      return { type: "point", coordinates: [Number(gj.geometry.coordinates[0]), Number(gj.geometry.coordinates[1])] }
+    }
+    if (gj?.geometry?.type === "LineString" && Array.isArray(gj.geometry.coordinates)) {
+      return { type: "polyline", coordinates: gj.geometry.coordinates.map((c: any) => [Number(c[0]), Number(c[1])]) }
+    }
     const coords = gj?.geometry?.coordinates
     if (Array.isArray(coords) && Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
       const ring = coords[0]
         .filter((c: any) => Array.isArray(c) && c.length >= 2)
         .map((c: any) => [Number(c[0]), Number(c[1])] as [number, number])
       if (ring.length >= 3) {
-        return ring
+        return { type: "polygon", ring }
       }
     }
   } catch {}
@@ -128,14 +144,14 @@ function tryGetRingFromGraphic(graphic: any): Array<[number, number]> | null {
         })
         .filter(Boolean) as Array<[number, number]>
       if (ring.length >= 3) {
-        return ring
+        return { type: "polygon", ring }
       }
     }
   } catch {}
   return null
 }
 
-export async function startSelectTarget(type: "rectangle" | "polygon"): Promise<{ ring: Array<[number, number]> } | null> {
+export async function startSelectTarget(type: "point" | "polyline" | "rectangle" | "polygon"): Promise<AnalysisTarget | null> {
   const layer = ensureDrawLayer()
   if (!layer) {
     return null
@@ -157,12 +173,12 @@ export async function startSelectTarget(type: "rectangle" | "polygon"): Promise<
         },
         success: function (graphic: any) {
           lastTargetGraphic = graphic
-          const ring = tryGetRingFromGraphic(graphic)
-          if (!ring || ring.length < 3) {
+          const target = getAnalysisTargetFromGraphic(graphic)
+          if (!target) {
             resolve(null)
             return
           }
-          resolve({ ring })
+          resolve(target)
         }
       })
     } catch {
@@ -171,8 +187,41 @@ export async function startSelectTarget(type: "rectangle" | "polygon"): Promise<
   })
 }
 
+export function linkSourceGraphic(graphic: any, onChange: (target: AnalysisTarget) => void, onRemove: () => void) {
+  unlinkSourceGraphic()
+  if (!graphic?.on) {
+    return
+  }
+  linkedSourceGraphic = graphic
+  linkedSourceHandler = () => {
+    const target = getAnalysisTargetFromGraphic(graphic)
+    if (target) {
+      onChange(target)
+    }
+  }
+  linkedRemoveHandler = () => onRemove()
+  graphic.on(mars3d.EventType.editMovePoint, linkedSourceHandler)
+  graphic.on(mars3d.EventType.editStop, linkedSourceHandler)
+  graphic.on(mars3d.EventType.remove, linkedRemoveHandler)
+}
+
+export function linkDrawnTarget(onChange: (target: AnalysisTarget) => void, onRemove: () => void) {
+  linkSourceGraphic(lastTargetGraphic, onChange, onRemove)
+}
+
+export function unlinkSourceGraphic() {
+  if (linkedSourceGraphic?.off) {
+    linkedSourceGraphic.off(mars3d.EventType.editMovePoint, linkedSourceHandler)
+    linkedSourceGraphic.off(mars3d.EventType.editStop, linkedSourceHandler)
+    linkedSourceGraphic.off(mars3d.EventType.remove, linkedRemoveHandler)
+  }
+  linkedSourceGraphic = null
+  linkedSourceHandler = null
+  linkedRemoveHandler = null
+}
+
 function getRingBbox(ring: Array<[number, number]>): [number, number, number, number] | null {
-  if (!ring || ring.length < 3) {
+  if (!ring || ring.length < 1) {
     return null
   }
   let west = Infinity
@@ -209,6 +258,14 @@ export function flyToRing(ring: Array<[number, number]>, duration?: number) {
   })
 }
 
+export function flyToTarget(target: AnalysisTarget, duration?: number) {
+  if (target.type === "point") {
+    map?.flyToPoint?.(new mars3d.LngLatPoint(target.coordinates[0], target.coordinates[1], 0), { radius: 3000, duration: duration ?? 1.2 })
+    return
+  }
+  flyToRing(target.type === "polygon" ? target.ring : target.coordinates, duration)
+}
+
 function addPolygon(positions: any, style: any, attr: any) {
   const g = new mars3d.graphic.PolygonEntity({
     positions,
@@ -230,7 +287,7 @@ function addPoint(lng: number, lat: number, style: any, attr: any) {
 }
 
 function renderFeatureCollection(fc: any, toolType: string) {
-  clearAnalysisResult()
+  clearAnalysisLayers()
   if (!fc || fc.type !== "FeatureCollection" || !Array.isArray(fc.features)) {
     return
   }
@@ -248,8 +305,8 @@ function renderFeatureCollection(fc: any, toolType: string) {
     const geom = f?.geometry
     const props = f?.properties || {}
 
-    if (geom?.type === "Polygon" && Array.isArray(geom.coordinates?.[0])) {
-      const positions = geom.coordinates as any
+    if ((geom?.type === "Polygon" || geom?.type === "MultiPolygon") && Array.isArray(geom.coordinates?.[0])) {
+      const polygons = geom.type === "MultiPolygon" ? geom.coordinates : [geom.coordinates]
       const role = props.role
       const isResult = role === "Result" || props.operation
       const isA = role === "A"
@@ -283,7 +340,7 @@ function renderFeatureCollection(fc: any, toolType: string) {
         }
       }
 
-      addPolygon(positions, style, { toolType, ...props })
+      polygons.forEach((positions: any) => addPolygon(positions, style, { toolType, ...props }))
       return
     }
 
@@ -348,6 +405,15 @@ function renderFeatureCollection(fc: any, toolType: string) {
     })
     map.addLayer(heatLayer)
   }
+}
+
+export function flyToAnalysisResult() {
+  if (!polygonLayer || polygonLayer.length === 0) {
+    return
+  }
+  try {
+    polygonLayer.flyTo?.({ duration: 1.2, scale: 1.25 })
+  } catch {}
 }
 
 export function getAnalysisFeatureCollection() {
@@ -428,31 +494,29 @@ export function exportAnalysisCSV(toolType: string, summary?: Record<string, any
 
 export async function runToolAnalysis(toolType: string, params: Record<string, any>, target: AnalysisTarget) {
   ensureLayers()
+  const requestId = ++analysisRequestId
 
   if (toolType === "buffer") {
-    const du = String(params.distanceUnit ?? "km")
-    const toKm = (v: any) => {
-      const n = Number(v)
-      if (!Number.isFinite(n)) {
-        return 0
-      }
-      return du === "m" ? n / 1000 : n
-    }
     const res = await runBufferAnalysis({
       target,
       mode: params.mode,
-      radiusKm: toKm(params.radiusKm ?? 50),
-      coreKm: toKm(params.coreKm ?? 50),
-      transitionKm: toKm(params.transitionKm ?? 100),
-      edgeKm: toKm(params.edgeKm ?? 150),
+      radiusM: Number(params.radiusM ?? 1000),
+      distancesM: params.distancesM,
+      enabledRingIndexes: params.enabledRingIndexes,
       opacity: Number(params.opacity ?? 70),
       smooth: Number(params.smooth ?? 64)
     })
+    if (requestId !== analysisRequestId) {
+      return null
+    }
     renderFeatureCollection(res.geojson, "buffer")
     return res.summary
   }
 
   if (toolType === "overlay") {
+    if (target.type !== "polygon") {
+      throw new Error("叠加分析仅支持面要素")
+    }
     const res = await runOverlayAnalysis({
       target,
       targetLayer: params.targetLayer,
@@ -463,6 +527,9 @@ export async function runToolAnalysis(toolType: string, params: Record<string, a
   }
 
   if (toolType === "neighbor") {
+    if (target.type !== "polygon") {
+      throw new Error("邻域分析仅支持面要素")
+    }
     const du = String(params.distanceUnit ?? "m")
     const toM = (v: any) => {
       const n = Number(v)

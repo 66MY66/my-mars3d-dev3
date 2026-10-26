@@ -1,11 +1,14 @@
 import axios from "axios"
+import { area as turfArea, buffer as turfBuffer, difference as turfDifference, featureCollection, lineString, point, polygon } from "@turf/turf"
 import { computeAreaM2, computePerimeterM, type RingLonLat } from "@/utils/disaster-metrics"
 import { pointInRing } from "@/utils/region-hit"
 
-export type AnalysisTarget = {
-  type: "polygon"
-  ring: RingLonLat
-}
+export type PolygonAnalysisTarget = { type: "polygon"; ring: RingLonLat; source?: string; sourceId?: string }
+
+export type AnalysisTarget =
+  | { type: "point"; coordinates: [number, number]; source?: string; sourceId?: string }
+  | { type: "polyline"; coordinates: RingLonLat; source?: string; sourceId?: string }
+  | PolygonAnalysisTarget
 
 export type BufferRequest = {
   target: AnalysisTarget
@@ -16,17 +19,19 @@ export type BufferRequest = {
   edgeKm?: number
   opacity?: number
   radiusM?: number
+  distancesM?: number[]
+  enabledRingIndexes?: number[]
   smooth?: number
 }
 
 export type OverlayRequest = {
-  target: AnalysisTarget
+  target: PolygonAnalysisTarget
   targetLayer: "mock-admin" | "mock-hazard-area"
   operation: "intersect" | "union" | "difference"
 }
 
 export type NeighborRequest = {
-  target: AnalysisTarget
+  target: PolygonAnalysisTarget
   dataset: "hazard-point"
   radiusM: number
   limit: number
@@ -218,62 +223,82 @@ export async function runBufferAnalysis(req: BufferRequest): Promise<AnalysisRes
   }
 
   const smooth = Math.max(8, Math.min(128, Math.round(clampNumber(req.smooth, 64))))
-  const center = centroidOfRing(req.target.ring)
-
   const mode = req.mode === "single" ? "single" : "multi"
   const opacity = Math.max(0.05, Math.min(0.95, clampNumber(req.opacity, 70) / 100))
+  const sourceFeature = (() => {
+    if (req.target.type === "point") {
+      return point(req.target.coordinates)
+    }
+    if (req.target.type === "polyline") {
+      return lineString(req.target.coordinates)
+    }
+    const ring = [...req.target.ring]
+    if (ring.length > 0 && (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1])) {
+      ring.push([...ring[0]] as [number, number])
+    }
+    return polygon([ring])
+  })()
+  const makeBufferedFeature = (distanceM: number, properties: Record<string, any>) => {
+    const feature = turfBuffer(sourceFeature, distanceM, { units: "meters", steps: Math.max(8, Math.round(smooth / 4)) })
+    if (!feature) {
+      throw new Error("无法生成缓冲区，请检查目标几何")
+    }
+    feature.properties = { ...feature.properties, ...properties }
+    return feature
+  }
 
   if (mode === "single") {
-    const radiusKm = Math.max(0, clampNumber(req.radiusKm, 50))
-    const radiusM = radiusKm * 1000
-    const ring = circleRing(center, radiusM, smooth)
-    const areaM2 = computeAreaM2(ring)
-    const perimeterM = computePerimeterM(ring)
-    const geojson = makeFeatureCollection([makePolygonFeature(ring, { analysis: "buffer", mode, radiusKm, opacity })])
-    return { geojson, summary: { mode, radiusKm, areaM2, perimeterM } }
+    const radiusM = Math.max(0, clampNumber(req.radiusM, clampNumber(req.radiusKm, 50) * 1000))
+    const feature = makeBufferedFeature(radiusM, { analysis: "buffer", mode, radiusM, distanceM: radiusM, opacity })
+    const areaM2 = turfArea(feature)
+    return {
+      geojson: featureCollection([feature]),
+      summary: {
+        mode,
+        sourceType: req.target.type,
+        radiusM,
+        radiusKm: radiusM / 1000,
+        areaM2,
+        totalAreaM2: areaM2,
+        ringStats: [{ level: "core", distanceM: radiusM, rangeM: [0, radiusM], areaM2 }]
+      }
+    }
   }
 
-  const coreKm = Math.max(0, clampNumber(req.coreKm, 50))
-  const transitionKm = Math.max(coreKm, clampNumber(req.transitionKm, 100))
-  const edgeKm = Math.max(transitionKm, clampNumber(req.edgeKm, 150))
-
-  const edgeRing = circleRing(center, edgeKm * 1000, smooth)
-  const transitionRing = circleRing(center, transitionKm * 1000, smooth)
-  const coreRing = circleRing(center, coreKm * 1000, smooth)
-
-  const coreAreaM2 = computeAreaM2(coreRing)
-  const transitionOuterAreaM2 = computeAreaM2(transitionRing)
-  const edgeOuterAreaM2 = computeAreaM2(edgeRing)
-  const transitionAreaM2 = Math.max(0, transitionOuterAreaM2 - coreAreaM2)
-  const edgeAreaM2 = Math.max(0, edgeOuterAreaM2 - transitionOuterAreaM2)
-
-  const corePerimeterM = computePerimeterM(coreRing)
-  const transitionOuterPerimeterM = computePerimeterM(transitionRing)
-  const edgeOuterPerimeterM = computePerimeterM(edgeRing)
-  const transitionPerimeterM = transitionOuterPerimeterM + corePerimeterM
-  const edgePerimeterM = edgeOuterPerimeterM + transitionOuterPerimeterM
-
-  const features = [
-    makePolygonFeature([edgeRing, reverseRing(transitionRing)], { analysis: "buffer", mode, level: "edge", rangeKm: [transitionKm, edgeKm], opacity }),
-    makePolygonFeature([transitionRing, reverseRing(coreRing)], { analysis: "buffer", mode, level: "transition", rangeKm: [coreKm, transitionKm], opacity }),
-    makePolygonFeature(coreRing, { analysis: "buffer", mode, level: "core", rangeKm: [0, coreKm], opacity })
-  ]
-  const geojson = makeFeatureCollection(features)
-  const summary = {
-    mode,
-    coreKm,
-    transitionKm,
-    edgeKm,
-    opacity,
-    coreAreaM2,
-    transitionAreaM2,
-    edgeAreaM2,
-    corePerimeterM,
-    transitionPerimeterM,
-    edgePerimeterM,
-    totalAreaM2: edgeOuterAreaM2
+  const fallbackDistances = [req.coreKm, req.transitionKm, req.edgeKm]
+    .map((value, index) => Math.max(0, clampNumber(value, [50, 100, 150][index]) * 1000))
+  const distancesM = [...new Set((req.distancesM?.length ? req.distancesM : fallbackDistances)
+    .map((value) => Math.max(0, Number(value) || 0))
+    .filter((value) => value > 0))].sort((a, b) => a - b)
+  const enabled = new Set(Array.isArray(req.enabledRingIndexes) ? req.enabledRingIndexes : distancesM.map((_, index) => index))
+  const levelNames = ["core", "transition", "edge"]
+  const selected = distancesM.map((distanceM, index) => ({ distanceM, index })).filter(({ index }) => enabled.has(index))
+  const selectedBuffers = selected.map(({ distanceM }) => makeBufferedFeature(distanceM, {}))
+  const zones = selected.map(({ distanceM, index }, selectedIndex) => {
+    const outer = selectedBuffers[selectedIndex]
+    const zone = selectedIndex === 0 ? outer : turfDifference(featureCollection([outer, selectedBuffers[selectedIndex - 1]])) || outer
+    zone.properties = {
+      analysis: "buffer",
+      mode,
+      level: levelNames[Math.min(index, levelNames.length - 1)],
+      distanceM,
+      rangeM: [selectedIndex === 0 ? 0 : selected[selectedIndex - 1].distanceM, distanceM],
+      opacity
+    }
+    return zone
+  })
+  const totalAreaM2 = selectedBuffers.length ? turfArea(selectedBuffers[selectedBuffers.length - 1]) : 0
+  const ringStats = selected.map(({ distanceM, index }, selectedIndex) => ({
+    level: levelNames[Math.min(index, levelNames.length - 1)],
+    distanceM,
+    rangeM: [selectedIndex === 0 ? 0 : selected[selectedIndex - 1].distanceM, distanceM],
+    areaM2: turfArea(zones[selectedIndex])
+  }))
+  const features = [...zones].reverse()
+  return {
+    geojson: featureCollection(features),
+    summary: { mode, sourceType: req.target.type, distancesM: selected.map(({ distanceM }) => distanceM), ringStats, opacity, totalAreaM2 }
   }
-  return { geojson, summary }
 }
 
 export async function runOverlayAnalysis(req: OverlayRequest): Promise<AnalysisResult> {

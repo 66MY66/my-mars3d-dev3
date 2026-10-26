@@ -73,6 +73,8 @@
               <mars-button>重新圈选</mars-button>
               <template #overlay>
                 <a-menu @click="onReselectMenu">
+                  <a-menu-item key="point">点</a-menu-item>
+                  <a-menu-item key="polyline">线</a-menu-item>
                   <a-menu-item key="rectangle">矩形</a-menu-item>
                   <a-menu-item key="polygon">多边形</a-menu-item>
                 </a-menu>
@@ -93,22 +95,33 @@
 
             <div class="param-grid">
               <div class="param-row">
+                <div class="label">模式：</div>
+                <div class="value">
+                  <mars-select v-model:value="bufferMode" :options="bufferModeOptions" />
+                </div>
+              </div>
+              <div class="param-row">
+                <div class="label">单位：</div>
+                <div class="value">
+                  <mars-select v-model:value="bufferDistanceUnit" :options="bufferUnitOptions" @change="onBufferUnitChange" />
+                </div>
+              </div>
+              <div v-if="bufferMode === 'single'" class="param-row">
                 <div class="label">半径：</div>
                 <div class="value">
-                  <mars-input-number v-model:value="bufferRadiusM" :min="0" :step="50" />
-                  <span class="unit">m</span>
+                  <mars-input-number v-model:value="bufferRadiusM" :min="0" :step="bufferDistanceUnit === 'm' ? 50 : 0.1" />
+                  <span class="unit">{{ bufferDistanceUnit }}</span>
                 </div>
               </div>
-              <div class="param-row">
-                <div class="label">方式：</div>
-                <div class="value">
-                  <mars-select v-model:value="bufferExpandMode" :options="bufferExpandOptions" />
-                </div>
-              </div>
-              <div class="param-row">
-                <div class="label">分级：</div>
-                <div class="value">
-                  <a-checkbox-group v-model:value="bufferLevels" :options="bufferLevelOptions" />
+              <div v-else class="param-row ring-editor-row">
+                <div class="label">多环距离：</div>
+                <div class="value ring-editor">
+                  <label v-for="(distance, index) in bufferRingDistances" :key="index" class="ring-distance-item">
+                    <a-checkbox v-model:checked="bufferRingEnabled[index]" />
+                    <span>{{ bufferRingLabels[index] }}</span>
+                    <mars-input-number v-model:value="bufferRingDistances[index]" :min="0" :step="bufferDistanceUnit === 'm' ? 50 : 0.1" />
+                    <span class="unit">{{ bufferDistanceUnit }}</span>
+                  </label>
                 </div>
               </div>
               <div class="param-row">
@@ -136,6 +149,10 @@
               <mars-button size="small" @click="setRadiusQuick(500)">500m</mars-button>
               <mars-button size="small" @click="setRadiusQuick(1000)">1km</mars-button>
               <mars-button size="small" @click="setRadiusQuick(2000)">2km</mars-button>
+            </div>
+            <div class="preview-actions">
+              <mars-button size="small" :disabled="!canRunBuffer" @click="previewBufferNow">更新预览</mars-button>
+              <mars-button size="small" danger @click="clearBufferResult">清除缓冲结果</mars-button>
             </div>
           </div>
 
@@ -165,21 +182,41 @@
 
         <div v-else class="step-body">
           <div v-if="resultSummary" class="result-summary">
-            <div class="summary-title">结果摘要：</div>
+            <div class="result-heading">
+              <div>
+                <div class="summary-title">分析结果</div>
+                <div class="summary-subtitle">地图已定位到缓冲范围</div>
+              </div>
+              <mars-button size="small" @click="mapWork.flyToAnalysisResult()">定位结果</mars-button>
+            </div>
+            <div class="result-metric-grid">
+              <div v-for="card in bufferResultView.cards" :key="card.key" class="result-metric-card">
+                <span>{{ card.label }}</span>
+                <strong>{{ card.value }}</strong>
+              </div>
+            </div>
             <div class="legend">
-              <div class="legend-row"><span class="swatch core"></span><span class="legend-text">核心</span></div>
-              <div class="legend-row"><span class="swatch transition"></span><span class="legend-text">过渡</span></div>
-              <div class="legend-row"><span class="swatch edge"></span><span class="legend-text">边缘</span></div>
+              <div class="legend-row"><span class="swatch core"></span><span class="legend-text">核心区</span></div>
+              <div class="legend-row"><span class="swatch transition"></span><span class="legend-text">过渡区</span></div>
+              <div class="legend-row"><span class="swatch edge"></span><span class="legend-text">外围区</span></div>
+            </div>
+            <div v-if="bufferResultView.rings.length" class="ring-result-list">
+              <div class="section-caption">分环统计</div>
+              <div v-for="ring in bufferResultView.rings" :key="ring.key" class="ring-result-row">
+                <span class="ring-dot" :class="ring.level"></span>
+                <span class="ring-name">{{ ring.label }}</span>
+                <span class="ring-range">{{ ring.rangeText }}</span>
+                <strong>{{ ring.areaText }}</strong>
+              </div>
+            </div>
+            <div class="data-coverage-note">
+              当前结果包含距离、范围和面积统计；行政区、人口、经济、房屋等内容将在对应数据图层可用时参与统计。
             </div>
             <div class="summary-actions grid2">
               <mars-button @click="exportGeoJSON">导出GeoJSON</mars-button>
               <mars-button @click="exportCSV">导出CSV</mars-button>
               <mars-button @click="generatePdf">生成PDF</mars-button>
               <mars-button @click="saveAsTemplate">另存为模板</mars-button>
-            </div>
-            <div v-for="item in displaySummary" :key="item.k" class="summary-row">
-              <span class="k">{{ item.label }}</span>
-              <span class="v">{{ item.v }}</span>
             </div>
             <div v-if="sinkStatusText" class="sink-status">{{ sinkStatusText }}</div>
           </div>
@@ -295,6 +332,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch, inject } from "vue"
+import {
+  buildBufferRequestParams,
+  buildBufferResultView,
+  convertDistanceValue,
+  createBufferRunCoordinator,
+  type BufferDistanceUnit,
+  type BufferMode
+} from "./buffer-model"
 import { useWidget, useWidgetStore } from "@mars/common/store/widget"
 import useLifecycle from "@mars/common/uses/use-lifecycle"
 import * as mapWork from "./map"
@@ -361,22 +406,20 @@ const topN = ref(20)
 const stepIndex = ref(0)
 const previewOn = ref(true)
 const bufferRadiusM = ref(1000)
-const bufferExpandMode = ref<"outer">("outer")
-const bufferLevels = ref<Array<"core" | "transition" | "edge">>(["core", "transition", "edge"])
+const bufferMode = ref<BufferMode>("multi")
+const bufferDistanceUnit = ref<BufferDistanceUnit>("m")
+const previousBufferDistanceUnit = ref<BufferDistanceUnit>("m")
+const bufferRingDistances = ref([500, 1000, 2000])
+const bufferRingEnabled = ref([true, true, true])
+const bufferRingLabels = ["内环", "中环", "外环"]
 const progressStageText = ref("")
 const runToken = ref(0)
+const bufferRunCoordinator = createBufferRunCoordinator()
 const sinkStatusText = ref("")
 const selectedTemplateId = ref<string | null>(null)
 
-const bufferExpandOptions = [
-  { label: "外扩", value: "outer" }
-]
-
-const bufferLevelOptions = [
-  { label: "核心", value: "core" },
-  { label: "过渡", value: "transition" },
-  { label: "边缘", value: "edge" }
-]
+const bufferModeOptions = [{ label: "单环缓冲", value: "single" }, { label: "多环缓冲", value: "multi" }]
+const bufferUnitOptions = [{ label: "米（m）", value: "m" }, { label: "公里（km）", value: "km" }]
 
 const templatesStorageKey = "ksh003_buffer_templates_v1"
 const templates = ref<Array<{ id: string; name: string; params: any }>>([])
@@ -515,6 +558,15 @@ function applyWidgetData(data: any) {
   if (data.target !== undefined) {
     target.value = data.target
   }
+  if (data.sourceGraphic) {
+    mapWork.linkSourceGraphic(data.sourceGraphic, handleLinkedTargetChange, clearTarget)
+  }
+}
+
+function handleLinkedTargetChange(updatedTarget: any) {
+  target.value = { ...updatedTarget, source: target.value?.source || "marker", sourceId: target.value?.sourceId }
+  resultSummary.value = null
+  schedulePreview()
 }
 
 watch(
@@ -557,12 +609,22 @@ function initParamsFromDefs(defs: any[]) {
   currentParams.value = params
 }
 
-const hasValidTarget = computed(() => !!target.value?.ring && Array.isArray(target.value.ring) && target.value.ring.length >= 3)
+const hasValidTarget = computed(() => {
+  const value = target.value
+  if (value?.type === "point") {
+    return Array.isArray(value.coordinates) && value.coordinates.length >= 2 && value.coordinates.every(Number.isFinite)
+  }
+  if (value?.type === "polyline") {
+    return Array.isArray(value.coordinates) && value.coordinates.length >= 2
+  }
+  return value?.type === "polygon" && Array.isArray(value.ring) && value.ring.length >= 3
+})
 
 const bufferSourceText = computed(() => {
   const s = String(target.value?.source || "")
   if (s === "marker") {
-    return "标记面"
+    const typeNames: Record<string, string> = { point: "点", polyline: "线", polygon: "面" }
+    return `${typeNames[target.value?.type] || ""}标记`
   }
   if (s === "selection") {
     return "圈选"
@@ -581,6 +643,15 @@ function ringToCartesianPositions(ring: Array<[number, number]>) {
 }
 
 const bufferAreaText = computed(() => {
+  if (target.value?.type !== "polygon") {
+    if (target.value?.type === "point") {
+      return "点要素"
+    }
+    if (target.value?.type === "polyline") {
+      return "线要素"
+    }
+    return "—"
+  }
   const ring = target.value?.ring as Array<[number, number]> | undefined
   if (!ring || ring.length < 3) {
     return "—"
@@ -608,10 +679,10 @@ const canRunBuffer = computed(() => {
     return false
   }
   const r = Number(bufferRadiusM.value)
-  if (!Number.isFinite(r) || r <= 0) {
-    return false
+  if (bufferMode.value === "single") {
+    return Number.isFinite(r) && r > 0
   }
-  return true
+  return bufferRingDistances.value.some((distance, index) => bufferRingEnabled.value[index] && Number.isFinite(Number(distance)) && Number(distance) > 0)
 })
 
 async function runAnalysis() {
@@ -646,6 +717,7 @@ function goPrev() {
 }
 
 function resetAll() {
+  bufferRunCoordinator.cancel()
   stepIndex.value = 0
   progressStageText.value = ""
   sinkStatusText.value = ""
@@ -687,24 +759,19 @@ const displaySummary = computed(() => {
   const push = (k: string, label: string, v: any) => items.push({ k, label, v: v == null ? "—" : String(v) })
 
   if (toolType.value === "buffer") {
-    const u = String(currentParams.value?.distanceUnit ?? "km")
-    const fmtD = (km: any) => {
-      const v = Number(km)
+    const fmtD = (meters: any) => {
+      const v = Number(meters)
       if (!Number.isFinite(v)) {
         return "—"
       }
-      if (u === "m") {
-        return `${Math.round(v * 1000).toLocaleString()} m`
-      }
-      return `${v} km`
+      return v >= 1000 ? `${Number((v / 1000).toFixed(3))} km` : `${Math.round(v).toLocaleString()} m`
     }
     if (s.mode) { push("mode", "缓冲类型", s.mode === "multi" ? "多环缓冲" : "单环缓冲") }
-    if (s.coreKm != null) { push("coreKm", "核心区半径", fmtD(s.coreKm)) }
-    if (s.transitionKm != null) { push("transitionKm", "过渡区半径", fmtD(s.transitionKm)) }
-    if (s.edgeKm != null) { push("edgeKm", "边缘区半径", fmtD(s.edgeKm)) }
-    if (s.radiusKm != null) { push("radiusKm", "单环半径", fmtD(s.radiusKm)) }
+    if (s.sourceType) { push("sourceType", "对象类型", ({ point: "点", polyline: "线", polygon: "面" } as any)[s.sourceType] || s.sourceType) }
+    if (Array.isArray(s.distancesM)) { s.distancesM.forEach((distance: number, index: number) => push(`ring${index}`, `${bufferRingLabels[index] || `第${index + 1}环`}距离`, fmtD(distance))) }
+    if (s.radiusM != null) { push("radiusM", "单环半径", fmtD(s.radiusM)) }
     if (s.areaM2 != null) { push("areaM2", "面积", `${Math.round(Number(s.areaM2)).toLocaleString()} m²`) }
-    if (s.perimeterM != null) { push("perimeterM", "周长", `${Math.round(Number(s.perimeterM)).toLocaleString()} m`) }
+    if (s.totalAreaM2 != null && s.areaM2 == null) { push("totalAreaM2", "最外层面积", `${Math.round(Number(s.totalAreaM2)).toLocaleString()} m²`) }
     return items
   }
 
@@ -754,6 +821,8 @@ const displaySummary = computed(() => {
   return items
 })
 
+const bufferResultView = computed(() => buildBufferResultView(resultSummary.value || {}))
+
 function flyToPoint(idx: number) {
   mapWork.flyToAnalysisPoint(idx)
 }
@@ -774,37 +843,24 @@ function showBufferHelp() {
 }
 
 function buildBufferParams(): Record<string, any> {
-  const radiusM = Math.max(0, Number(bufferRadiusM.value) || 0)
-  const multi = true
-  const params: Record<string, any> = {
-    mode: multi ? "multi" : "single",
-    distanceUnit: "m",
-    opacity: 70,
-    smooth: 64
-  }
-  if (multi) {
-    params.coreKm = radiusM
-    params.transitionKm = radiusM * 2
-    params.edgeKm = radiusM * 3
-    if (!bufferLevels.value.includes("core")) {
-      params.coreKm = 0
-    }
-    if (!bufferLevels.value.includes("transition")) {
-      params.transitionKm = 0
-    }
-    if (!bufferLevels.value.includes("edge")) {
-      params.edgeKm = 0
-    }
-  } else {
-    params.radiusKm = radiusM
-  }
-  return params
+  return buildBufferRequestParams({
+    mode: bufferMode.value,
+    unit: bufferDistanceUnit.value,
+    distance: Number(bufferRadiusM.value),
+    ringDistances: bufferRingDistances.value.map(Number),
+    enabledRingIndexes: bufferRingEnabled.value.map((enabled, index) => enabled ? index : -1).filter((index) => index >= 0)
+  })
 }
 
 async function runBufferAnalysis() {
   if (!canRunBuffer.value) {
     return
   }
+  if (previewTimer) {
+    window.clearTimeout(previewTimer)
+    previewTimer = null
+  }
+  const bufferToken = bufferRunCoordinator.beginAnalysis()
   const token = Date.now()
   runToken.value = token
   sinkStatusText.value = ""
@@ -818,23 +874,26 @@ async function runBufferAnalysis() {
       }
     }, 300)
     const summary = await mapWork.runToolAnalysis("buffer", buildBufferParams(), target.value)
-    if (runToken.value !== token) {
+    if (runToken.value !== token || !bufferRunCoordinator.isCurrent(bufferToken) || !summary) {
       return
     }
     progressStageText.value = "渲染"
     resultSummary.value = summary || null
     resultPoints.value = mapWork.getAnalysisPoints()
+    mapWork.flyToAnalysisResult()
     window.setTimeout(() => {
       if (runToken.value === token) {
         progressStageText.value = "完成"
       }
     }, 150)
+    stepIndex.value = 3
     await autoSinkOutputs()
   } catch (e: any) {
     if (runToken.value === token) {
       $alert(e?.message || "分析失败", title.value)
     }
   } finally {
+    bufferRunCoordinator.finish(bufferToken)
     if (runToken.value === token) {
       running.value = false
     }
@@ -842,6 +901,11 @@ async function runBufferAnalysis() {
 }
 
 function cancelRun() {
+  bufferRunCoordinator.cancel()
+  if (previewTimer) {
+    window.clearTimeout(previewTimer)
+    previewTimer = null
+  }
   runToken.value = Date.now()
   running.value = false
   progressStageText.value = ""
@@ -851,10 +915,11 @@ function locateTarget() {
   if (!hasValidTarget.value) {
     return
   }
-  mapWork.flyToRing(target.value.ring, 1.2)
+  mapWork.flyToTarget(target.value, 1.2)
 }
 
 function clearTarget() {
+  mapWork.unlinkSourceGraphic()
   target.value = null
   mapWork.clearTargetGraphic()
   mapWork.clearAnalysisResult()
@@ -865,13 +930,15 @@ function clearTarget() {
 
 async function onReselectMenu(info: any) {
   const key = String(info?.key || "")
-  const type = key === "rectangle" ? "rectangle" : "polygon"
+  const type = (["point", "polyline", "rectangle", "polygon"].includes(key) ? key : "polygon") as "point" | "polyline" | "rectangle" | "polygon"
   const picked = await mapWork.startSelectTarget(type as any)
-  if (!picked?.ring || picked.ring.length < 3) {
+  if (!picked) {
     $message("圈选失败")
     return
   }
-  target.value = { type: "polygon", ring: picked.ring, source: "selection" }
+  mapWork.unlinkSourceGraphic()
+  target.value = { ...picked, source: "selection" }
+  mapWork.linkDrawnTarget(handleLinkedTargetChange, clearTarget)
   resultSummary.value = null
   resultPoints.value = []
   mapWork.clearAnalysisResult()
@@ -881,7 +948,34 @@ async function onReselectMenu(info: any) {
 }
 
 function setRadiusQuick(v: number) {
-  bufferRadiusM.value = v
+  const value = convertDistanceValue(v, "m", bufferDistanceUnit.value)
+  bufferRadiusM.value = value
+  bufferRingDistances.value = [value, value * 2, value * 3]
+}
+
+function onBufferUnitChange() {
+  const from = previousBufferDistanceUnit.value
+  const to = bufferDistanceUnit.value
+  bufferRadiusM.value = convertDistanceValue(bufferRadiusM.value, from, to)
+  bufferRingDistances.value = bufferRingDistances.value.map((value) => convertDistanceValue(value, from, to))
+  previousBufferDistanceUnit.value = to
+}
+
+function previewBufferNow() {
+  schedulePreview(true)
+}
+
+function clearBufferResult() {
+  bufferRunCoordinator.cancel()
+  if (previewTimer) {
+    window.clearTimeout(previewTimer)
+    previewTimer = null
+  }
+  runToken.value = Date.now()
+  mapWork.clearAnalysisResult()
+  resultSummary.value = null
+  resultPoints.value = []
+  progressStageText.value = ""
 }
 
 function loadTemplates() {
@@ -921,9 +1015,10 @@ function applyTemplate() {
   if (Number.isFinite(Number(p.radiusM))) {
     bufferRadiusM.value = Number(p.radiusM)
   }
-  if (Array.isArray(p.levels)) {
-    bufferLevels.value = p.levels
-  }
+  if (p.mode === "single" || p.mode === "multi") { bufferMode.value = p.mode }
+  if (p.unit === "m" || p.unit === "km") { bufferDistanceUnit.value = p.unit; previousBufferDistanceUnit.value = p.unit }
+  if (Array.isArray(p.ringDistances)) { bufferRingDistances.value = p.ringDistances.map(Number) }
+  if (Array.isArray(p.ringEnabled)) { bufferRingEnabled.value = p.ringEnabled.map(Boolean) }
   if (typeof p.previewOn === "boolean") {
     previewOn.value = p.previewOn
   }
@@ -943,7 +1038,10 @@ function saveAsTemplate() {
     name,
     params: {
       radiusM: Number(bufferRadiusM.value),
-      levels: [...bufferLevels.value],
+      mode: bufferMode.value,
+      unit: bufferDistanceUnit.value,
+      ringDistances: [...bufferRingDistances.value],
+      ringEnabled: [...bufferRingEnabled.value],
       previewOn: !!previewOn.value
     }
   })
@@ -985,8 +1083,8 @@ function generatePdf() {
 }
 
 let previewTimer: number | null = null
-function schedulePreview() {
-  if (!previewOn.value) {
+function schedulePreview(force = false) {
+  if (!previewOn.value && !force) {
     return
   }
   if (!hasValidTarget.value) {
@@ -999,6 +1097,14 @@ function schedulePreview() {
     window.clearTimeout(previewTimer)
   }
   previewTimer = window.setTimeout(async () => {
+    previewTimer = null
+    if (running.value) {
+      return
+    }
+    const previewToken = bufferRunCoordinator.beginPreview()
+    if (!previewToken) {
+      return
+    }
     try {
       await mapWork.runToolAnalysis("buffer", buildBufferParams(), target.value)
     } catch {
@@ -1006,11 +1112,15 @@ function schedulePreview() {
   }, 450)
 }
 
-watch([bufferRadiusM, bufferLevels, previewOn, target], () => {
+watch([bufferRadiusM, bufferMode, bufferDistanceUnit, bufferRingDistances, bufferRingEnabled, previewOn, target], () => {
   if (toolType.value !== "buffer") {
     return
   }
   if (stepIndex.value > 1) {
+    return
+  }
+  if (!previewOn.value) {
+    mapWork.clearAnalysisResult()
     return
   }
   schedulePreview()
@@ -1202,6 +1312,21 @@ async function autoSinkOutputs() {
       flex-wrap: wrap;
     }
 
+    .ring-editor-row { align-items: start; }
+    .ring-editor { display: grid !important; gap: 8px; }
+    .ring-distance-item {
+      display: grid;
+      grid-template-columns: auto 42px minmax(90px, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      color: var(--mars-text-color);
+    }
+    .preview-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
     .run-actions {
       display: grid;
       gap: 8px;
@@ -1217,6 +1342,118 @@ async function autoSinkOutputs() {
       grid-template-columns: 1fr 1fr;
       gap: 8px;
       margin-bottom: 6px;
+    }
+
+    .result-summary {
+      display: grid;
+      gap: 12px;
+    }
+
+    .result-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .summary-title {
+      color: var(--mars-text-color);
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .summary-subtitle,
+    .section-caption {
+      color: var(--mars-text-color-placeholder);
+      font-size: 12px;
+    }
+
+    .result-metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .result-metric-card {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid color-mix(in srgb, var(--color-primary, #2d8cf0) 24%, transparent);
+      border-radius: var(--popup-item-radius, 8px);
+      background: color-mix(in srgb, var(--color-primary, #2d8cf0) 8%, transparent);
+      display: grid;
+      gap: 5px;
+
+      span {
+        color: var(--mars-text-color-placeholder);
+        font-size: 12px;
+      }
+
+      strong {
+        color: var(--mars-text-color);
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .legend-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--mars-text-color-placeholder);
+      font-size: 12px;
+    }
+
+    .swatch,
+    .ring-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    .swatch.core,
+    .ring-dot.core { background: #d50000; }
+    .swatch.transition,
+    .ring-dot.transition { background: #ff6d00; }
+    .swatch.edge,
+    .ring-dot.edge { background: #ffea00; }
+
+    .ring-result-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .ring-result-row {
+      display: grid;
+      grid-template-columns: auto 54px 1fr auto;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--mars-text-color);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ring-range {
+      color: var(--mars-text-color-placeholder);
+    }
+
+    .data-coverage-note {
+      padding: 9px 10px;
+      border-left: 3px solid var(--color-primary, #2d8cf0);
+      background: color-mix(in srgb, var(--color-primary, #2d8cf0) 7%, transparent);
+      color: var(--mars-text-color-placeholder);
+      font-size: 12px;
+      line-height: 1.55;
     }
 
     .sink-status {

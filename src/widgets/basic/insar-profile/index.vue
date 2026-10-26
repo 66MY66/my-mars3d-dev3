@@ -87,18 +87,48 @@
         <div v-else class="step-body result-step">
           <div v-if="resultSummary" class="result-layout">
             <div class="chart-card">
+              <div class="chart-heading">
+                <div>
+                  <div class="chart-title">地形高程剖面</div>
+                  <div class="chart-subtitle">滚轮缩放，拖动查看局部；悬停位置同步到地图</div>
+                </div>
+                <span class="terrain-status" :class="{ fallback: resultSummary.terrainSampled === false }">
+                  {{ resultSummary.terrainSampled === false ? "地形采样回退" : "真实地形采样" }}
+                </span>
+              </div>
               <div ref="chartRef" class="profile-chart"></div>
             </div>
 
             <div class="result-card">
+              <div class="result-title">剖面概览</div>
+              <div class="metric-grid">
+                <div class="metric-item">
+                  <span>路径长度</span>
+                  <strong>{{ formatSummaryDistance(resultSummary.totalLengthM) }}</strong>
+                </div>
+                <div class="metric-item">
+                  <span>最大高差</span>
+                  <strong>{{ formatSummaryElevation(resultSummary.reliefM) }}</strong>
+                </div>
+                <div class="metric-item">
+                  <span>最低高程</span>
+                  <strong>{{ formatSummaryElevation(resultSummary.minElevationM) }}</strong>
+                </div>
+                <div class="metric-item">
+                  <span>最高高程</span>
+                  <strong>{{ formatSummaryElevation(resultSummary.maxElevationM) }}</strong>
+                </div>
+              </div>
               <div class="summary-actions">
                 <mars-button @click="exportCsv">导出CSV</mars-button>
                 <mars-button @click="exportPng">导出PNG</mars-button>
                 <mars-button @click="generatePdf">生成PDF</mars-button>
               </div>
-              <div v-for="item in displaySummary" :key="item.k" class="summary-row">
-                <span class="k">{{ item.label }}</span>
-                <span class="v">{{ item.v }}</span>
+              <div class="summary-detail-list">
+                <div v-for="item in displaySummary" :key="item.k" class="summary-row">
+                  <span class="k">{{ item.label }}</span>
+                  <span class="v">{{ item.v }}</span>
+                </div>
               </div>
               <div v-if="sinkStatusText" class="sink-status">{{ sinkStatusText }}</div>
             </div>
@@ -155,6 +185,8 @@ const sinkStatusText = ref("")
 const resultSummary = ref<Record<string, any> | null>(null)
 const chartRef = ref<HTMLDivElement | null>(null)
 let chart: echarts.ECharts | null = null
+let chartResizeObserver: ResizeObserver | null = null
+let observedChartElement: HTMLDivElement | null = null
 let runToken = 0
 
 const hasValidTarget = computed(() => Array.isArray(target.value?.points) && target.value.points.length >= 2)
@@ -208,6 +240,7 @@ const displaySummary = computed(() => {
   if (summary.endElevationM != null) { push("endElevationM", "终点高程", `${Number(summary.endElevationM).toFixed(2)} m`) }
   if (summary.elevationDeltaM != null) { push("elevationDeltaM", "起终点高程差", `${Number(summary.elevationDeltaM).toFixed(2)} m`) }
   if (summary.smoothWindow != null) { push("smoothWindow", "平滑窗口", `${summary.smoothWindow}`) }
+  if (summary.terrainSampled != null) { push("terrainSampled", "高程来源", summary.terrainSampled ? "真实地形采样" : "原始高度回退") }
   return items
 })
 
@@ -248,6 +281,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  mapWork.clearProfilePosition()
+  chartResizeObserver?.disconnect()
+  chartResizeObserver = null
+  observedChartElement = null
   if (chart) {
     chart.dispose()
     chart = null
@@ -314,6 +351,7 @@ async function runProfile() {
     }
     progressText.value = "图表渲染"
     resultSummary.value = summary || null
+    stepIndex.value = 3
     await nextTick()
     renderChart()
     progressText.value = "完成"
@@ -340,6 +378,7 @@ function resetAll() {
   progressText.value = ""
   sinkStatusText.value = ""
   resultSummary.value = null
+  mapWork.clearProfilePosition()
   mapWork.clearAnalysisResult()
 }
 
@@ -352,36 +391,88 @@ function renderChart() {
   if (!chart) {
     chart = echarts.init(el)
   }
+  if (observedChartElement !== el && typeof ResizeObserver !== "undefined") {
+    chartResizeObserver?.disconnect()
+    observedChartElement = el
+    chartResizeObserver = new ResizeObserver(() => chart?.resize())
+    chartResizeObserver.observe(el)
+  }
+  chart.off("updateAxisPointer")
+  chart.getZr().off("globalout")
   chart.setOption({
     animation: false,
+    backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
+      axisPointer: { type: "cross", snap: true },
+      backgroundColor: "rgba(12, 24, 38, 0.94)",
+      borderColor: "rgba(64, 169, 255, 0.5)",
+      textStyle: { color: "#f4f8fc" },
       formatter(params: any) {
         const first = Array.isArray(params) ? params[0] : null
         if (!first) {
           return ""
         }
         const data = first.data || {}
-        return `距离: ${(Number(data.distanceM || 0) / 1000).toFixed(3)} km<br/>高程: ${Number(data.value || 0).toFixed(2)} m`
+        return [
+          `距起点：${(Number(data.distanceM || 0) / 1000).toFixed(3)} km`,
+          `高程：${Number(data.value || 0).toFixed(2)} m`,
+          `经度：${Number(data.lng || 0).toFixed(6)}`,
+          `纬度：${Number(data.lat || 0).toFixed(6)}`
+        ].join("<br/>")
       }
     },
-    grid: { left: 50, right: 20, top: 20, bottom: 40 },
+    toolbox: {
+      right: 8,
+      top: 4,
+      iconStyle: { borderColor: "#a9c7df" },
+      emphasis: { iconStyle: { borderColor: "#40a9ff" } },
+      feature: { restore: { title: "恢复全部" } }
+    },
+    grid: { left: 62, right: 26, top: 46, bottom: 78 },
     xAxis: {
       type: "category",
       name: "距离(km)",
+      nameTextStyle: { color: "#93a9ba" },
+      axisLine: { lineStyle: { color: "rgba(160, 190, 212, 0.45)" } },
+      axisLabel: { color: "#a9bbc9" },
+      splitLine: { show: false },
       data: samples.map((item) => (item.distanceM / 1000).toFixed(3))
     },
     yAxis: {
       type: "value",
-      name: "高程(m)"
+      name: "高程(m)",
+      scale: true,
+      nameTextStyle: { color: "#93a9ba" },
+      axisLabel: { color: "#a9bbc9" },
+      splitLine: { lineStyle: { color: "rgba(160, 190, 212, 0.12)" } }
     },
+    dataZoom: [
+      { type: "inside", xAxisIndex: 0, filterMode: "none", zoomOnMouseWheel: true, moveOnMouseMove: true },
+      {
+        type: "slider",
+        xAxisIndex: 0,
+        height: 18,
+        bottom: 18,
+        borderColor: "rgba(160, 190, 212, 0.25)",
+        backgroundColor: "rgba(8, 22, 34, 0.45)",
+        fillerColor: "rgba(64, 169, 255, 0.2)",
+        handleStyle: { color: "#40a9ff", borderColor: "#d9f2ff" },
+        textStyle: { color: "#93a9ba" }
+      }
+    ],
     series: [
       {
         type: "line",
         smooth: true,
         showSymbol: false,
-        lineStyle: { width: 2, color: "#1677ff" },
-        areaStyle: { color: "rgba(22,119,255,0.18)" },
+        lineStyle: { width: 2.5, color: "#40a9ff" },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: "rgba(64,169,255,0.38)" },
+            { offset: 1, color: "rgba(64,169,255,0.03)" }
+          ])
+        },
         data: samples.map((item) => ({
           value: Number(item.elevationM.toFixed(2)),
           distanceM: item.distanceM,
@@ -391,7 +482,31 @@ function renderChart() {
       }
     ]
   })
+  chart.on("updateAxisPointer", (event: any) => {
+    const directIndex = Number(event?.dataIndex ?? event?.seriesDataIndices?.[0]?.dataIndex)
+    const axisValue = String(event?.axesInfo?.[0]?.value ?? "")
+    const index = Number.isInteger(directIndex)
+      ? directIndex
+      : samples.findIndex((item) => (item.distanceM / 1000).toFixed(3) === axisValue)
+    if (Number.isInteger(index) && index >= 0 && index < samples.length) {
+      mapWork.showProfilePosition(index)
+    }
+  })
+  chart.getZr().on("globalout", () => mapWork.clearProfilePosition())
   chart.resize()
+}
+
+function formatSummaryDistance(value: any) {
+  const meters = Number(value)
+  if (!Number.isFinite(meters)) {
+    return "—"
+  }
+  return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${meters.toFixed(0)} m`
+}
+
+function formatSummaryElevation(value: any) {
+  const meters = Number(value)
+  return Number.isFinite(meters) ? `${meters.toFixed(1)} m` : "—"
 }
 
 watch(
@@ -600,16 +715,117 @@ async function autoSinkOutputs() {
 
   .result-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     flex: 1;
     min-height: 0;
+  }
+
+  .chart-card {
+    min-width: 0;
+    background:
+      linear-gradient(180deg, rgba(24, 51, 72, 0.32), rgba(8, 22, 34, 0.14)),
+      rgba(255, 255, 255, 0.015);
+  }
+
+  .chart-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 4px 8px;
+  }
+
+  .chart-title,
+  .result-title {
+    color: var(--mars-text-color);
+    font-size: 15px;
+    font-weight: 650;
+  }
+
+  .chart-subtitle {
+    margin-top: 4px;
+    color: var(--mars-text-color-placeholder);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .terrain-status {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border: 1px solid rgba(82, 196, 26, 0.4);
+    border-radius: 12px;
+    background: rgba(82, 196, 26, 0.1);
+    color: #95de64;
+    font-size: 12px;
+
+    &.fallback {
+      border-color: rgba(250, 173, 20, 0.45);
+      background: rgba(250, 173, 20, 0.1);
+      color: #ffd666;
+    }
+  }
+
+  .result-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metric-item {
+    min-width: 0;
+    padding: 9px;
+    border-left: 2px solid #40a9ff;
+    background: rgba(64, 169, 255, 0.08);
+
+    span,
+    strong {
+      display: block;
+    }
+
+    span {
+      color: var(--mars-text-color-placeholder);
+      font-size: 11px;
+    }
+
+    strong {
+      margin-top: 4px;
+      color: var(--mars-text-color);
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .summary-detail-list {
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 3px;
   }
 
   .profile-chart {
     width: 100%;
     min-height: 280px;
     height: 420px;
+  }
+
+  @media (max-width: 760px) {
+    .result-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .profile-chart {
+      height: 340px;
+    }
   }
 }
 </style>

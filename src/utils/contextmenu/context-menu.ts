@@ -1022,13 +1022,35 @@ ${vertices.map((v) => `  ${v.lng.toFixed(6)}, ${v.lat.toFixed(6)}`).join("\n")}`
       onToast(reasonNoPermission, "error")
       return
     }
-    const ring = resolveTargetRingForAnalysis(e)
-    if (!ring || ring.length < 3) {
+    let target: any = null
+    if (isPointMarker(e)) {
+      const center = getGraphicCenter(e.graphic)
+      if (center) {
+        target = { type: "point", coordinates: [center.lng, center.lat], source: "marker", sourceId: e.graphic?.id }
+      }
+    } else if (isLineMarker(e)) {
+      const coordinates = (e.graphic?.positions || e.graphic?.coordinates || []).map((position: any) => {
+        try {
+          const point = mars3d.LngLatPoint.fromCartesian(position)
+          return [point.lng, point.lat]
+        } catch {
+          return Array.isArray(position) ? [Number(position[0]), Number(position[1])] : null
+        }
+      }).filter((position: any) => Array.isArray(position) && position.every(Number.isFinite))
+      if (coordinates.length >= 2) {
+        target = { type: "polyline", coordinates, source: "marker", sourceId: e.graphic?.id }
+      }
+    } else {
+      const ring = resolveTargetRingForAnalysis(e)
+      if (ring && ring.length >= 3) {
+        target = { type: "polygon", ring, source: isAnyPolygon(e) ? "marker" : "selection", sourceId: e.graphic?.id }
+      }
+    }
+    if (!target) {
       onToast(reasonNoSelection, "info")
       return
     }
-    const source = isAnyPolygon(e) ? "marker" : "selection"
-    activateWidget!("spatial-analysis", { type: "buffer", target: { type: "polygon", ring, source } })
+    activateWidget!("spatial-analysis", { type: "buffer", target, sourceGraphic: e.graphic })
   }
 
   /** 叠加分析 */
@@ -1607,6 +1629,14 @@ ${vertices.map((v) => `  ${v.lng.toFixed(6)}, ${v.lat.toFixed(6)}`).join("\n")}`
         return graphic ? "" : "请先选择线对象或生成剖面线"
       },
       callback: handleProfileAnalysis
+    },
+    {
+      text: "缓冲区分析",
+      icon: "fa fa-bullseye",
+      show: function (e: any) {
+        return isLineMarker(e)
+      },
+      callback: handleBufferAnalysis
     },
     {
       text: "编辑",

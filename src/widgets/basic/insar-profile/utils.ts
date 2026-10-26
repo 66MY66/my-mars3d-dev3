@@ -13,6 +13,13 @@ export type ProfileSample = {
   elevationM: number
 }
 
+export function applyTerrainHeights(samples: ProfileSample[], heights: number[]): ProfileSample[] {
+  return samples.map((sample, index) => ({
+    ...sample,
+    elevationM: Number.isFinite(Number(heights[index])) ? Number(heights[index]) : sample.elevationM
+  }))
+}
+
 function toRad(value: number) {
   return (value * Math.PI) / 180
 }

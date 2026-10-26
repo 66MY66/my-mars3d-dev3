@@ -1,6 +1,7 @@
 import * as mars3d from "mars3d"
 import {
   buildProfileSummary,
+  applyTerrainHeights,
   computeLineLengthMeters,
   interpolateProfilePoints,
   profileSamplesToCsv,
@@ -21,6 +22,7 @@ let resultLayer: any = null
 let lastTargetGraphic: any = null
 let lastSamples: ProfileSample[] = []
 let lastSummary: Record<string, any> | null = null
+let hoverGraphic: any = null
 
 export function onMounted(mapInstance: mars3d.Map): void {
   map = mapInstance
@@ -41,6 +43,7 @@ export function onUnmounted(): void {
   lastTargetGraphic = null
   lastSamples = []
   lastSummary = null
+  hoverGraphic = null
   map = null
 }
 
@@ -73,6 +76,7 @@ export function clearAnalysisResult() {
     ensureResultLayer()?.clear?.()
   } catch {
   }
+  hoverGraphic = null
 }
 
 export function clearTargetGraphic() {
@@ -210,9 +214,9 @@ export function flyToTarget(target: ProfileTarget | null, duration?: number) {
   })
 }
 
-async function sampleHeights(points: ProfilePoint[]): Promise<ProfilePoint[]> {
+async function sampleHeights(points: ProfilePoint[]): Promise<{ points: ProfilePoint[]; terrainSampled: boolean }> {
   if (!map || !points.length) {
-    return points
+    return { points, terrainSampled: false }
   }
   const Cesium = mars3d.Cesium
   const cartographics = points.map((item) => Cesium.Cartographic.fromDegrees(item.lng, item.lat))
@@ -220,12 +224,18 @@ async function sampleHeights(points: ProfilePoint[]): Promise<ProfilePoint[]> {
     const viewer = (map as any).viewer
     const terrainProvider = viewer?.terrainProvider
     const sampled = await Cesium.sampleTerrainMostDetailed(terrainProvider, cartographics)
-    return points.map((item, index) => ({
-      ...item,
-      height: Number.isFinite(Number(sampled[index]?.height)) ? Number(sampled[index].height) : Number(item.height || 0)
-    }))
+    return {
+      points: points.map((item, index) => ({
+        ...item,
+        height: Number.isFinite(Number(sampled[index]?.height)) ? Number(sampled[index].height) : Number(item.height || 0)
+      })),
+      terrainSampled: true
+    }
   } catch {
-    return points.map((item) => ({ ...item, height: Number(item.height || 0) }))
+    return {
+      points: points.map((item) => ({ ...item, height: Number(item.height || 0) })),
+      terrainSampled: false
+    }
   }
 }
 
@@ -241,11 +251,11 @@ function renderResult(target: ProfileTarget, samples: ProfileSample[]) {
   const start = samples[0]
   const end = samples[samples.length - 1]
   const line = new mars3d.graphic.PolylineEntity({
-    positions: target.points.map((item) => [item.lng, item.lat, item.height || 0]),
+    positions: target.points.map((item) => [item.lng, item.lat]),
     style: {
       color: "#40a9ff",
-      width: 3,
-      clampToGround: false
+      width: 5,
+      clampToGround: true
     }
   })
   layer.addGraphic(line)
@@ -284,9 +294,14 @@ export async function runProfileAnalysis(target: ProfileTarget, params: Record<s
   renderTargetLine(target)
   const sampleCount = Math.max(16, Math.min(512, Math.floor(Number(params.sampleCount) || 128)))
   const smoothWindow = Math.max(1, Math.min(21, Math.floor(Number(params.smoothWindow) || 1)))
-  const sourcePoints = await sampleHeights(target.points)
-  const sampledBase = interpolateProfilePoints(sourcePoints, sampleCount)
-  const sampled = smoothElevations(sampledBase, smoothWindow)
+  const coordinateSamples = interpolateProfilePoints(target.points, sampleCount)
+  const terrainResult = await sampleHeights(coordinateSamples.map((sample) => ({
+    lng: sample.lng,
+    lat: sample.lat,
+    height: sample.elevationM
+  })))
+  const terrainSamples = applyTerrainHeights(coordinateSamples, terrainResult.points.map((point) => Number(point.height)))
+  const sampled = smoothElevations(terrainSamples, smoothWindow)
   const summary = buildProfileSummary(sampled)
   if (!summary) {
     throw new Error("剖面采样失败")
@@ -297,9 +312,10 @@ export async function runProfileAnalysis(target: ProfileTarget, params: Record<s
     sourcePointCount: target.points.length,
     smoothWindow,
     sampleCount,
-    totalLengthM: computeLineLengthMeters(sourcePoints)
+    totalLengthM: computeLineLengthMeters(target.points),
+    terrainSampled: terrainResult.terrainSampled
   }
-  renderResult({ ...target, points: sourcePoints }, sampled)
+  renderResult(target, sampled)
   return lastSummary
 }
 
@@ -309,6 +325,49 @@ export function getProfileSamples() {
 
 export function getProfileSummary() {
   return lastSummary ? { ...lastSummary } : null
+}
+
+export function showProfilePosition(index: number) {
+  const layer = ensureResultLayer()
+  const sample = lastSamples[index]
+  if (!layer || !sample) {
+    return
+  }
+  try {
+    if (hoverGraphic) {
+      layer.removeGraphic?.(hoverGraphic)
+    }
+  } catch {
+  }
+  hoverGraphic = new mars3d.graphic.PointEntity({
+    position: [sample.lng, sample.lat, sample.elevationM],
+    style: {
+      color: "#00e5ff",
+      pixelSize: 12,
+      outline: true,
+      outlineColor: "#ffffff",
+      outlineWidth: 3,
+      visibleDepth: false
+    },
+    attr: {
+      label: "剖面位置",
+      distanceM: sample.distanceM,
+      elevationM: sample.elevationM
+    }
+  })
+  layer.addGraphic(hoverGraphic)
+}
+
+export function clearProfilePosition() {
+  const layer = ensureResultLayer()
+  if (!layer || !hoverGraphic) {
+    return
+  }
+  try {
+    layer.removeGraphic?.(hoverGraphic)
+  } catch {
+  }
+  hoverGraphic = null
 }
 
 export function exportProfileCsv() {
