@@ -307,6 +307,12 @@ import type { ContextMenuOptions } from "@mars/utils/contextmenu/types"
 
 import { computed, nextTick, onUnmounted, onMounted, reactive, ref, toRaw, watch } from "vue"
 import { getAdaptiveStatsPeakMetrics, getStatsOverlayLod } from "@/utils/stats-overlay-metrics"
+import {
+  assignStatsRowsToAnchors,
+  buildStatsAnalysisRegion,
+  buildStatsColumnAnchors,
+  type StatsAnalysisRegion
+} from "@/utils/stats-terrain-overlay"
 import { buildStatsChartOption, getStatsDivisionLabel } from "@/utils/stats-chart-model"
 import { getIdentifyFocusAction } from "@/utils/identify-focus"
 import { $alert, $message } from "@mars/components/mars-ui/index"
@@ -686,6 +692,9 @@ const chartEls = new Map<string, HTMLElement>()
 const chartInstances = new Map<string, echarts.ECharts>()
 let statsAutoTimer: number | null = null
 let statsOverlayLayer: any = null
+let statsAnalysisRegionLayer: any = null
+let statsAnalysisRegion: StatsAnalysisRegion | null = null
+let statsAnalysisRegionHash = ""
 let statsOverlayByKey = new Map<string, any[]>()
 const statsOverlayLabels = new Map<any, any>()
 let statsOverlayCameraTimer: number | null = null
@@ -1373,6 +1382,7 @@ function buildStatsTooltip(key: StatsCardKey, row: Record<string, any>, ratio: n
       <div>卡片：${statsCards.find((item) => item.key === key)?.title || key}</div>
       <div>数值：${formatCardValue(key, getCardValueByKey(key, row))}</div>
       <div>强度：${Math.round(ratio * 100)}%</div>
+      <div>空间表达：${row.__spatialMode || "估算"}</div>
     </div>
   `
 }
@@ -1395,6 +1405,70 @@ function ensureStatsOverlayLayer() {
       label.show = true
     }
   })
+}
+
+function ensureStatsAnalysisRegionLayer() {
+  if (statsAnalysisRegionLayer || !map) {
+    return
+  }
+  statsAnalysisRegionLayer = new mars3d.layer.GraphicLayer({ name: "综合统计分析范围" })
+  map.addLayer(statsAnalysisRegionLayer)
+}
+
+function clearStatsAnalysisRegion() {
+  statsAnalysisRegionLayer?.clear?.(true)
+  statsAnalysisRegion = null
+  statsAnalysisRegionHash = ""
+}
+
+function hasStatsOverlayEnabled() {
+  return Object.values(statsUi.onMap).some(Boolean)
+}
+
+function renderStatsAnalysisRegion(force = false) {
+  if (!map || !hasStatsOverlayEnabled()) {
+    clearStatsAnalysisRegion()
+    return null
+  }
+  const next = buildStatsAnalysisRegion(activeRing.value, { targetCells: 196, maxCells: 900, edgeCoverageThreshold: 0.36 })
+  if (!next) {
+    clearStatsAnalysisRegion()
+    return null
+  }
+  if (!force && statsAnalysisRegionHash === next.hash && statsAnalysisRegion) {
+    return statsAnalysisRegion
+  }
+  ensureStatsAnalysisRegionLayer()
+  statsAnalysisRegionLayer.clear?.(true)
+  statsAnalysisRegion = next
+  statsAnalysisRegionHash = next.hash
+  next.outlines.forEach((outline, outlineIndex) => {
+    const positions = outline.map(([lng, lat]) => [lng, lat])
+    const closedPositions = [...positions, positions[0]]
+    statsAnalysisRegionLayer.addGraphic(new mars3d.graphic.PolygonEntity({
+      positions,
+      style: {
+        color: "#315F68",
+        opacity: 0.48,
+        clampToGround: true,
+        outline: false,
+        classificationType: (mars3d as any).Cesium?.ClassificationType?.TERRAIN
+      },
+      attr: { visualType: "stats-analysis-surface", regionHash: next.hash, outlineIndex }
+    }))
+    statsAnalysisRegionLayer.addGraphic(new mars3d.graphic.PolylineEntity({
+      positions: closedPositions,
+      style: { color: "#17343A", width: 5, opacity: 0.82, clampToGround: true },
+      attr: { visualType: "stats-analysis-boundary-shadow", regionHash: next.hash }
+    }))
+    statsAnalysisRegionLayer.addGraphic(new mars3d.graphic.PolylineEntity({
+      positions: closedPositions,
+      style: { color: "#B7E1D9", width: 2, opacity: 0.98, clampToGround: true },
+      attr: { visualType: "stats-analysis-boundary", regionHash: next.hash }
+    }))
+  })
+  map.scene?.requestRender?.()
+  return next
 }
 
 function getRingBbox(ring: RingLonLat): [number, number, number, number] | null {
@@ -2039,6 +2113,7 @@ function clearWorkspaceLayers(_options?: { clearStorage?: boolean }) {
     clearOverlayForCard(key)
   })
   statsOverlayLayer?.setShow?.(false)
+  clearStatsAnalysisRegion()
   if (drawingOverviewCamera && typeof map.setCameraView === "function") {
     try {
       map.setCameraView(drawingOverviewCamera, { duration: 0.8 })
@@ -2205,8 +2280,12 @@ function toggleCardOnMap(key: string) {
   statsUi.onMap[key] = next
   if (!next) {
     clearOverlayForCard(key)
+    if (!hasStatsOverlayEnabled()) {
+      clearStatsAnalysisRegion()
+    }
     return
   }
+  renderStatsAnalysisRegion()
   renderOverlayForCard(key as StatsCardKey)
 }
 
@@ -2229,52 +2308,50 @@ function renderOverlayForCard(key: StatsCardKey) {
   }
   ensureStatsOverlayLayer()
   clearOverlayForCard(key)
-  const rows = statsDataByKey.get(key) || buildCardData(key)
-  statsDataByKey.set(key, rows)
-  const ring = activeRing.value
-  const bbox = getRingBbox(ring)
-  const center = map.getCenter?.()
-  let west = bbox?.[0]
-  let south = bbox?.[1]
-  let east = bbox?.[2]
-  let north = bbox?.[3]
-  if (!bbox && center) {
-    west = center.lng - 0.08
-    east = center.lng + 0.08
-    south = center.lat - 0.06
-    north = center.lat + 0.06
-  }
-  if (!Number.isFinite(west) || !Number.isFinite(south) || !Number.isFinite(east) || !Number.isFinite(north)) {
+  const sourceRows = statsDataByKey.get(key) || buildCardData(key)
+  statsDataByKey.set(key, sourceRows)
+  const region = renderStatsAnalysisRegion()
+  if (!region || !sourceRows.length) {
     return
   }
-  const seed = hashSeed([key, west, south, east, north])
-  const rnd = mulberry32(seed)
-  const n = Math.min(6, rows.length)
+  let rows: Array<Record<string, any>> = sourceRows.slice(0, 6).map((row) => ({ ...row, __spatialMode: "估算网格" }))
+  if (key === "housing") {
+    const total = Math.max(1, sourceRows.length)
+    rows = [{
+      分类: "区域汇总",
+      高风险: sourceRows.reduce((sum, row) => sum + Number(row["高风险"] || 0), 0) / total,
+      较高风险: sourceRows.reduce((sum, row) => sum + Number(row["较高风险"] || 0), 0) / total,
+      __spatialMode: "汇总估算"
+    }]
+  } else if (key === "radiation" || key === "vegetation") {
+    rows = [{ ...sourceRows[sourceRows.length - 1], __spatialMode: "当前时点汇总" }]
+  }
+  const n = rows.length
   const graphics: any[] = []
-  const numericValues = rows.slice(0, n).map((row) => getCardValueByKey(key, row))
+  const numericValues = rows.map((row) => getCardValueByKey(key, row))
   const maxValue = Math.max(...numericValues, 0)
   const Cesium = (mars3d as any).Cesium
   const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
   const lod = getStatsOverlayLod(cameraHeight)
   const { radius, dotSize, maxHeight } = getStatsPeakMetrics(cameraHeight)
   const peakMaxDistance = lod === "point" ? 140000 : 280000
-  const samplePoint = () => {
-    for (let attempt = 0; attempt < 80; attempt++) {
-      const candidate = {
-        lng: (west as number) + rnd() * ((east as number) - (west as number)),
-        lat: (south as number) + rnd() * ((north as number) - (south as number))
-      }
-      if (!ring.length || pointInRing(candidate, ring)) {
-        return candidate
-      }
-    }
-    const centroid = getRingCentroid(ring)
-    return pointInRing(centroid, ring) ? centroid : { lng: west as number, lat: south as number }
+  const span = Math.max(radius * 6, maxHeight * 0.22) * Math.sqrt(STATS_PRISM_FOOTPRINT_AREA_SCALE)
+  const requestedSide = Math.sqrt(span * (span * 0.72) * STATS_PRISM_SQUARE_AREA_SCALE)
+  const rowKeys = rows.map((row, index) => `${getCardLabel(row)}:${index}`)
+  let footprintMeters = requestedSide
+  let anchors = buildStatsColumnAnchors(region, n, footprintMeters)
+  while (anchors.length < n && footprintMeters > 36) {
+    footprintMeters *= 0.72
+    anchors = buildStatsColumnAnchors(region, n, footprintMeters)
   }
+  const assignments = assignStatsRowsToAnchors(rowKeys, anchors)
   for (let i = 0; i < n; i++) {
-    const point = samplePoint()
-    const lng = point.lng
-    const lat = point.lat
+    const anchor = assignments.get(rowKeys[i])
+    if (!anchor) {
+      continue
+    }
+    const lng = anchor.lng
+    const lat = anchor.lat
     const row = rows[i] || {}
     const numericValue = getCardValueByKey(key, row)
     const ratio = maxValue > 0 ? Math.max(0.08, Math.min(1, numericValue / maxValue)) : 0.1
@@ -2295,9 +2372,7 @@ function renderOverlayForCard(key: StatsCardKey) {
     const topAlt = ground + columnHeight
     const metersPerDegLat = 111320
     const metersPerDegLng = Math.max(1, metersPerDegLat * Math.cos((lat * Math.PI) / 180))
-    const span = Math.max(radius * 6, maxHeight * 0.22) * Math.sqrt(STATS_PRISM_FOOTPRINT_AREA_SCALE)
-    const currentArea = span * (span * 0.72)
-    const squareSide = Math.sqrt(currentArea * STATS_PRISM_SQUARE_AREA_SCALE)
+    const squareSide = anchor.footprintMeters
     const halfLng = squareSide / 2 / metersPerDegLng
     const halfLat = squareSide / 2 / metersPerDegLat
     const footprint = [
@@ -2739,6 +2814,9 @@ function updateMetrics(ring: RingLonLat, source?: "selection" | "buffer" | "view
     )
   )
   levelsToWarm.forEach((levelIdx) => prewarmStatsAdminHierarchy(levelIdx, ring))
+  if (hasStatsOverlayEnabled()) {
+    renderStatsAnalysisRegion(true)
+  }
   if (statsVisible.value) {
     refreshStats(false)
   }
@@ -4229,6 +4307,13 @@ onUnmounted(() => {
   statsUpdatedAtByKey.clear()
   statsOverlayByKey.forEach((_v, k) => clearOverlayForCard(k))
   statsOverlayByKey = new Map<string, any[]>()
+  clearStatsAnalysisRegion()
+  if (statsAnalysisRegionLayer && map) {
+    try {
+      map.removeLayer(statsAnalysisRegionLayer, true)
+    } catch {}
+  }
+  statsAnalysisRegionLayer = null
   if (statsOverlayLayer && map) {
     try {
       map.removeLayer(statsOverlayLayer, true)

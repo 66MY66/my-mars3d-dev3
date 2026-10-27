@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildStatsAnalysisRegion,
   buildStatsColumnAnchors,
+  assignStatsRowsToAnchors,
   isFootprintInsideRegion,
   type StatsLonLatRing
 } from "./stats-terrain-overlay"
@@ -82,5 +83,16 @@ describe("stats terrain overlay spatial model", () => {
         expect(Math.hypot(dx, dy)).toBeGreaterThanOrEqual(160)
       }
     }
+  })
+
+  it("keeps row-to-anchor assignments stable when row order changes", () => {
+    const region = buildStatsAnalysisRegion(rectangle, { targetCells: 144 })!
+    const anchors = buildStatsColumnAnchors(region, 8, 160)
+    const first = assignStatsRowsToAnchors(["东区", "西区", "南区"], anchors)
+    const reordered = assignStatsRowsToAnchors(["南区", "东区", "西区"], anchors)
+
+    expect(reordered.get("东区")).toEqual(first.get("东区"))
+    expect(reordered.get("西区")).toEqual(first.get("西区"))
+    expect(reordered.get("南区")).toEqual(first.get("南区"))
   })
 })

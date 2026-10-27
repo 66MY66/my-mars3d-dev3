@@ -275,3 +275,10 @@ export function buildStatsColumnAnchors(
   }
   return selected
 }
+
+export function assignStatsRowsToAnchors(rowKeys: string[], anchors: StatsColumnAnchor[]) {
+  const assignments = new Map<string, StatsColumnAnchor>()
+  const keys = Array.from(new Set(rowKeys.map((key) => String(key)))).sort((a, b) => a.localeCompare(b, "zh-CN"))
+  keys.slice(0, anchors.length).forEach((key, index) => assignments.set(key, anchors[index]))
+  return assignments
+}
