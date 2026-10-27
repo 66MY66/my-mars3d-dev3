@@ -22,8 +22,11 @@ describe("stats overlay metrics", () => {
     expect(mid.maxHeight).toBeGreaterThanOrEqual(far.maxHeight)
   })
 
-  it("switches to point LOD for a far view", () => {
-    expect(getStatsOverlayLod(180000)).toBe("point")
-    expect(getStatsOverlayLod(50000)).toBe("柱体")
+  it("uses four LOD states and keeps columns hidden around 10-20km", () => {
+    expect(getStatsOverlayLod(400000)).toBe("hidden")
+    expect(getStatsOverlayLod(20000)).toBe("region")
+    expect(getStatsOverlayLod(10000)).toBe("region")
+    expect(getStatsOverlayLod(6000)).toBe("columns")
+    expect(getStatsOverlayLod(1800)).toBe("labels")
   })
 })

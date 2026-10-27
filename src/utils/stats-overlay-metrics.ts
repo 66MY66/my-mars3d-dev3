@@ -1,4 +1,10 @@
-export type StatsOverlayLod = "柱体" | "point"
+export type StatsOverlayLod = "hidden" | "region" | "columns" | "labels"
+
+export const STATS_OVERLAY_LOD_HEIGHTS = {
+  hideRegionAbove: 300_000,
+  showColumnsBelow: 10_000,
+  showLabelsBelow: 2_500
+} as const
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value))
@@ -40,5 +46,15 @@ export function getAdaptiveStatsPeakMetrics(areaM2: number, cameraHeight = 50000
 }
 
 export function getStatsOverlayLod(cameraHeight: number): StatsOverlayLod {
-  return Number(cameraHeight) > 140000 ? "point" : "柱体"
+  const height = Math.max(0, Number(cameraHeight) || 0)
+  if (height > STATS_OVERLAY_LOD_HEIGHTS.hideRegionAbove) {
+    return "hidden"
+  }
+  if (height >= STATS_OVERLAY_LOD_HEIGHTS.showColumnsBelow) {
+    return "region"
+  }
+  if (height >= STATS_OVERLAY_LOD_HEIGHTS.showLabelsBelow) {
+    return "columns"
+  }
+  return "labels"
 }

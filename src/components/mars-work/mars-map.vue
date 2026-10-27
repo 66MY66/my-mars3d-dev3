@@ -1402,7 +1402,8 @@ function ensureStatsOverlayLayer() {
   statsOverlayLayer.on?.(mars3d.EventType.mouseOut, (event: any) => {
     const label = statsOverlayLabels.get(event?.graphic)
     if (label) {
-      label.show = true
+      const cameraHeight = Number(map?.camera?.positionCartographic?.height ?? 50000)
+      label.show = getStatsOverlayLod(cameraHeight) === "labels"
     }
   })
 }
@@ -2092,6 +2093,11 @@ function refreshStats(showToast = true) {
 function closeStats() {
   statsVisible.value = false
   statsUi.reorderMode = false
+  Object.keys(statsUi.onMap).forEach((key) => {
+    statsUi.onMap[key] = false
+    clearOverlayForCard(key)
+  })
+  clearStatsAnalysisRegion()
 }
 
 function closeIdentify() {
@@ -2333,8 +2339,8 @@ function renderOverlayForCard(key: StatsCardKey) {
   const Cesium = (mars3d as any).Cesium
   const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
   const lod = getStatsOverlayLod(cameraHeight)
-  const { radius, dotSize, maxHeight } = getStatsPeakMetrics(cameraHeight)
-  const peakMaxDistance = lod === "point" ? 140000 : 280000
+  const { radius, maxHeight } = getStatsPeakMetrics(cameraHeight)
+  const peakMaxDistance = 280000
   const span = Math.max(radius * 6, maxHeight * 0.22) * Math.sqrt(STATS_PRISM_FOOTPRINT_AREA_SCALE)
   const requestedSide = Math.sqrt(span * (span * 0.72) * STATS_PRISM_SQUARE_AREA_SCALE)
   const rowKeys = rows.map((row, index) => `${getCardLabel(row)}:${index}`)
@@ -2432,32 +2438,6 @@ function renderOverlayForCard(key: StatsCardKey) {
     statsOverlayLayer.addGraphic(topGraphic)
     graphics.push(topGraphic)
 
-    const dotGraphic = new mars3d.graphic.PointEntity({
-      position: [lng, lat, 8],
-      style: {
-        color,
-        pixelSize: dotSize,
-        outline: true,
-        outlineColor: mixHexColor(color, "#ffffff", 0.72),
-        outlineWidth: 2,
-        clampToGround: false,
-        scaleByDistance: new Cesium.NearFarScalar(5000, 1.15, 260000, 0.35),
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(90000, 2000000)
-      },
-      tooltip,
-      popup: tooltip,
-      attr: {
-        statsKey: key,
-        row,
-        value: numericValue,
-        height,
-        ratio,
-        visualType: "dot-far"
-      }
-    })
-    statsOverlayLayer.addGraphic(dotGraphic)
-    graphics.push(dotGraphic)
-
     const labelGraphic = new mars3d.graphic.PointEntity({
       position: [lng, lat, topAlt],
       style: {
@@ -2465,7 +2445,7 @@ function renderOverlayForCard(key: StatsCardKey) {
         pixelSize: 1,
         outline: false,
         clampToGround: false,
-        show: true,
+        show: lod === "labels",
         distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 180000),
         label: {
           text: formatCardValue(key, numericValue),
@@ -2499,6 +2479,21 @@ function renderOverlayForCard(key: StatsCardKey) {
     // change the user's current map view or camera position.
   }
   statsOverlayByKey.set(key, graphics)
+  applyStatsOverlayLod()
+}
+
+function applyStatsOverlayLod() {
+  if (!map) {
+    return
+  }
+  const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
+  const lod = getStatsOverlayLod(cameraHeight)
+  statsAnalysisRegionLayer?.setShow?.(lod !== "hidden" && hasStatsOverlayEnabled())
+  statsOverlayLayer?.setShow?.((lod === "columns" || lod === "labels") && hasStatsOverlayEnabled())
+  statsOverlayLabels.forEach((label) => {
+    label.show = lod === "labels"
+  })
+  map.scene?.requestRender?.()
 }
 
 function scheduleStatsOverlayCameraUpdate() {
@@ -2510,9 +2505,7 @@ function scheduleStatsOverlayCameraUpdate() {
     if (!map || !statsOverlayLayer) {
       return
     }
-    // Keep existing graphics during camera motion. Rebuilding the layer here
-    // causes the columns to disappear briefly on every cameraChanged event.
-    map.scene?.requestRender?.()
+    applyStatsOverlayLod()
   }, 120)
 }
 
