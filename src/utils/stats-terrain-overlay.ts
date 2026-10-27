@@ -183,8 +183,11 @@ export function buildStatsAnalysisRegion(
   let cols = Math.max(2, Math.round(Math.sqrt(targetCells * aspect)))
   let rows = Math.max(2, Math.round(targetCells / cols))
   while (cols * rows > maxCells) {
-    if (cols >= rows) cols -= 1
-    else rows -= 1
+    if (cols >= rows) {
+      cols -= 1
+    } else {
+      rows -= 1
+    }
   }
   const cellWidth = width / cols
   const cellHeight = height / rows
