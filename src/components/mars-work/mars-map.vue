@@ -692,7 +692,7 @@ const chartEls = new Map<string, HTMLElement>()
 const chartInstances = new Map<string, echarts.ECharts>()
 let statsAutoTimer: number | null = null
 let statsOverlayLayer: any = null
-let statsAnalysisRegionLayer: any = null
+let statsAnalysisSurfaceOverlay: any = null
 let statsAnalysisRegion: StatsAnalysisRegion | null = null
 let statsAnalysisRegionHash = ""
 let statsOverlayByKey = new Map<string, any[]>()
@@ -1391,7 +1391,7 @@ function ensureStatsOverlayLayer() {
   if (statsOverlayLayer || !map) {
     return
   }
-  statsOverlayLayer = new mars3d.layer.GraphicLayer({ name: "综合统计上图" })
+  statsOverlayLayer = new mars3d.layer.GraphicLayer({ name: "", isPrivate: true, statsAnalysisOverlay: true } as any)
   map.addLayer(statsOverlayLayer)
   statsOverlayLayer.on?.(mars3d.EventType.mouseOver, (event: any) => {
     const label = statsOverlayLabels.get(event?.graphic)
@@ -1408,16 +1408,18 @@ function ensureStatsOverlayLayer() {
   })
 }
 
-function ensureStatsAnalysisRegionLayer() {
-  if (statsAnalysisRegionLayer || !map) {
+function ensureStatsAnalysisSurfaceOverlay() {
+  if (statsAnalysisSurfaceOverlay || !map) {
     return
   }
-  statsAnalysisRegionLayer = new mars3d.layer.GraphicLayer({ name: "综合统计分析范围" })
-  map.addLayer(statsAnalysisRegionLayer)
+  // This is an ephemeral rendering container owned by 综合统计面板. It is
+  // intentionally not registered with dataset, layer-tree or basemap state.
+  statsAnalysisSurfaceOverlay = new mars3d.layer.GraphicLayer({ name: "", isPrivate: true, statsAnalysisOverlay: true } as any)
+  map.addLayer(statsAnalysisSurfaceOverlay)
 }
 
 function clearStatsAnalysisRegion() {
-  statsAnalysisRegionLayer?.clear?.(true)
+  statsAnalysisSurfaceOverlay?.clear?.(true)
   statsAnalysisRegion = null
   statsAnalysisRegionHash = ""
 }
@@ -1439,35 +1441,51 @@ function renderStatsAnalysisRegion(force = false) {
   if (!force && statsAnalysisRegionHash === next.hash && statsAnalysisRegion) {
     return statsAnalysisRegion
   }
-  ensureStatsAnalysisRegionLayer()
-  statsAnalysisRegionLayer.clear?.(true)
+  ensureStatsAnalysisSurfaceOverlay()
+  statsAnalysisSurfaceOverlay.clear?.(true)
   statsAnalysisRegion = next
   statsAnalysisRegionHash = next.hash
-  next.outlines.forEach((outline, outlineIndex) => {
-    const positions = outline.map(([lng, lat]) => [lng, lat])
-    const closedPositions = [...positions, positions[0]]
-    statsAnalysisRegionLayer.addGraphic(new mars3d.graphic.PolygonEntity({
-      positions,
+  const sourcePositions = next.sourceRing.map(([lng, lat]) => [lng, lat])
+  const closedSourcePositions = [...sourcePositions, sourcePositions[0]]
+  const classificationType = (mars3d as any).Cesium?.ClassificationType?.TERRAIN
+  const surfacePalette = ["#F39ABC", "#DC72AE", "#B85FA7", "#89549E", "#5D4C91", "#34417B"]
+
+  statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolygonEntity({
+    positions: sourcePositions,
+    style: {
+      color: "#5A3F86",
+      opacity: 0.74,
+      clampToGround: true,
+      outline: false,
+      classificationType
+    },
+    attr: { visualType: "stats-analysis-surface-base", regionHash: next.hash, transient: true }
+  }))
+
+  next.surfaceFacets.forEach((facet) => {
+    statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolygonEntity({
+      positions: facet.positions,
       style: {
-        color: "#315F68",
-        opacity: 0.48,
+        color: surfacePalette[facet.paletteIndex % surfacePalette.length],
+        opacity: 0.82,
         clampToGround: true,
         outline: false,
-        classificationType: (mars3d as any).Cesium?.ClassificationType?.TERRAIN
+        classificationType
       },
-      attr: { visualType: "stats-analysis-surface", regionHash: next.hash, outlineIndex }
-    }))
-    statsAnalysisRegionLayer.addGraphic(new mars3d.graphic.PolylineEntity({
-      positions: closedPositions,
-      style: { color: "#17343A", width: 5, opacity: 0.82, clampToGround: true },
-      attr: { visualType: "stats-analysis-boundary-shadow", regionHash: next.hash }
-    }))
-    statsAnalysisRegionLayer.addGraphic(new mars3d.graphic.PolylineEntity({
-      positions: closedPositions,
-      style: { color: "#B7E1D9", width: 2, opacity: 0.98, clampToGround: true },
-      attr: { visualType: "stats-analysis-boundary", regionHash: next.hash }
+      attr: { visualType: "stats-analysis-surface-facet", regionHash: next.hash, facetId: facet.id, transient: true }
     }))
   })
+
+  statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolylineEntity({
+    positions: closedSourcePositions,
+    style: { color: "#241C49", width: 5, opacity: 0.88, clampToGround: true },
+    attr: { visualType: "stats-analysis-source-boundary-shadow", regionHash: next.hash, transient: true }
+  }))
+  statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolylineEntity({
+    positions: closedSourcePositions,
+    style: { color: "#F4D8EC", width: 2, opacity: 0.98, clampToGround: true },
+    attr: { visualType: "stats-analysis-source-boundary", regionHash: next.hash, transient: true }
+  }))
   map.scene?.requestRender?.()
   return next
 }
@@ -2488,7 +2506,7 @@ function applyStatsOverlayLod() {
   }
   const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
   const lod = getStatsOverlayLod(cameraHeight)
-  statsAnalysisRegionLayer?.setShow?.(lod !== "hidden" && hasStatsOverlayEnabled())
+  statsAnalysisSurfaceOverlay?.setShow?.(lod !== "hidden" && hasStatsOverlayEnabled())
   statsOverlayLayer?.setShow?.((lod === "columns" || lod === "labels") && hasStatsOverlayEnabled())
   statsOverlayLabels.forEach((label) => {
     label.show = lod === "labels"
@@ -4301,12 +4319,12 @@ onUnmounted(() => {
   statsOverlayByKey.forEach((_v, k) => clearOverlayForCard(k))
   statsOverlayByKey = new Map<string, any[]>()
   clearStatsAnalysisRegion()
-  if (statsAnalysisRegionLayer && map) {
+  if (statsAnalysisSurfaceOverlay && map) {
     try {
-      map.removeLayer(statsAnalysisRegionLayer, true)
+      map.removeLayer(statsAnalysisSurfaceOverlay, true)
     } catch {}
   }
-  statsAnalysisRegionLayer = null
+  statsAnalysisSurfaceOverlay = null
   if (statsOverlayLayer && map) {
     try {
       map.removeLayer(statsOverlayLayer, true)

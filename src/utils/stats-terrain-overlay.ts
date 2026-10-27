@@ -12,12 +12,19 @@ export type StatsAnalysisCell = {
 
 export type StatsBoundaryEdge = [StatsLonLat, StatsLonLat]
 
+export type StatsSurfaceFacet = {
+  id: string
+  positions: StatsLonLatRing
+  paletteIndex: number
+}
+
 export type StatsAnalysisRegion = {
   hash: string
   sourceRing: StatsLonLatRing
   cells: StatsAnalysisCell[]
   outlines: StatsLonLatRing[]
   boundaryEdges: StatsBoundaryEdge[]
+  surfaceFacets: StatsSurfaceFacet[]
   bbox: [number, number, number, number]
 }
 
@@ -85,6 +92,21 @@ function pointInRing(point: { lng: number; lat: number }, ring: StatsLonLatRing)
   return inside
 }
 
+function pointInOrOnRing(point: { lng: number; lat: number }, ring: StatsLonLatRing) {
+  const onBoundary = ring.some((current, index) => {
+    const next = ring[(index + 1) % ring.length]
+    const cross = (point.lat - current[1]) * (next[0] - current[0]) - (point.lng - current[0]) * (next[1] - current[1])
+    if (Math.abs(cross) > EPSILON) {
+      return false
+    }
+    return point.lng >= Math.min(current[0], next[0]) - EPSILON &&
+      point.lng <= Math.max(current[0], next[0]) + EPSILON &&
+      point.lat >= Math.min(current[1], next[1]) - EPSILON &&
+      point.lat <= Math.max(current[1], next[1]) + EPSILON
+  })
+  return onBoundary || pointInRing(point, ring)
+}
+
 function getBbox(ring: StatsLonLatRing): [number, number, number, number] {
   const lngs = ring.map((point) => point[0])
   const lats = ring.map((point) => point[1])
@@ -98,16 +120,6 @@ function hashText(text: string) {
     hash = Math.imul(hash, 16777619)
   }
   return (hash >>> 0).toString(36)
-}
-
-function pointKey(point: StatsLonLat) {
-  return `${point[0].toFixed(10)},${point[1].toFixed(10)}`
-}
-
-function edgeKey(a: StatsLonLat, b: StatsLonLat) {
-  const ak = pointKey(a)
-  const bk = pointKey(b)
-  return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`
 }
 
 function cellCoverage(west: number, south: number, east: number, north: number, ring: StatsLonLatRing) {
@@ -125,42 +137,34 @@ function cellCoverage(west: number, south: number, east: number, north: number, 
   return hits / (samples * samples)
 }
 
-function buildBoundary(cells: StatsAnalysisCell[]) {
-  const edges = new Map<string, StatsBoundaryEdge>()
-  const counts = new Map<string, number>()
-  cells.forEach((cell) => {
-    const sw: StatsLonLat = [cell.west, cell.south]
-    const se: StatsLonLat = [cell.east, cell.south]
-    const ne: StatsLonLat = [cell.east, cell.north]
-    const nw: StatsLonLat = [cell.west, cell.north]
-    ;([[sw, se], [se, ne], [ne, nw], [nw, sw]] as StatsBoundaryEdge[]).forEach((edge) => {
-      const key = edgeKey(edge[0], edge[1])
-      counts.set(key, (counts.get(key) || 0) + 1)
-      edges.set(key, edge)
-    })
+function buildSurfaceFacets(cells: StatsAnalysisCell[], ring: StatsLonLatRing, regionHash: string): StatsSurfaceFacet[] {
+  return cells.flatMap((cell) => {
+    const containmentSamples: StatsLonLatRing = [
+      [cell.west, cell.south],
+      [cell.east, cell.south],
+      [cell.east, cell.north],
+      [cell.west, cell.north],
+      [cell.center.lng, cell.south],
+      [cell.east, cell.center.lat],
+      [cell.center.lng, cell.north],
+      [cell.west, cell.center.lat],
+      [cell.center.lng, cell.center.lat]
+    ]
+    if (!containmentSamples.every(([lng, lat]) => pointInOrOnRing({ lng, lat }, ring))) {
+      return []
+    }
+    const width = cell.east - cell.west
+    const height = cell.north - cell.south
+    const seed = Number.parseInt(hashText(`${regionHash}:${cell.id}`), 36) || 1
+    const inset = (shift: number) => 0.035 + (((seed >>> shift) & 7) / 7) * 0.07
+    const positions: StatsLonLatRing = [
+      [cell.west + width * inset(0), cell.south + height * inset(3)],
+      [cell.east - width * inset(6), cell.south + height * (inset(9) + 0.006)],
+      [cell.east - width * inset(12), cell.north - height * inset(15)],
+      [cell.west + width * (inset(18) + 0.006), cell.north - height * (inset(21) + 0.006)]
+    ]
+    return [{ id: `${regionHash}:${cell.id}`, positions, paletteIndex: seed % 6 }]
   })
-  const boundaryEdges = Array.from(edges.entries()).filter(([key]) => counts.get(key) === 1).map(([, edge]) => edge)
-  const remaining = [...boundaryEdges]
-  const outlines: StatsLonLatRing[] = []
-  while (remaining.length) {
-    const first = remaining.shift()!
-    const outline: StatsLonLatRing = [first[0], first[1]]
-    while (!pointsEqual(outline[outline.length - 1], outline[0])) {
-      const current = outline[outline.length - 1]
-      const index = remaining.findIndex((edge) => pointsEqual(edge[0], current) || pointsEqual(edge[1], current))
-      if (index < 0) {
-        break
-      }
-      const [edge] = remaining.splice(index, 1)
-      outline.push(pointsEqual(edge[0], current) ? edge[1] : edge[0])
-    }
-    if (outline.length >= 4 && pointsEqual(outline[0], outline[outline.length - 1])) {
-      outline.pop()
-      outlines.push(normalizeRing(outline))
-    }
-  }
-  outlines.sort((a, b) => Math.abs(signedArea(b)) - Math.abs(signedArea(a)))
-  return { boundaryEdges, outlines }
 }
 
 export function buildStatsAnalysisRegion(
@@ -210,12 +214,12 @@ export function buildStatsAnalysisRegion(
   if (!cells.length) {
     return null
   }
-  const { boundaryEdges, outlines } = buildBoundary(cells)
-  if (!outlines.length) {
-    return null
-  }
   const serialized = sourceRing.map(([lng, lat]) => `${lng.toFixed(8)},${lat.toFixed(8)}`).join("|")
-  return { hash: hashText(serialized), sourceRing, cells, outlines, boundaryEdges, bbox }
+  const hash = hashText(serialized)
+  const boundaryEdges = sourceRing.map((point, index) => [point, sourceRing[(index + 1) % sourceRing.length]] as StatsBoundaryEdge)
+  const outlines = [sourceRing]
+  const surfaceFacets = buildSurfaceFacets(cells, sourceRing, hash)
+  return { hash, sourceRing, cells, outlines, boundaryEdges, surfaceFacets, bbox }
 }
 
 function footprintCorners(anchor: { lng: number; lat: number }, sideMeters: number): StatsLonLatRing {
@@ -240,7 +244,7 @@ export function isFootprintInsideRegion(
     return false
   }
   const corners = footprintCorners(anchor, sideMeters)
-  return corners.every(([lng, lat]) => outlines.some((outline) => pointInRing({ lng, lat }, outline)))
+  return corners.every(([lng, lat]) => outlines.some((outline) => pointInOrOnRing({ lng, lat }, outline)))
 }
 
 export function buildStatsColumnAnchors(

@@ -1,5 +1,7 @@
 # 综合统计地形分析膜 Implementation Plan
 
+> **视觉边界修订（2026-10-28）：** 本历史计划中的网格合并轮廓方案已被否决。可见边界必须保持原始绘制环并贴合地形，修正计划见 `2026-10-28-stats-analysis-surface-correction.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 为综合统计上图增加连续贴地分析区域、稳定的有效网格柱体布局和近景柱体 LOD，同时保持导入图层独立。

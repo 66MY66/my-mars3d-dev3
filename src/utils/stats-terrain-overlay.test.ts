@@ -15,15 +15,35 @@ const rectangle: StatsLonLatRing = [
 ]
 
 describe("stats terrain overlay spatial model", () => {
-  it("builds a continuous analysis region without internal grid edges", () => {
+  it("keeps the normalized source ring as the only visible boundary", () => {
     const region = buildStatsAnalysisRegion(rectangle, { targetCells: 144, maxCells: 800 })
 
     expect(region).not.toBeNull()
     expect(region?.cells.length).toBeGreaterThan(0)
     expect(region?.cells.length).toBeLessThanOrEqual(800)
-    expect(region?.outlines).toHaveLength(1)
-    expect(region?.outlines[0].length).toBeGreaterThanOrEqual(4)
-    expect(region?.boundaryEdges.length).toBeLessThan(region!.cells.length * 4)
+    expect(region?.outlines).toEqual([rectangle])
+    expect(region?.boundaryEdges).toEqual([
+      [rectangle[0], rectangle[1]],
+      [rectangle[1], rectangle[2]],
+      [rectangle[2], rectangle[3]],
+      [rectangle[3], rectangle[0]]
+    ])
+  })
+
+  it("builds deterministic irregular surface facets without exposing grid rectangles", () => {
+    const first = buildStatsAnalysisRegion(rectangle, { targetCells: 144, maxCells: 800 })!
+    const second = buildStatsAnalysisRegion(rectangle, { targetCells: 144, maxCells: 800 })!
+
+    expect(first.surfaceFacets.length).toBeGreaterThan(8)
+    expect(second.surfaceFacets).toEqual(first.surfaceFacets)
+    expect(new Set(first.surfaceFacets.map((facet) => facet.paletteIndex)).size).toBeGreaterThan(2)
+    first.surfaceFacets.forEach((facet) => {
+      expect(facet.positions.length).toBeGreaterThanOrEqual(3)
+      const uniqueLngs = new Set(facet.positions.map(([lng]) => lng.toFixed(9)))
+      const uniqueLats = new Set(facet.positions.map(([, lat]) => lat.toFixed(9)))
+      expect(uniqueLngs.size).toBeGreaterThan(2)
+      expect(uniqueLats.size).toBeGreaterThan(2)
+    })
   })
 
   it("keeps anchors and their complete footprints inside a concave region", () => {
@@ -68,6 +88,7 @@ describe("stats terrain overlay spatial model", () => {
 
     expect(region).not.toBeNull()
     expect(buildStatsColumnAnchors(region!, 4, 120)).toEqual([])
+    expect(region?.outlines).toEqual([tiny])
   })
 
   it("keeps anchor spacing collision-free and stable", () => {
