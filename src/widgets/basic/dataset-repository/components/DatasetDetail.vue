@@ -421,6 +421,7 @@ import {
   getLatestDatasetManifest,
   getRevisionManifest,
   createImportSession,
+  assertSuccessfulImportSessionResponse,
   undoImportSession,
   clearImportSession,
   buildFallbackManifestFromStacItems,
@@ -3143,10 +3144,12 @@ async function handleUndoImport() {
   }
   // 关闭导入成功提示条
   showImportToast.value = false
+  let undoMode: "remote" | "local-only" = "remote"
   try {
     const datasetId = collection.value?.id || props.collectionId
     if (lastResultGroupId.value) {
-      await undoImportSession(lastResultGroupId.value, { datasetId, clearArtifacts: true }).catch(() => null)
+      const undoResult = await undoImportSession(lastResultGroupId.value, { datasetId, clearArtifacts: true })
+      undoMode = assertSuccessfulImportSessionResponse(undoResult).mode
     }
     await restoreWorkspace(map, snapshot, {
       strategy: "replace",
@@ -3156,7 +3159,7 @@ async function handleUndoImport() {
       restoreDrawFeatures: true,
       flyDuration: 0.8,
       onComplete: () => {
-        $message("已撤销导入，恢复到导入前状态")
+        $message(undoMode === "local-only" ? "已在本地撤销导入（服务器未启用导入会话接口）" : "已撤销导入，恢复到导入前状态")
         recordDatasetEvent({
           datasetId,
           eventType: "undo_import",

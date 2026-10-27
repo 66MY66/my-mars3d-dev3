@@ -132,7 +132,7 @@ const visibleItems = computed(() => {
 
 const currentDataset = ref<CurrentDataset | null>(getCurrentDataset())
 
-const groupOrder = ["常用", "专题制图", "数据服务", "工具", "成果管理", "风险监测", "灾害评估", "主要", "次要", "帮助"]
+const groupOrder = ["底图管理", "专题制图", "数据服务", "工具", "成果管理", "风险监测", "灾害评估", "主要", "次要", "帮助"]
 const grouped = computed(() => {
   const idMap = new Map<string, MenuItem>()
   items.forEach((i: any) => idMap.set(i.id, i))
@@ -188,7 +188,7 @@ const grouped = computed(() => {
   map.set("成果管理", achievement)
 
   visibleItems.value.forEach((i) => {
-    const name = i.group || "常用"
+    const name = i.group || "底图管理"
     if (name === "成果管理") {
       return
     }

@@ -15,7 +15,7 @@ let pickCoordinateCallback: ((coord: any) => void) | null = null
 let viewChangeLastAt = 0
 let viewChangeTimer: number | null = null
 const TITILER_RGB_BIDX_QUERY = "bidx=1&bidx=2&bidx=3"
-const EOAPI_TITILER_URL = import.meta.env.VITE_EOAPI_TITILER_URL || "http://192.168.0.15:5955"
+const EOAPI_TITILER_URL = import.meta.env.VITE_EOAPI_TITILER_URL || "http://192.168.10.15:5955"
 
 function appendRasterRenderingHints(url: string, options: any): { url: string; options: any } {
   const profile = String(options?.styleProfile || "").toLowerCase()
@@ -1029,8 +1029,8 @@ export function removeAllEoapiLayers() {
 // ============ eoAPI 底图管理 ============
 
 /** eoAPI 服务地址 */
-const EOAPI_TIANDITU_PROXY = import.meta.env.VITE_EOAPI_TIANDITU_PROXY || "http://192.168.0.15:5954"
-const EOAPI_TIPG_URL = import.meta.env.VITE_EOAPI_TIPG_URL || "http://192.168.0.15:5953"
+const EOAPI_TIANDITU_PROXY = import.meta.env.VITE_EOAPI_TIANDITU_PROXY || "http://192.168.10.15:5954"
+const EOAPI_TIPG_URL = import.meta.env.VITE_EOAPI_TIPG_URL || "http://192.168.10.15:5953"
 const TIANDITU_TOKEN = import.meta.env.VITE_TIANDITU_TOKEN || ""
 
 /**

@@ -53,44 +53,49 @@ export default ({ mode }: ConfigEnv) => {
       proxy: {
         // datasets-api 代理 - 数据集/成果管理、附件、发布审核（优先匹配，必须在 eoapi 之前）
         "/api/eoapi/datasets": {
-          target: "http://192.168.0.15:5960",
+          target: "http://192.168.10.15:5960",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
         },
         "/api/eoapi/artifacts": {
-          target: "http://192.168.0.15:5960",
+          target: "http://192.168.10.15:5960",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
         },
         "/api/eoapi/uploads": {
-          target: "http://192.168.0.15:5960",
+          target: "http://192.168.10.15:5960",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
         },
         "/api/eoapi/favorites": {
-          target: "http://192.168.0.15:5960",
+          target: "http://192.168.10.15:5960",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
         },
         "/api/eoapi/metrics": {
-          target: "http://192.168.0.15:5960",
+          target: "http://192.168.10.15:5960",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
+        },
+        "/api/eoapi/imports": {
+          target: "http://192.168.10.15:5960",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
         },
         // eoAPI STAC API 代理配置 - 指向 STAC API 端口
         "/api/eoapi": {
-          target: "http://192.168.0.15:5951",
+          target: "http://192.168.10.15:5951",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
         },
         // TiTiler 代理配置 - 用于加载 STAC 影像 tiles
         "/api/titiler": {
-          target: "http://192.168.0.15:5952",
+          target: "http://192.168.10.15:5952",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/titiler/, "")
         },
         "/api/titiler-cog": {
-          target: "http://192.168.0.15:5955",
+          target: "http://192.168.10.15:5955",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/titiler-cog/, "")
         }

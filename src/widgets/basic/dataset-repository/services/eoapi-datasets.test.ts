@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { buildFallbackManifestFromStacItem, buildFallbackManifestFromStacItems, normalizeDatasetApiRevisionsToStacItems } from "./eoapi-datasets"
+import {
+  buildFallbackManifestFromStacItem,
+  buildFallbackManifestFromStacItems,
+  getLocalDataset,
+  getLocalManifests,
+  normalizeDatasetApiRevisionsToStacItems,
+  assertSuccessfulImportSessionResponse
+} from "./eoapi-datasets"
 
 function makeItem(params: {
   id: string
@@ -19,6 +26,24 @@ function makeItem(params: {
     assets: params.assets || {}
   }
 }
+
+describe("assertSuccessfulImportSessionResponse", () => {
+  it("returns a successful import-session response", () => {
+    const response = { success: true, data: { success: true, status: "undone", deletedArtifactCount: 1 } }
+
+    expect(assertSuccessfulImportSessionResponse(response)).toEqual({ success: true, mode: "remote" })
+  })
+
+  it("falls back to local-only undo when the server does not expose import sessions", () => {
+    expect(assertSuccessfulImportSessionResponse({ success: false, code: 404, message: "Not Found" }))
+      .toEqual({ success: false, mode: "local-only" })
+  })
+
+  it("throws for import-session failures other than an unsupported endpoint", () => {
+    expect(() => assertSuccessfulImportSessionResponse({ success: false, code: 500, message: "Server Error" }))
+      .toThrow("Server Error")
+  })
+})
 
 describe("buildFallbackManifestFromStacItem", () => {
   it("returns null when bbox is missing", () => {
@@ -126,5 +151,54 @@ describe("normalizeDatasetApiRevisionsToStacItems", () => {
     expect(typeof out.items[0].properties?.datetime).toBe("string")
     expect(out.items[1].id).toBe("rev_2")
     expect(out.items[1].assets?.manifest?.href).toBe("/datasets/DS/revisions/rev_2/manifest")
+  })
+})
+
+describe("bundled SAR demonstration dataset", () => {
+  it("appears in the dataset repository with an offline SAR raster layer", () => {
+    localStorage.clear()
+
+    const datasets = getLocalManifests()
+    const summary = datasets.find((item) => item.datasetId === "local_sar_demo")
+    const dataset = getLocalDataset("local_sar_demo")
+    const layer: any = dataset?.manifest?.layers?.[0]
+
+    expect(summary?.name).toBe("合成 SAR 后向散射影像")
+    expect(summary?.tags).toEqual(expect.arrayContaining(["SAR", "栅格", "演示数据"]))
+    expect(layer).toMatchObject({
+      name: "合成 Sentinel-1 SAR 后向散射影像",
+      sourceType: "image",
+      sourceRef: "/data/sar/synthetic-sar-backscatter.png",
+      visible: true,
+      opacity: 1,
+      options: {
+        styleProfile: "sar",
+        bbox: [100.7, 24.2, 103.1, 26.1]
+      }
+    })
+  })
+
+  it("migrates the previously bundled imageBounds field to the supported bbox field", () => {
+    localStorage.setItem("eoapi_manifests", JSON.stringify({
+      local_sar_demo: {
+        name: "合成 SAR 后向散射影像",
+        manifest: {
+          manifestVersion: "1.0",
+          layers: [{
+            id: "synthetic_sar_backscatter",
+            sourceType: "image",
+            sourceRef: "/data/sar/synthetic-sar-backscatter.png",
+            options: { styleProfile: "sar", imageBounds: [100.7, 24.2, 103.1, 26.1] }
+          }]
+        }
+      }
+    }))
+
+    getLocalManifests()
+    const dataset = getLocalDataset("local_sar_demo")
+    const options: any = dataset?.manifest?.layers?.[0]?.options
+
+    expect(options?.bbox).toEqual([100.7, 24.2, 103.1, 26.1])
+    expect(options).not.toHaveProperty("imageBounds")
   })
 })

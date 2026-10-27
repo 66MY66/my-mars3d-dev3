@@ -207,7 +207,7 @@ describe("workspace/restore raster branches", () => {
           sourceType: "image",
           sourceRef: "https://example.com/result.png",
           options: {
-            imageBounds: [100, 20, 101, 21]
+            bbox: [100, 20, 101, 21]
           }
         } as any
       ]
@@ -219,7 +219,7 @@ describe("workspace/restore raster branches", () => {
     expect(layerUtilCreate).toHaveBeenCalledWith(expect.objectContaining({
       id: "img_layer",
       type: "image",
-      imageBounds: [100, 20, 101, 21]
+      bbox: [100, 20, 101, 21]
     }))
     expect(map.getLayerById("img_layer")).toMatchObject({
       type: "image"

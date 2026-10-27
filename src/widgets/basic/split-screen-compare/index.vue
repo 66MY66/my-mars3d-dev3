@@ -234,6 +234,12 @@ import { POPUP_PANEL_RESIZE_HANDLES } from "@mars/common/constants/popup-resize-
 import { eoapiGet } from "../dataset-repository/services/eoapi-client"
 import { getCollection, getItems, getLocalManifests } from "../dataset-repository/services/eoapi-datasets"
 import { StacCollection, StacItem, StacItemsResponse, StacCollectionsResponse } from "../dataset-repository/types/eoapi-types"
+import {
+  getLayerStatusText,
+  isSameImageSelection,
+  SPLIT_COMPARE_FAILURE_TEXT,
+  SPLIT_COMPARE_SAME_IMAGE_TEXT
+} from "./status"
 
 const props = withDefaults(
   defineProps<{
@@ -357,12 +363,11 @@ const hasLayers = computed(() => {
 })
 
 const layerStatusText = computed(() => {
-  if (!leftItem.value && !rightItem.value) {
-    return "未加载图层"
-  }
-  const left = leftItem.value ? "左侧已加载" : ""
-  const right = rightItem.value ? "右侧已加载" : ""
-  return `${left}${left && right ? " | " : ""}${right}`
+  return getLayerStatusText({
+    loading: loadingCollections.value || loadingLeftItems.value || loadingRightItems.value,
+    leftLoaded: !!leftItem.value,
+    rightLoaded: !!rightItem.value
+  })
 })
 
 function applyCenteredLayout() {
@@ -674,6 +679,7 @@ async function loadCollections() {
     })
   } catch (error) {
     console.error("[分屏对比] 加载数据集失败:", error)
+    $message(SPLIT_COMPARE_FAILURE_TEXT)
   } finally {
     loadingCollections.value = false
   }
@@ -692,6 +698,7 @@ async function handleLeftCollectionChange(collectionId: string | undefined) {
     leftItems.value = await fetchSplitItems(collectionId)
   } catch (error) {
     console.error("[分屏对比] 加载左侧影像列表失败:", error)
+    $message(SPLIT_COMPARE_FAILURE_TEXT)
   } finally {
     loadingLeftItems.value = false
   }
@@ -701,10 +708,8 @@ function handleLeftItemChange(itemId: string | undefined) {
   if (!itemId || !leftCollection.value) {
     return
   }
-  if (rightCollection.value && rightItem.value && leftCollection.value === rightCollection.value && itemId === rightItem.value) {
-    leftItem.value = undefined
-    $message("左右影像不能相同")
-    return
+  if (isSameImageSelection(leftCollection.value, itemId, rightCollection.value, rightItem.value)) {
+    $message(SPLIT_COMPARE_SAME_IMAGE_TEXT)
   }
 
   const tileUrl = visualTileUrl(leftItems.value.find((item) => item.id === itemId))
@@ -714,7 +719,7 @@ function handleLeftItemChange(itemId: string | undefined) {
     $message(`左侧已加载: ${itemId}`)
     persistStateToStorage()
   } else {
-    $message("左侧图层加载失败")
+    $message(SPLIT_COMPARE_FAILURE_TEXT)
   }
 }
 
@@ -736,6 +741,7 @@ async function handleRightCollectionChange(collectionId: string | undefined) {
     rightItems.value = await fetchSplitItems(collectionId)
   } catch (error) {
     console.error("[分屏对比] 加载右侧影像列表失败:", error)
+    $message(SPLIT_COMPARE_FAILURE_TEXT)
   } finally {
     loadingRightItems.value = false
   }
@@ -745,10 +751,8 @@ function handleRightItemChange(itemId: string | undefined) {
   if (!itemId || !rightCollection.value) {
     return
   }
-  if (leftCollection.value && leftItem.value && rightCollection.value === leftCollection.value && itemId === leftItem.value) {
-    rightItem.value = undefined
-    $message("左右影像不能相同")
-    return
+  if (isSameImageSelection(leftCollection.value, leftItem.value, rightCollection.value, itemId)) {
+    $message(SPLIT_COMPARE_SAME_IMAGE_TEXT)
   }
 
   const tileUrl = visualTileUrl(rightItems.value.find((item) => item.id === itemId))
@@ -758,7 +762,7 @@ function handleRightItemChange(itemId: string | undefined) {
     $message(`右侧已加载: ${itemId}`)
     persistStateToStorage()
   } else {
-    $message("右侧图层加载失败")
+    $message(SPLIT_COMPARE_FAILURE_TEXT)
   }
 }
 
@@ -863,7 +867,10 @@ function handleSplitCompareError(e: Event) {
     mapWork.clearSideLayer("right")
   }
   persistStateToStorage()
-  $message(detail?.message ? String(detail.message) : "影像加载失败")
+  if (detail?.message) {
+    console.error(`[分屏对比] ${side === "left" ? "左侧" : "右侧"}影像加载失败:`, detail.message)
+  }
+  $message(SPLIT_COMPARE_FAILURE_TEXT)
 }
 
 function notifyPanelFront() {

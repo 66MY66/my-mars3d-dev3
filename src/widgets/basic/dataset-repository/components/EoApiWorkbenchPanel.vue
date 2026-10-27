@@ -71,7 +71,7 @@ const { disable } = useWidget()
 const dialogVisible = ref(true)
 const dialogRef = ref<any>(null)
 
-const eoApiBrowserUrl = import.meta.env.VITE_EOAPI_BROWSER_URL || "http://192.168.0.15:5954"
+const eoApiBrowserUrl = import.meta.env.VITE_EOAPI_BROWSER_URL || "http://192.168.10.15:5954"
 const browserUrl = computed(() => {
   const base = String(eoApiBrowserUrl || "").replace(/\/+$/, "")
   return base ? `${base}/` : ""

@@ -120,12 +120,12 @@
         {
           "name": "底图",
           "type": "xyz",
-          "url": "http://192.168.0.15:5954/tianditu/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
+          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
         },
         {
           "name": "注记",
           "type": "xyz",
-          "url": "http://192.168.0.15:5954/tianditu/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
+          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
         }
       ],
       "show": false,
@@ -140,12 +140,12 @@
         {
           "name": "底图",
           "type": "xyz",
-          "url": "http://192.168.0.15:5954/tianditu/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
+          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
         },
         {
           "name": "注记",
           "type": "xyz",
-          "url": "http://192.168.0.15:5954/tianditu/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
+          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
         }
       ],
       "show": false
@@ -159,12 +159,12 @@
         {
           "name": "底图",
           "type": "xyz",
-          "url": "http://192.168.0.15:5954/tianditu/DataServer?T=ter_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
+          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=ter_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
         },
         {
           "name": "注记",
           "type": "xyz",
-          "url": "http://192.168.0.15:5954/tianditu/DataServer?T=cta_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
+          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=cta_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
         }
       ],
       "show": false
@@ -865,7 +865,7 @@
       "pid": 4110,
       "name": "地表温度 (GISS-E2-1-G)",
       "type": "wms",
-      "url": "http://192.168.0.15:5952/collections/CMIP6_daily_GISS-E2-1-G_tas/WMTSCapabilities.xml",
+      "url": "http://192.168.10.15:5952/collections/CMIP6_daily_GISS-E2-1-G_tas/WMTSCapabilities.xml",
       "layers": "CMIP6_daily_GISS-E2-1-G_tas",
       "crs": "EPSG:4326",
       "parameters": {
@@ -890,7 +890,7 @@
       "pid": 4120,
       "name": "Facebook 人口密度",
       "type": "wms",
-      "url": "http://192.168.0.15:5952/collections/facebook-population-density/WMTSCapabilities.xml",
+      "url": "http://192.168.10.15:5952/collections/facebook-population-density/WMTSCapabilities.xml",
       "layers": "facebook-population-density",
       "crs": "EPSG:4326",
       "parameters": {
@@ -915,7 +915,7 @@
       "pid": 4130,
       "name": "NOAA 紧急响应数据",
       "type": "wms",
-      "url": "http://192.168.0.15:5952/collections/noaa-emergency-response/WMTSCapabilities.xml",
+      "url": "http://192.168.10.15:5952/collections/noaa-emergency-response/WMTSCapabilities.xml",
       "layers": "noaa-emergency-response",
       "crs": "EPSG:4326",
       "parameters": {
@@ -940,7 +940,7 @@
       "pid": 4140,
       "name": "Maxar 开放数据",
       "type": "wms",
-      "url": "http://192.168.0.15:5952/collections/maxar-opendata/WMTSCapabilities.xml",
+      "url": "http://192.168.10.15:5952/collections/maxar-opendata/WMTSCapabilities.xml",
       "layers": "maxar-opendata",
       "crs": "EPSG:4326",
       "parameters": {
@@ -964,7 +964,7 @@
       "pid": 4150,
       "name": "OpenAerialMap",
       "type": "wms",
-      "url": "http://192.168.0.15:5952/collections/open-aerial-map/WMTSCapabilities.xml",
+      "url": "http://192.168.10.15:5952/collections/open-aerial-map/WMTSCapabilities.xml",
       "layers": "open-aerial-map",
       "crs": "EPSG:4326",
       "parameters": {
@@ -1032,7 +1032,7 @@
       "pid": 7010,
       "name": "MODIS热红外影像",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_Yunnan_2023_COG.tif&rescale=250,350&colormap_name=hot",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_Yunnan_2023_COG.tif&rescale=250,350&colormap_name=hot",
       "minZoom": 5,
       "maxZoom": 15,
       "metadata": {
@@ -1047,7 +1047,7 @@
       "pid": 7010,
       "name": "Sentinel-3热红外数据",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/sentinel3/SLSTR_Yunnan_COG.tif&bidx=1&rescale=270,320",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/sentinel3/SLSTR_Yunnan_COG.tif&bidx=1&rescale=270,320",
       "minZoom": 8,
       "maxZoom": 18,
       "metadata": {
@@ -1067,7 +1067,7 @@
       "pid": 7020,
       "name": "风云气象卫星影像",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/fy4/FY4A_Yunnan_IR1_COG.tif&rescale=180,300",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/fy4/FY4A_Yunnan_IR1_COG.tif&rescale=180,300",
       "minZoom": 4,
       "maxZoom": 12,
       "metadata": {
@@ -1081,7 +1081,7 @@
       "pid": 7020,
       "name": "GPM降水数据",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/gpm/GPM_Yunnan_2023_COG.tif&rescale=0,50&colormap_name=precipitation",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/gpm/GPM_Yunnan_2023_COG.tif&rescale=0,50&colormap_name=precipitation",
       "minZoom": 6,
       "maxZoom": 14,
       "metadata": {
@@ -1101,7 +1101,7 @@
       "pid": 7030,
       "name": "地表热异常检测结果",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/thermal/thermal_anomaly_detection_2023_COG.tif&rescale=0,1&colormap_name=reds",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/thermal/thermal_anomaly_detection_2023_COG.tif&rescale=0,1&colormap_name=reds",
       "minZoom": 8,
       "maxZoom": 16,
       "metadata": {
@@ -1115,7 +1115,7 @@
       "pid": 7030,
       "name": "热异常强度分布",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/thermal/thermal_intensity_2023_COG.tif&rescale=0,100&colormap_name=hot",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/thermal/thermal_intensity_2023_COG.tif&rescale=0,100&colormap_name=hot",
       "minZoom": 8,
       "maxZoom": 16,
       "metadata": {
@@ -1135,7 +1135,7 @@
       "pid": 7040,
       "name": "InSAR形变监测",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/insar/insar_deformation_yunnan_COG.tif&rescale=-50,50&colormap_name=rdbu_r",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/insar/insar_deformation_yunnan_COG.tif&rescale=-50,50&colormap_name=rdbu_r",
       "minZoom": 10,
       "maxZoom": 18,
       "metadata": {
@@ -1178,7 +1178,7 @@
       "pid": 7050,
       "name": "地表反射率异常",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/optical/surface_anomaly_2023_COG.tif&rescale=-2,2&colormap_name=puor",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/optical/surface_anomaly_2023_COG.tif&rescale=-2,2&colormap_name=puor",
       "minZoom": 10,
       "maxZoom": 18,
       "metadata": {
@@ -1192,7 +1192,7 @@
       "pid": 7050,
       "name": "植被异常区域",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/optical/vegetation_anomaly_2023_COG.tif&rescale=-0.5,0.5&colormap_name=rdbu",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/optical/vegetation_anomaly_2023_COG.tif&rescale=-0.5,0.5&colormap_name=rdbu",
       "minZoom": 10,
       "maxZoom": 18,
       "metadata": {
@@ -1236,7 +1236,7 @@
       "pid": 7060,
       "name": "历史热异常时序",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/thermal/thermal_timeline_2018_2023_COG.tif",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/thermal/thermal_timeline_2018_2023_COG.tif",
       "minZoom": 6,
       "maxZoom": 14,
       "metadata": {
@@ -1261,7 +1261,7 @@
       "pid": 4020,
       "name": "MODIS地表温度日产品",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_daily_lst_COG.tif&rescale=250,350&colormap_name=hot",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_daily_lst_COG.tif&rescale=250,350&colormap_name=hot",
       "minZoom": 5,
       "maxZoom": 15,
       "metadata": {
@@ -1275,7 +1275,7 @@
       "pid": 4020,
       "name": "地表温度月均值",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_monthly_mean_COG.tif&rescale=280,320&colormap_name=thermal",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_monthly_mean_COG.tif&rescale=280,320&colormap_name=thermal",
       "minZoom": 4,
       "maxZoom": 12,
       "metadata": {
@@ -1302,7 +1302,7 @@
       "pid": 5030,
       "name": "Sentinel-2 NDVI",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/sentinel2/S2_NDVI_Yunnan_2023_COG.tif&rescale=-1,1&colormap_name=ndvi",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/sentinel2/S2_NDVI_Yunnan_2023_COG.tif&rescale=-1,1&colormap_name=ndvi",
       "minZoom": 8,
       "maxZoom": 18,
       "metadata": {
@@ -1316,7 +1316,7 @@
       "pid": 5030,
       "name": "NDVI变化率",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/sentinel2/S2_NDVI_trend_COG.tif&rescale=-0.2,0.2&colormap_name=rdbu",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/sentinel2/S2_NDVI_trend_COG.tif&rescale=-0.2,0.2&colormap_name=rdbu",
       "minZoom": 8,
       "maxZoom": 18,
       "metadata": {
@@ -1336,7 +1336,7 @@
       "pid": 4030,
       "name": "OLR长波辐射数据",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/noaa/OLR_Yunnan_COG.tif&rescale=150,300&colormap_name=coolwarm",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/noaa/OLR_Yunnan_COG.tif&rescale=150,300&colormap_name=coolwarm",
       "minZoom": 4,
       "maxZoom": 12,
       "metadata": {
@@ -1350,7 +1350,7 @@
       "pid": 4030,
       "name": "长波辐射异常指数",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/noaa/OLR_anomaly_index_COG.tif&rescale=-20,20&colormap_name=rdbu_r",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/noaa/OLR_anomaly_index_COG.tif&rescale=-20,20&colormap_name=rdbu_r",
       "minZoom": 4,
       "maxZoom": 12,
       "metadata": {
@@ -1370,7 +1370,7 @@
       "pid": 4010,
       "name": "气温分布",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/climate/temperature_yunnan_COG.tif&rescale=-10,30&colormap_name=temperature",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/climate/temperature_yunnan_COG.tif&rescale=-10,30&colormap_name=temperature",
       "minZoom": 4,
       "maxZoom": 12,
       "metadata": {
@@ -1384,7 +1384,7 @@
       "pid": 4010,
       "name": "降水分布",
       "type": "xyz",
-      "url": "http://192.168.0.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/climate/precipitation_yunnan_COG.tif&rescale=0,200&colormap_name=precipitation",
+      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/climate/precipitation_yunnan_COG.tif&rescale=0,200&colormap_name=precipitation",
       "minZoom": 4,
       "maxZoom": 12,
       "metadata": {

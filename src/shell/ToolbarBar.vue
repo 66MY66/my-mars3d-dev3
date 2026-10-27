@@ -34,12 +34,12 @@ const visibleItems = computed(() => {
   return items.filter((i) => i.iconValid && hasPermission(i.permission))
 })
 
-const groupOrder = ["常用", "专题制图", "数据服务", "工具", "成果管理", "风险监测", "灾害评估", "主要", "次要", "帮助"]
+const groupOrder = ["底图管理", "专题制图", "数据服务", "工具", "成果管理", "风险监测", "灾害评估", "主要", "次要", "帮助"]
 
 const grouped = computed(() => {
   const map = new Map<string, any[]>()
   visibleItems.value.forEach((i) => {
-    const name = i.group || "常用"
+    const name = i.group || "底图管理"
     const list = map.get(name) || []
     list.push(i)
     map.set(name, list)

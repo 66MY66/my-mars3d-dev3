@@ -7,8 +7,8 @@
 const TIANDITU_TOKEN = import.meta.env.VITE_TIANDITU_TOKEN || "120a6aeb42bd1b1e181cbe4116e6185a"
 
 /** eoAPI 服务地址（从环境变量获取） */
-const EOAPI_TIANDITU_PROXY = import.meta.env.VITE_EOAPI_TIANDITU_PROXY || "http://192.168.0.15:5954"
-const EOAPI_TITILER_URL = import.meta.env.VITE_EOAPI_TITILER_URL || "http://192.168.0.15:5955"
+const EOAPI_TIANDITU_PROXY = import.meta.env.VITE_EOAPI_TIANDITU_PROXY || "http://192.168.10.15:5954"
+const EOAPI_TITILER_URL = import.meta.env.VITE_EOAPI_TITILER_URL || "http://192.168.10.15:5955"
 
 /** Mars3D CDN 数据地址 */
 const MARS3D_DATA_URL = import.meta.env.VITE_MARS3D_DATA_URL || "https://data.mars3d.cn"

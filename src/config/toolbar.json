@@ -3,14 +3,14 @@
     "id": "manage-basemap",
     "label": "底图",
     "icon": "MapTwo",
-    "group": "常用",
+    "group": "底图管理",
     "action": { "type": "widget.toggle", "widget": "manage-basemap" }
   },
   {
     "id": "manage-layers",
     "label": "图层",
     "icon": "Layers",
-    "group": "常用",
+    "group": "底图管理",
     "action": { "type": "widget.toggle", "widget": "manage-layers" }
   },
   {

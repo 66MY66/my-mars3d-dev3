@@ -1472,6 +1472,17 @@ export async function createImportSession(params: {
   })
 }
 
+export function assertSuccessfulImportSessionResponse<T>(response: ApiResponse<T>):
+  { success: true; mode: "remote" } | { success: false; mode: "local-only" } {
+  if (!response.success && response.code === 404) {
+    return { success: false, mode: "local-only" }
+  }
+  if (!response.success) {
+    throw new Error(response.message || `HTTP ${response.code || "未知错误"}`)
+  }
+  return { success: true, mode: "remote" }
+}
+
 export async function undoImportSession(
   groupId: string,
   params?: { datasetId?: string; clearArtifacts?: boolean }
@@ -1517,6 +1528,7 @@ export default {
   rollbackDatasetRevision,
   quickSaveManifest,
   createImportSession,
+  assertSuccessfulImportSessionResponse,
   undoImportSession,
   clearImportSession,
   // 本地存储管理
@@ -1903,6 +1915,39 @@ function ensureBundledDemoDatasets() {
     createdAt: Date.parse("2024-04-15T00:00:00Z"),
     updatedAt: Date.parse("2024-10-16T00:00:00Z")
   })
+
+  const sarDemoCreatedAt = Date.parse("2026-10-26T00:00:00Z")
+  const sarDemoManifest = bundledViewManifest(sarDemoCreatedAt, [
+    {
+      id: "synthetic_sar_backscatter",
+      name: "合成 Sentinel-1 SAR 后向散射影像",
+      sourceType: "image",
+      sourceRef: "/data/sar/synthetic-sar-backscatter.png",
+      visible: true,
+      opacity: 1,
+      order: 0,
+      options: {
+        styleProfile: "sar",
+        bbox: [100.7, 24.2, 103.1, 26.1]
+      }
+    }
+  ])
+  const sarDemoRecord = {
+    name: "合成 SAR 后向散射影像",
+    description: "用于验证 SAR 默认黑白渲染与图层实时样式调节的离线合成栅格。画面模拟山地、河谷、城镇和雷达散斑，不代表真实 Sentinel-1 观测或业务成果。",
+    visibility: "public",
+    coverUrl: "/data/sar/synthetic-sar-backscatter.png",
+    tags: ["SAR", "Sentinel-1", "栅格", "黑白渲染", "演示数据"],
+    manifest: sarDemoManifest,
+    revisionManifests: { "sar-demo-v1": sarDemoManifest },
+    revisions: [{ revisionId: "sar-demo-v1", message: "合成 SAR 后向散射演示栅格", createdAt: sarDemoCreatedAt }],
+    createdAt: sarDemoCreatedAt,
+    updatedAt: sarDemoCreatedAt
+  }
+  const existingSarOptions = saved.local_sar_demo?.manifest?.layers?.[0]?.options
+  if (!saved.local_sar_demo || (existingSarOptions?.imageBounds && !existingSarOptions?.bbox)) {
+    saved.local_sar_demo = sarDemoRecord
+  }
 
   try {
     localStorage.setItem("eoapi_manifests", JSON.stringify(saved))

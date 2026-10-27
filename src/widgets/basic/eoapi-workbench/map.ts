@@ -431,9 +431,9 @@ export function removeAllEoapiLayers() {
 // ============ eoAPI 底图管理 ============
 
 /** eoAPI 服务地址 */
-const EOAPI_TIANDITU_PROXY = import.meta.env.VITE_EOAPI_TIANDITU_PROXY || "http://192.168.0.15:5954"
-const EOAPI_TIPG_URL = import.meta.env.VITE_EOAPI_TIPG_URL || "http://192.168.0.15:5953"
-const EOAPI_TITILER_URL = import.meta.env.VITE_EOAPI_TITILER_URL || "http://192.168.0.15:5955"
+const EOAPI_TIANDITU_PROXY = import.meta.env.VITE_EOAPI_TIANDITU_PROXY || "http://192.168.10.15:5954"
+const EOAPI_TIPG_URL = import.meta.env.VITE_EOAPI_TIPG_URL || "http://192.168.10.15:5953"
+const EOAPI_TITILER_URL = import.meta.env.VITE_EOAPI_TITILER_URL || "http://192.168.10.15:5955"
 const TIANDITU_TOKEN = import.meta.env.VITE_TIANDITU_TOKEN || ""
 
 /**
