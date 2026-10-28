@@ -585,7 +585,7 @@ async function createLayerFromInfo(
 
     default:
       // 未知类型，尝试使用通用图层
-      if (resolvedSourceRef) {
+      if (resolvedSourceRef && !/\.(png|jpg|jpeg|webp)(\?.*)?$/i.test(resolvedSourceRef)) {
         const layer = new mars3d.layer.XyzLayer(withRasterDefaults({
           id: layerId,
           name: nextName,

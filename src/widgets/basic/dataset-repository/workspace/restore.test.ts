@@ -408,4 +408,23 @@ describe("workspace/restore raster branches", () => {
 
     expect(applyRestoreStrategy).toHaveBeenCalled()
   })
+
+  it("does not force an unreferenced jpg into an xyz map layer", async () => {
+    const map = createMapFixture()
+
+    await restoreWorkspace(map as any, {
+      manifestVersion: "1.0",
+      layers: [{
+        id: "plain_preview",
+        name: "Plain preview",
+        sourceType: "unknown",
+        sourceRef: "https://example.com/report.jpg"
+      } as any]
+    } as any, {
+      restoreView: false,
+      restoreDrawFeatures: false
+    })
+
+    expect(map.getLayerById("plain_preview")).toBeNull()
+  })
 })
