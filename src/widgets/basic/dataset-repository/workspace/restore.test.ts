@@ -59,6 +59,34 @@ class MockHeatLayer {
   }
 }
 
+class MockBaseTileLayer {
+  id: string
+  name: string
+  type: string
+  pid?: string | number
+  options: Record<string, any>
+
+  constructor(options: any) {
+    this.id = options.id
+    this.name = options.name
+    this.type = "mvt"
+    this.pid = options.pid
+    this.options = { ...options }
+  }
+}
+
+class MockUrlTemplateImageryProvider {
+  requestImage: any
+  constructor(public options: any) {}
+}
+
+class MockResource {
+  constructor(public options: any) {}
+  fetchArrayBuffer() {
+    return Promise.resolve(new ArrayBuffer(0))
+  }
+}
+
 class MockRectangle {
   static fromDegrees = vi.fn()
 }
@@ -66,6 +94,8 @@ class MockRectangle {
 vi.mock("mars3d", () => ({
   Cesium: {
     Rectangle: MockRectangle,
+    Resource: MockResource,
+    UrlTemplateImageryProvider: MockUrlTemplateImageryProvider,
     Cartesian3: {
       fromDegrees: vi.fn()
     },
@@ -80,6 +110,7 @@ vi.mock("mars3d", () => ({
     create: layerUtilCreate
   },
   layer: {
+    BaseTileLayer: MockBaseTileLayer,
     XyzLayer: MockXyzLayer,
     HeatLayer: MockHeatLayer,
     GeoTiffLayer: MockGeoTiffLayer,
@@ -426,5 +457,42 @@ describe("workspace/restore raster branches", () => {
     })
 
     expect(map.getLayerById("plain_preview")).toBeNull()
+  })
+
+  it("infers and restores an mvt template as a vector tile layer", async () => {
+    const map = createMapFixture()
+
+    await restoreWorkspace(map as any, {
+      manifestVersion: "1.0",
+      layers: [
+        { id: "vector_group", name: "Vector", sourceType: "group" } as any,
+        {
+          id: "roads_mvt",
+          name: "Roads",
+          sourceType: "unknown",
+          sourceRef: "https://example.com/roads/{z}/{x}/{y}.pbf",
+          pid: "vector_group",
+          visible: false,
+          opacity: 0.5,
+          options: { sourceLayer: "roads", maximumLevel: 14 }
+        } as any
+      ]
+    } as any, {
+      restoreView: false,
+      restoreDrawFeatures: false
+    })
+
+    const restored = map.getLayerById("roads_mvt")
+    expect(restored.options.pid).toBe("vector_group")
+    expect(restored).toMatchObject({
+      type: "mvt",
+      options: expect.objectContaining({
+        url: "https://example.com/roads/{z}/{x}/{y}.pbf",
+        show: false,
+        opacity: 0.5,
+        sourceLayer: "roads",
+        maximumLevel: 14
+      })
+    })
   })
 })
