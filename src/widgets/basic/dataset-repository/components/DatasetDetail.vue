@@ -456,6 +456,7 @@ import { connectDatasetSync, disconnectDatasetSync, onDatasetSync, type DatasetS
 import { watchFile } from "../services/file-watch"
 import { refreshMetadata, registerMetadataRefresher } from "../services/metadata-refresh"
 import { classifyLayer, DEFAULT_GROUP } from "../services/layer-classifier"
+import { categorizeLayersForImport } from "../services/import-layer-categorizer"
 import { loadResultFile } from "../services/result-loader"
 import { validateResultFile } from "../services/result-loader-utils"
 import { MAX_LAYERS, assertLayerCapacity, countManifestLayers } from "../services/layer-constraints"
@@ -2750,7 +2751,7 @@ function pickLayersById(layers: any[], keepIds: string[]): any[] {
   return list.filter((l) => result.has(String((l as any)?.id || "")))
 }
 
-function categorizeLayersForImport(layers: any[], prefixHint?: string): any[] {
+function legacyCategorizeLayersForImport(layers: any[], prefixHint?: string): any[] {
   const list = Array.isArray(layers) ? layers : []
   if (list.length === 0) {
     return []

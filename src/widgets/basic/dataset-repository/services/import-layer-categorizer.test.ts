@@ -30,6 +30,24 @@ describe("import-layer-categorizer", () => {
     ])
   })
 
+  it("classifies configured raster and vector aliases into their canonical folders", () => {
+    const result = categorizeLayersForImport([
+      { id: "cog", name: "COG", sourceType: "COG" },
+      { id: "png", name: "PNG", sourceType: "png" },
+      { id: "jpg", name: "JPG", sourceType: "jpg" },
+      { id: "xyz", name: "XYZ", sourceType: "xyz" },
+      { id: "wms", name: "WMS", sourceType: "wms" },
+      { id: "mvt", name: "MVT", sourceType: "MVT" }
+    ], "aliases")
+
+    expect(result.find((item) => item.id === "cog")?.pid).toBe("__type_raster_aliases")
+    expect(result.find((item) => item.id === "png")?.pid).toBe("__type_raster_aliases")
+    expect(result.find((item) => item.id === "jpg")?.pid).toBe("__type_raster_aliases")
+    expect(result.find((item) => item.id === "xyz")?.pid).toBe("__type_raster_aliases")
+    expect(result.find((item) => item.id === "wms")?.pid).toBe("__type_raster_aliases")
+    expect(result.find((item) => item.id === "mvt")?.pid).toBe("__type_vector_aliases")
+  })
+
   it("returns an empty array for empty input", () => {
     expect(categorizeLayersForImport([], "demo")).toEqual([])
   })
