@@ -31,6 +31,8 @@ const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024
 const MAX_CHUNK_RETRIES = 3
 const MAX_UPLOAD_CONCURRENCY = 5
 const MAX_ARTIFACT_BYTES = 10 * 1024 * 1024 * 1024
+const LAYER_LOADING_ACCEPTANCE_DATASET_ID = "local_layer_loading_acceptance"
+const LAYER_LOADING_ACCEPTANCE_REPORT_ID = "local_art_layer_loading_report"
 
 type LocalArtifactRecord = Artifact & {
   datasetId?: string
@@ -69,6 +71,27 @@ function writeLocalMap(map: Record<string, LocalArtifactRecord>): void {
     localStorage.setItem(LOCAL_ARTIFACTS_KEY, JSON.stringify(map))
   } catch {
   }
+}
+
+function ensureBundledAcceptanceArtifact(): void {
+  if (typeof localStorage === "undefined") {
+    return
+  }
+  const map = readLocalMap()
+  if (map[LAYER_LOADING_ACCEPTANCE_REPORT_ID]) {
+    return
+  }
+  map[LAYER_LOADING_ACCEPTANCE_REPORT_ID] = {
+    artifactId: LAYER_LOADING_ACCEPTANCE_REPORT_ID,
+    name: "图层加载验收监测报告.jpg",
+    type: "report",
+    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/1280px-Fronalpstock_big.jpg",
+    mime: "image/jpeg",
+    datasetId: LAYER_LOADING_ACCEPTANCE_DATASET_ID,
+    metadata: { purpose: "preview-only", shouldLoadOnMap: false },
+    createdAt: Date.parse("2026-10-28T00:00:00Z")
+  }
+  writeLocalMap(map)
 }
 
 function makeLocalArtifactId(): string {
@@ -343,6 +366,9 @@ export async function getArtifacts(params?: {
   limit?: number
   offset?: number
 }): Promise<ApiResponse<Artifact[]>> {
+  if (String(params?.datasetId || "") === LAYER_LOADING_ACCEPTANCE_DATASET_ID) {
+    ensureBundledAcceptanceArtifact()
+  }
   const result = await eoapiGet<Artifact[]>("/artifacts", { params })
   if (result.success) {
     return result

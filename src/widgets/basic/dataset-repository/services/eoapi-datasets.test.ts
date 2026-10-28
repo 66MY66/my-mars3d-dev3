@@ -202,3 +202,44 @@ describe("bundled SAR demonstration dataset", () => {
     expect(options).not.toHaveProperty("imageBounds")
   })
 })
+
+describe("bundled layer loading acceptance dataset", () => {
+  it("seeds one importable dataset covering every supported loading branch", () => {
+    localStorage.clear()
+
+    const summary = getLocalManifests().find((item) => item.datasetId === "local_layer_loading_acceptance")
+    const dataset = getLocalDataset("local_layer_loading_acceptance")
+    const layers = dataset?.manifest?.layers || []
+
+    expect(summary).toMatchObject({
+      name: "图层数据接入综合验收数据集",
+      visibility: "private"
+    })
+    expect(summary?.tags).toEqual(expect.arrayContaining(["图层验收", "栅格", "MVT", "公开服务"]))
+    expect(layers.map((layer: any) => layer.sourceType)).toEqual([
+      "cog",
+      "image",
+      "xyz",
+      "wms",
+      "mvt",
+      "custom-unknown"
+    ])
+    expect(layers.find((layer: any) => layer.sourceType === "image")?.options?.bounds).toEqual([-180, -90, 180, 90])
+    expect(layers.find((layer: any) => layer.sourceType === "wms")?.options?.layers).toBe("VIIRS_SNPP_CorrectedReflectance_TrueColor")
+    expect(layers.find((layer: any) => layer.sourceType === "mvt")?.sourceRef).toContain("/{z}/{y}/{x}.pbf")
+    expect(layers.find((layer: any) => layer.sourceType === "custom-unknown")?.sourceRef).toBe("")
+  })
+
+  it("does not overwrite a user-modified copy of the bundled dataset", () => {
+    localStorage.setItem("eoapi_manifests", JSON.stringify({
+      local_layer_loading_acceptance: {
+        name: "用户已修改的验收数据集",
+        manifest: { manifestVersion: "1.0", layers: [] }
+      }
+    }))
+
+    getLocalManifests()
+
+    expect(getLocalDataset("local_layer_loading_acceptance")?.name).toBe("用户已修改的验收数据集")
+  })
+})
