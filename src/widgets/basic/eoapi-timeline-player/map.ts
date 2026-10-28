@@ -10,6 +10,17 @@ let map: mars3d.Map
 let currentLayer: any | null = null
 const itemsCache: Map<string, any> = new Map()
 
+function watchLayerAvailability(layer: any, collectionId: string, itemId: string) {
+  let reported = false
+  const reportUnavailable = () => {
+    if (reported || currentLayer !== layer) { return }
+    reported = true
+    eventTarget.fire("frameUnavailable", { collectionId, itemId })
+  }
+  layer?.on?.(mars3d.EventType.error, reportUnavailable)
+  layer?.on?.(mars3d.EventType.addTileError, reportUnavailable)
+}
+
 // ============ 生命周期钩子 ============
 
 export function onMounted(mapInstance: mars3d.Map) {
@@ -32,8 +43,9 @@ export function onUnmounted() {
 export function loadTimelineItem(collectionId: string, itemId: string): boolean {
   if (!map) { return false }
 
-  // 先清除当前图层
-  clearTimelineLayer()
+  try {
+    // 先清除当前图层
+    clearTimelineLayer()
 
   // 创建图层
   const layerId = `timeline_${collectionId}_${itemId.replace(/[^a-zA-Z0-9_-]/g, "_")}`
@@ -52,6 +64,7 @@ export function loadTimelineItem(collectionId: string, itemId: string): boolean 
       show: true,
       maximumLevel: levelMatch ? Number(levelMatch[1]) : 18
     })
+    watchLayerAvailability(layer, collectionId, itemId)
     map.addLayer(layer)
     currentLayer = layer
     if (bbox) {
@@ -106,6 +119,7 @@ export function loadTimelineItem(collectionId: string, itemId: string): boolean 
       popup,
       symbol
     })
+    watchLayerAvailability(layer, collectionId, itemId)
     map.addLayer(layer)
     currentLayer = layer
     if (bbox) {
@@ -152,6 +166,7 @@ export function loadTimelineItem(collectionId: string, itemId: string): boolean 
       },
       show: true
     })
+    watchLayerAvailability(layer, collectionId, itemId)
     map.addLayer(layer)
     currentLayer = layer
     flyToBbox(bbox, 1.0)
@@ -168,10 +183,15 @@ export function loadTimelineItem(collectionId: string, itemId: string): boolean 
     opacity: 1
   })
 
+  watchLayerAvailability(layer, collectionId, itemId)
   map.addLayer(layer)
   currentLayer = layer
 
-  return true
+    return true
+  } catch {
+    clearTimelineLayer()
+    return false
+  }
 }
 
 /**

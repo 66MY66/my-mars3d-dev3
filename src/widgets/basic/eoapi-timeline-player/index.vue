@@ -181,6 +181,12 @@
       </div>
     </div>
 
+    <template #footer>
+      <div class="panel-footer" role="status" aria-live="polite">
+        <span class="status-text">{{ timelineStatusText }}</span>
+      </div>
+    </template>
+
     <Teleport to="body">
       <div
         v-if="drawerVisible"
@@ -264,6 +270,7 @@ import * as mapWork from "./map"
 import { POPUP_PANEL_RESIZE_HANDLES } from "@mars/common/constants/popup-resize-handles"
 import { getCollections as getRemoteCollections, getCollection, getItems, getLocalManifests } from "../dataset-repository/services/eoapi-datasets"
 import { StacCollection, StacItem } from "../dataset-repository/types/eoapi-types"
+import { findNextAvailableFrameIndex, getTimelineStatusText } from "./status"
 
 // 生命周期钩子
 useLifecycle(mapWork)
@@ -466,6 +473,9 @@ const opacityValue = ref(100)
 let playTimer: ReturnType<typeof setInterval> | null = null
 let playOverrunCount = 0
 let lastTickAt = 0
+const skippedFrameNotice = ref(false)
+let skippedFrameNoticeTimer: ReturnType<typeof setTimeout> | null = null
+const unavailableFrameIds = new Set<string>()
 
 const rangeA = ref<number | null>(null)
 const rangeB = ref<number | null>(null)
@@ -724,6 +734,12 @@ const currentItem = computed(() => {
   return effectiveItems.value[currentIndex.value] || null
 })
 
+const timelineStatusText = computed(() => getTimelineStatusText({
+  selected: !!selectedCollection.value,
+  itemCount: filteredItems.value.length,
+  skippedFrame: skippedFrameNotice.value
+}))
+
 const rangeLabel = computed(() => {
   if (rangeA.value == null && rangeB.value == null) {
     return ""
@@ -736,6 +752,7 @@ const rangeLabel = computed(() => {
 // ============ 初始化 ============
 
 onMounted(async () => {
+  mapWork.eventTarget.on("frameUnavailable", handleFrameUnavailable)
   isBottomDocked.value = false
   applyFloatingPanelLayout()
   await loadCollections()
@@ -786,6 +803,7 @@ async function loadCollections() {
 }
 
 async function handleCollectionChange(collectionId: string | undefined) {
+  unavailableFrameIds.clear()
   if (!collectionId) {
     selectedCollection.value = undefined
     stopPlay()
@@ -962,9 +980,21 @@ function handleProgressChange(value: number) {
 
 // ============ 加载当前影像 ============
 
-function loadCurrentItem() {
-  const item = currentItem.value
-  if (!item || !selectedCollection.value) { return }
+function showSkippedFrameNotice() {
+  skippedFrameNotice.value = true
+  if (skippedFrameNoticeTimer) {
+    clearTimeout(skippedFrameNoticeTimer)
+  }
+  skippedFrameNoticeTimer = setTimeout(() => {
+    skippedFrameNotice.value = false
+    skippedFrameNoticeTimer = null
+  }, 3000)
+}
+
+function tryLoadFrame(index: number): boolean {
+  const item = effectiveItems.value[index]
+  if (!item || !selectedCollection.value) { return false }
+  if (unavailableFrameIds.has(item.id)) { return false }
   mapWork.cacheItem(item.id, item)
 
   const success = mapWork.loadTimelineItem(
@@ -978,7 +1008,31 @@ function loadCurrentItem() {
       mapWork.flyToBbox(item.bbox as [number, number, number, number], 0.5)
     }
   }
+  return success
+}
+
+function loadCurrentItem() {
+  if (!currentItem.value || !selectedCollection.value) { return }
+  const failedIndex = currentIndex.value
+  if (!tryLoadFrame(failedIndex)) {
+    showSkippedFrameNotice()
+    const nextIndex = findNextAvailableFrameIndex(effectiveItems.value.length, failedIndex, tryLoadFrame)
+    if (nextIndex == null) {
+      stopPlay()
+      mapWork.clearTimelineLayer()
+    } else {
+      currentIndex.value = nextIndex
+      progressValue.value = nextIndex
+    }
+  }
   emitTimeExtentChange()
+}
+
+function handleFrameUnavailable(event: any) {
+  const itemId = String(event?.itemId || "")
+  if (!itemId || itemId !== currentItem.value?.id) { return }
+  unavailableFrameIds.add(itemId)
+  loadCurrentItem()
 }
 
 // ============ 透明度控制 ============
@@ -1286,6 +1340,11 @@ function handleClose() {
 
 onUnmounted(() => {
   stopPlay()
+  mapWork.eventTarget.off("frameUnavailable", handleFrameUnavailable)
+  if (skippedFrameNoticeTimer) {
+    clearTimeout(skippedFrameNoticeTimer)
+    skippedFrameNoticeTimer = null
+  }
   cleanupMapDockLayout()
   mapWork.clearTimelineLayer()
   const el = document.querySelector(".eoapi-timeline-player-panel") as HTMLElement | null
@@ -1774,6 +1833,19 @@ defineExpose({
   .range-hint {
     color: var(--mars-control-placeholder);
     font-size: 12px;
+  }
+
+  .panel-footer {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 4px 0;
+
+    .status-text {
+      min-height: 18px;
+      color: var(--text-secondary, #aaa);
+      font-size: 12px;
+    }
   }
 
 .timeline-drawer-popover {
