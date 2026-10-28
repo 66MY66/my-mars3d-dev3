@@ -4,7 +4,7 @@
 
 **Goal:** Correct 【上图展示】 so its visible boundary is the terrain-clamped original drawing and its interior is a temporary, vivid, irregular vector-style analysis surface.
 
-**Architecture:** Keep the existing grid only as an invisible spatial index for safe column anchors. Add deterministic decorative surface facets clipped inside the original ring, render them over an exact source-ring base polygon, and keep the entire result in the statistics overlay lifecycle rather than dataset/layer/basemap business state.
+**Architecture:** Keep the existing grid only as an invisible spatial index for safe column anchors. Build one triangulated surface from the exact source ring, sample real terrain heights at its vertices, and interpolate a coherent elevation palette continuously across the mesh. Keep the result in the statistics overlay lifecycle rather than dataset/layer/basemap business state.
 
 **Tech Stack:** Vue 3, TypeScript, Mars3D/Cesium, Vitest.
 
@@ -21,8 +21,8 @@
 ## Review Focus
 
 - Concave source rings keep their exact visible boundary and never expose grid stair-steps.
-- Decorative facets are deterministic, irregular, and fully contained by the source ring.
-- Tiny regions still show the exact base surface even when no decorative facets fit.
+- Surface color changes continuously with sampled terrain elevation; triangle edges and grid cells are never shown.
+- Tiny regions and terrain-sampling failures still show the exact terrain-clamped fallback surface.
 - Column footprints remain fully inside the original source ring.
 - Clearing the last statistics card destroys both columns and the temporary surface.
 
@@ -35,12 +35,12 @@
 - Modify: `src/utils/stats-terrain-overlay.test.ts`
 
 **Interfaces:**
-- Produces: `StatsAnalysisRegion.surfaceFacets`, exact `outlines: [sourceRing]`, and anchor containment against the source ring.
+- Produces: exact `outlines: [sourceRing]`, hidden safe anchors, and deterministic elevation-domain/color helpers.
 - Consumes: the existing normalized source ring and hidden calculation cells.
 
-- [ ] Write failing tests for exact visible outline, irregular contained facets, deterministic output, and tiny-region fallback.
+- [x] Write failing tests for exact visible outline, deterministic elevation mapping, anchor containment, and flat/invalid terrain fallback.
 - [ ] Run the focused test and confirm the new assertions fail.
-- [ ] Implement deterministic contained surface facets without exposing grid geometry.
+- [x] Implement continuous palette interpolation without exposing grid or triangulation geometry.
 - [ ] Run the focused tests and confirm they pass.
 
 ### Task 2: Render the temporary analysis surface
@@ -49,11 +49,10 @@
 - Modify: `src/components/mars-work/mars-map.vue`
 
 **Interfaces:**
-- Consumes: `StatsAnalysisRegion.sourceRing` and `surfaceFacets`.
-- Produces: terrain-clamped exact base surface, irregular color facets, and original-ring terrain-clamped boundary.
+- Consumes: `StatsAnalysisRegion.sourceRing` and sampled terrain elevation.
+- Produces: terrain-clamped exact fallback surface, continuous elevation-colored terrain mesh, and original-ring terrain-clamped boundary.
 
 - [ ] Replace grid-derived polygon rendering with source-ring rendering.
-- [ ] Render subtle irregular facets with a coherent vivid palette and no visible grid lines.
+- [x] Render a coherent vivid elevation palette continuously across an edge-free triangulated mesh.
 - [ ] Rename runtime concepts and attributes to “analysis surface overlay” semantics.
 - [ ] Verify typecheck, lint, focused tests, and production build.
-

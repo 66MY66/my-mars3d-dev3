@@ -3,7 +3,9 @@ import {
   buildStatsAnalysisRegion,
   buildStatsColumnAnchors,
   assignStatsRowsToAnchors,
+  getStatsElevationDomain,
   isFootprintInsideRegion,
+  mapStatsElevationColor,
   type StatsLonLatRing
 } from "./stats-terrain-overlay"
 
@@ -30,20 +32,25 @@ describe("stats terrain overlay spatial model", () => {
     ])
   })
 
-  it("builds deterministic irregular surface facets without exposing grid rectangles", () => {
-    const first = buildStatsAnalysisRegion(rectangle, { targetCells: 144, maxCells: 800 })!
-    const second = buildStatsAnalysisRegion(rectangle, { targetCells: 144, maxCells: 800 })!
+  it("maps terrain height continuously through one shared elevation palette", () => {
+    const domain = getStatsElevationDomain([0, 100, 200, 300, 400])
+    const low = mapStatsElevationColor(0, domain)
+    const middle = mapStatsElevationColor(200, domain)
+    const high = mapStatsElevationColor(400, domain)
 
-    expect(first.surfaceFacets.length).toBeGreaterThan(8)
-    expect(second.surfaceFacets).toEqual(first.surfaceFacets)
-    expect(new Set(first.surfaceFacets.map((facet) => facet.paletteIndex)).size).toBeGreaterThan(2)
-    first.surfaceFacets.forEach((facet) => {
-      expect(facet.positions.length).toBeGreaterThanOrEqual(3)
-      const uniqueLngs = new Set(facet.positions.map(([lng]) => lng.toFixed(9)))
-      const uniqueLats = new Set(facet.positions.map(([, lat]) => lat.toFixed(9)))
-      expect(uniqueLngs.size).toBeGreaterThan(2)
-      expect(uniqueLats.size).toBeGreaterThan(2)
-    })
+    expect(domain).toEqual({ min: 0, max: 400 })
+    expect(low).not.toEqual(middle)
+    expect(middle).not.toEqual(high)
+    expect(low[2]).toBeGreaterThan(low[0])
+    expect(high[0]).toBeGreaterThan(high[2])
+    expect(middle[3]).toBe(232)
+  })
+
+  it("keeps elevation coloring deterministic for flat and invalid samples", () => {
+    const domain = getStatsElevationDomain([Number.NaN, 80, 80, Number.POSITIVE_INFINITY])
+
+    expect(domain).toEqual({ min: 80, max: 80 })
+    expect(mapStatsElevationColor(80, domain)).toEqual(mapStatsElevationColor(80, domain))
   })
 
   it("keeps anchors and their complete footprints inside a concave region", () => {

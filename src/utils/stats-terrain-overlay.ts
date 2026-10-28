@@ -12,19 +12,12 @@ export type StatsAnalysisCell = {
 
 export type StatsBoundaryEdge = [StatsLonLat, StatsLonLat]
 
-export type StatsSurfaceFacet = {
-  id: string
-  positions: StatsLonLatRing
-  paletteIndex: number
-}
-
 export type StatsAnalysisRegion = {
   hash: string
   sourceRing: StatsLonLatRing
   cells: StatsAnalysisCell[]
   outlines: StatsLonLatRing[]
   boundaryEdges: StatsBoundaryEdge[]
-  surfaceFacets: StatsSurfaceFacet[]
   bbox: [number, number, number, number]
 }
 
@@ -43,6 +36,43 @@ export type StatsColumnAnchor = {
 }
 
 const EPSILON = 1e-10
+const STATS_ELEVATION_PALETTE: Array<[number, number, number]> = [
+  [43, 54, 111],
+  [87, 67, 143],
+  [139, 78, 157],
+  [190, 91, 166],
+  [226, 125, 177],
+  [247, 184, 207]
+]
+
+export type StatsElevationDomain = { min: number; max: number }
+
+export function getStatsElevationDomain(heights: number[]): StatsElevationDomain {
+  const finite = heights.map(Number).filter(Number.isFinite)
+  if (!finite.length) {
+    return { min: 0, max: 0 }
+  }
+  return { min: Math.min(...finite), max: Math.max(...finite) }
+}
+
+export function mapStatsElevationColor(height: number, domain: StatsElevationDomain): [number, number, number, number] {
+  const span = domain.max - domain.min
+  const normalized = span > EPSILON
+    ? Math.max(0, Math.min(1, (Number(height) - domain.min) / span))
+    : 0.5
+  const scaled = normalized * (STATS_ELEVATION_PALETTE.length - 1)
+  const lowerIndex = Math.floor(scaled)
+  const upperIndex = Math.min(STATS_ELEVATION_PALETTE.length - 1, lowerIndex + 1)
+  const mix = scaled - lowerIndex
+  const lower = STATS_ELEVATION_PALETTE[lowerIndex]
+  const upper = STATS_ELEVATION_PALETTE[upperIndex]
+  return [
+    Math.round(lower[0] + (upper[0] - lower[0]) * mix),
+    Math.round(lower[1] + (upper[1] - lower[1]) * mix),
+    Math.round(lower[2] + (upper[2] - lower[2]) * mix),
+    232
+  ]
+}
 
 function pointsEqual(a: StatsLonLat, b: StatsLonLat) {
   return Math.abs(a[0] - b[0]) < EPSILON && Math.abs(a[1] - b[1]) < EPSILON
@@ -137,36 +167,6 @@ function cellCoverage(west: number, south: number, east: number, north: number, 
   return hits / (samples * samples)
 }
 
-function buildSurfaceFacets(cells: StatsAnalysisCell[], ring: StatsLonLatRing, regionHash: string): StatsSurfaceFacet[] {
-  return cells.flatMap((cell) => {
-    const containmentSamples: StatsLonLatRing = [
-      [cell.west, cell.south],
-      [cell.east, cell.south],
-      [cell.east, cell.north],
-      [cell.west, cell.north],
-      [cell.center.lng, cell.south],
-      [cell.east, cell.center.lat],
-      [cell.center.lng, cell.north],
-      [cell.west, cell.center.lat],
-      [cell.center.lng, cell.center.lat]
-    ]
-    if (!containmentSamples.every(([lng, lat]) => pointInOrOnRing({ lng, lat }, ring))) {
-      return []
-    }
-    const width = cell.east - cell.west
-    const height = cell.north - cell.south
-    const seed = Number.parseInt(hashText(`${regionHash}:${cell.id}`), 36) || 1
-    const inset = (shift: number) => 0.035 + (((seed >>> shift) & 7) / 7) * 0.07
-    const positions: StatsLonLatRing = [
-      [cell.west + width * inset(0), cell.south + height * inset(3)],
-      [cell.east - width * inset(6), cell.south + height * (inset(9) + 0.006)],
-      [cell.east - width * inset(12), cell.north - height * inset(15)],
-      [cell.west + width * (inset(18) + 0.006), cell.north - height * (inset(21) + 0.006)]
-    ]
-    return [{ id: `${regionHash}:${cell.id}`, positions, paletteIndex: seed % 6 }]
-  })
-}
-
 export function buildStatsAnalysisRegion(
   inputRing: StatsLonLatRing,
   options: StatsAnalysisRegionOptions = {}
@@ -218,8 +218,7 @@ export function buildStatsAnalysisRegion(
   const hash = hashText(serialized)
   const boundaryEdges = sourceRing.map((point, index) => [point, sourceRing[(index + 1) % sourceRing.length]] as StatsBoundaryEdge)
   const outlines = [sourceRing]
-  const surfaceFacets = buildSurfaceFacets(cells, sourceRing, hash)
-  return { hash, sourceRing, cells, outlines, boundaryEdges, surfaceFacets, bbox }
+  return { hash, sourceRing, cells, outlines, boundaryEdges, bbox }
 }
 
 function footprintCorners(anchor: { lng: number; lat: number }, sideMeters: number): StatsLonLatRing {

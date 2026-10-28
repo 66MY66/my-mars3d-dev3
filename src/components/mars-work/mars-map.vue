@@ -311,6 +311,8 @@ import {
   assignStatsRowsToAnchors,
   buildStatsAnalysisRegion,
   buildStatsColumnAnchors,
+  getStatsElevationDomain,
+  mapStatsElevationColor,
   type StatsAnalysisRegion
 } from "@/utils/stats-terrain-overlay"
 import { buildStatsChartOption, getStatsDivisionLabel } from "@/utils/stats-chart-model"
@@ -693,6 +695,8 @@ const chartInstances = new Map<string, echarts.ECharts>()
 let statsAutoTimer: number | null = null
 let statsOverlayLayer: any = null
 let statsAnalysisSurfaceOverlay: any = null
+let statsElevationSurfacePrimitive: any = null
+let statsElevationSurfaceRun = 0
 let statsAnalysisRegion: StatsAnalysisRegion | null = null
 let statsAnalysisRegionHash = ""
 let statsOverlayByKey = new Map<string, any[]>()
@@ -1418,7 +1422,18 @@ function ensureStatsAnalysisSurfaceOverlay() {
   map.addLayer(statsAnalysisSurfaceOverlay)
 }
 
+function clearStatsElevationSurface() {
+  statsElevationSurfaceRun += 1
+  if (statsElevationSurfacePrimitive && map?.scene?.primitives) {
+    try {
+      map.scene.primitives.remove(statsElevationSurfacePrimitive)
+    } catch {}
+  }
+  statsElevationSurfacePrimitive = null
+}
+
 function clearStatsAnalysisRegion() {
+  clearStatsElevationSurface()
   statsAnalysisSurfaceOverlay?.clear?.(true)
   statsAnalysisRegion = null
   statsAnalysisRegionHash = ""
@@ -1426,6 +1441,83 @@ function clearStatsAnalysisRegion() {
 
 function hasStatsOverlayEnabled() {
   return Object.values(statsUi.onMap).some(Boolean)
+}
+
+async function renderStatsElevationSurface(region: StatsAnalysisRegion, fallbackGraphic: any) {
+  if (!map) {
+    return
+  }
+  const Cesium = (mars3d as any).Cesium
+  const run = ++statsElevationSurfaceRun
+  const hierarchy = new Cesium.PolygonHierarchy(
+    region.sourceRing.map(([lng, lat]) => Cesium.Cartesian3.fromDegrees(lng, lat))
+  )
+  const longitudeSpan = Math.max(0, region.bbox[2] - region.bbox[0])
+  const latitudeSpan = Math.max(0, region.bbox[3] - region.bbox[1])
+  const granularityDegrees = Math.max(0.00018, Math.min(0.008, Math.max(longitudeSpan, latitudeSpan) / 56))
+  const polygon = new Cesium.PolygonGeometry({
+    polygonHierarchy: hierarchy,
+    vertexFormat: Cesium.VertexFormat.POSITION_ONLY,
+    granularity: Cesium.Math.toRadians(granularityDegrees)
+  })
+  const geometry = Cesium.PolygonGeometry.createGeometry(polygon)
+  const positionValues = geometry?.attributes?.position?.values
+  if (!geometry || !positionValues?.length) {
+    return
+  }
+  const ellipsoid = Cesium.Ellipsoid.WGS84
+  const cartographics: any[] = []
+  for (let index = 0; index < positionValues.length; index += 3) {
+    const position = new Cesium.Cartesian3(positionValues[index], positionValues[index + 1], positionValues[index + 2])
+    cartographics.push(ellipsoid.cartesianToCartographic(position))
+  }
+  try {
+    const terrainProvider = (map as any).viewer?.terrainProvider
+    const sampled = await Cesium.sampleTerrainMostDetailed(terrainProvider, cartographics)
+    if (run !== statsElevationSurfaceRun || !map || region.hash !== statsAnalysisRegionHash) {
+      return
+    }
+    const heights = sampled.map((item: any) => Number.isFinite(Number(item?.height)) ? Number(item.height) : 0)
+    const elevationDomain = getStatsElevationDomain(heights)
+    const colors = new Uint8Array(sampled.length * 4)
+    sampled.forEach((item: any, index: number) => {
+      const height = heights[index]
+      const raisedPosition = Cesium.Cartesian3.fromRadians(item.longitude, item.latitude, height + 1.8, ellipsoid)
+      positionValues[index * 3] = raisedPosition.x
+      positionValues[index * 3 + 1] = raisedPosition.y
+      positionValues[index * 3 + 2] = raisedPosition.z
+      colors.set(mapStatsElevationColor(height, elevationDomain), index * 4)
+    })
+    geometry.attributes.color = new Cesium.GeometryAttribute({
+      componentDatatype: Cesium.ComponentDatatype.UNSIGNED_BYTE,
+      componentsPerAttribute: 4,
+      normalize: true,
+      values: colors
+    })
+    geometry.boundingSphere = Cesium.BoundingSphere.fromVertices(positionValues)
+    Cesium.GeometryPipeline.computeNormal(geometry)
+    const primitive = new Cesium.Primitive({
+      geometryInstances: new Cesium.GeometryInstance({ geometry }),
+      appearance: new Cesium.PerInstanceColorAppearance({
+        translucent: true,
+        flat: false,
+        closed: false
+      }),
+      asynchronous: false
+    })
+    if (run !== statsElevationSurfaceRun || !map) {
+      primitive.destroy?.()
+      return
+    }
+    statsElevationSurfacePrimitive = map.scene.primitives.add(primitive)
+    const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
+    statsElevationSurfacePrimitive.show = getStatsOverlayLod(cameraHeight) !== "hidden" && hasStatsOverlayEnabled()
+    fallbackGraphic.show = false
+    map.scene?.requestRender?.()
+  } catch {
+    // Keep the exact terrain-clamped fallback surface when detailed terrain
+    // sampling is unavailable or interrupted.
+  }
 }
 
 function renderStatsAnalysisRegion(force = false) {
@@ -1442,39 +1534,26 @@ function renderStatsAnalysisRegion(force = false) {
     return statsAnalysisRegion
   }
   ensureStatsAnalysisSurfaceOverlay()
+  clearStatsElevationSurface()
   statsAnalysisSurfaceOverlay.clear?.(true)
   statsAnalysisRegion = next
   statsAnalysisRegionHash = next.hash
   const sourcePositions = next.sourceRing.map(([lng, lat]) => [lng, lat])
   const closedSourcePositions = [...sourcePositions, sourcePositions[0]]
   const classificationType = (mars3d as any).Cesium?.ClassificationType?.TERRAIN
-  const surfacePalette = ["#F39ABC", "#DC72AE", "#B85FA7", "#89549E", "#5D4C91", "#34417B"]
-
-  statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolygonEntity({
+  const fallbackSurface = new mars3d.graphic.PolygonEntity({
     positions: sourcePositions,
     style: {
       color: "#5A3F86",
-      opacity: 0.74,
+      opacity: 0.66,
       clampToGround: true,
       outline: false,
       classificationType
     },
     attr: { visualType: "stats-analysis-surface-base", regionHash: next.hash, transient: true }
-  }))
-
-  next.surfaceFacets.forEach((facet) => {
-    statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolygonEntity({
-      positions: facet.positions,
-      style: {
-        color: surfacePalette[facet.paletteIndex % surfacePalette.length],
-        opacity: 0.82,
-        clampToGround: true,
-        outline: false,
-        classificationType
-      },
-      attr: { visualType: "stats-analysis-surface-facet", regionHash: next.hash, facetId: facet.id, transient: true }
-    }))
   })
+  statsAnalysisSurfaceOverlay.addGraphic(fallbackSurface)
+  renderStatsElevationSurface(next, fallbackSurface)
 
   statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolylineEntity({
     positions: closedSourcePositions,
@@ -2507,6 +2586,9 @@ function applyStatsOverlayLod() {
   const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
   const lod = getStatsOverlayLod(cameraHeight)
   statsAnalysisSurfaceOverlay?.setShow?.(lod !== "hidden" && hasStatsOverlayEnabled())
+  if (statsElevationSurfacePrimitive) {
+    statsElevationSurfacePrimitive.show = lod !== "hidden" && hasStatsOverlayEnabled()
+  }
   statsOverlayLayer?.setShow?.((lod === "columns" || lod === "labels") && hasStatsOverlayEnabled())
   statsOverlayLabels.forEach((label) => {
     label.show = lod === "labels"
