@@ -456,6 +456,7 @@ import { connectDatasetSync, disconnectDatasetSync, onDatasetSync, type DatasetS
 import { watchFile } from "../services/file-watch"
 import { refreshMetadata, registerMetadataRefresher } from "../services/metadata-refresh"
 import { classifyLayer, DEFAULT_GROUP } from "../services/layer-classifier"
+import { categorizeLayersForImport } from "../services/import-layer-categorizer"
 import { loadResultFile } from "../services/result-loader"
 import { validateResultFile } from "../services/result-loader-utils"
 import { MAX_LAYERS, assertLayerCapacity, countManifestLayers } from "../services/layer-constraints"
@@ -2748,81 +2749,6 @@ function pickLayersById(layers: any[], keepIds: string[]): any[] {
     }
   }
   return list.filter((l) => result.has(String((l as any)?.id || "")))
-}
-
-function categorizeLayersForImport(layers: any[], prefixHint?: string): any[] {
-  const list = Array.isArray(layers) ? layers : []
-  if (list.length === 0) {
-    return []
-  }
-
-  // 检查是否已有完整的层级结构（包含 group 图层和有效的 pid 关系）
-  const ids = new Set<string>(list.map((l) => String((l as any)?.id || "")).filter(Boolean))
-  const hasExistingGroups = list.some((l) => String((l as any)?.sourceType || "") === "group")
-  const hasValidPids = list.some((l) => {
-    const pid = (l as any)?.pid
-    return pid !== null && pid !== undefined && String(pid) !== "" && String(pid) !== String((l as any)?.id) && ids.has(String(pid))
-  })
-
-  // 如果已有层级结构，保持原有结构不变，只添加 ID 前缀
-  if (hasExistingGroups && hasValidPids) {
-    return list.map((l, idx) => ({
-      ...l,
-      order: Number.isFinite((l as any)?.order) ? (l as any)?.order : idx
-    }))
-  }
-
-  // 否则，使用原有的分类逻辑（按类型分组）
-  const leaf = list.filter((l) => String((l as any)?.sourceType || "") !== "group")
-  if (leaf.length === 0) {
-    return list // 如果全是 group，返回原列表
-  }
-
-  const categories: Array<{ id: string; name: string; match: (t: string) => boolean }> = [
-    { id: "__type_raster", name: "栅格", match: (t) => ["xyz", "wms", "wmts", "tms", "tile", "arcgis", "image", "img"].includes(t) },
-    { id: "__type_vector", name: "矢量", match: (t) => ["geojson", "vector", "wfs"].includes(t) },
-    { id: "__type_3d", name: "三维", match: (t) => ["3dtiles"].includes(t) },
-    { id: "__type_other", name: "其他", match: () => true }
-  ]
-
-  const usedCat = new Set<string>()
-  const catOfLayer = (l: any) => {
-    const t = String(l?.sourceType || "")
-    const c = categories.find((x) => x.match(t)) || categories[categories.length - 1]
-    const cid = prefixHint ? `${c.id}_${prefixHint}` : c.id
-    usedCat.add(cid)
-    return cid
-  }
-
-  const ordered = [...leaf].sort((a, b) => (Number((a as any)?.order) || 0) - (Number((b as any)?.order) || 0))
-  const remapped = ordered.map((l, idx) => {
-    const cid = catOfLayer(l)
-    return {
-      ...l,
-      pid: cid,
-      order: Number.isFinite((l as any)?.order) ? (l as any)?.order : idx
-    }
-  })
-
-  const finalGroups = categories
-    .map((c) => {
-      const id = prefixHint ? `${c.id}_${prefixHint}` : c.id
-      if (!usedCat.has(id)) {
-        return null
-      }
-      return {
-        id,
-        name: c.name,
-        sourceType: "group",
-        sourceRef: "",
-        visible: true,
-        opacity: 1
-      }
-    })
-    .filter(Boolean)
-    .map((g: any, idx: number) => ({ ...g, order: idx }))
-
-  return [...finalGroups, ...remapped]
 }
 
 async function handleImportSubmit(payload: ImportPayload) {

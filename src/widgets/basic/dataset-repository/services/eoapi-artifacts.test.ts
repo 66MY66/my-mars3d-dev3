@@ -41,7 +41,7 @@ vi.mock("spark-md5", () => ({
   }
 }))
 
-const { LARGE_ARTIFACT_UPLOAD_THRESHOLD_BYTES, smartUploadArtifact } = await import("./eoapi-artifacts")
+const { LARGE_ARTIFACT_UPLOAD_THRESHOLD_BYTES, getArtifacts, smartUploadArtifact } = await import("./eoapi-artifacts")
 
 function makeSizedFile(name: string, size: number, type = "application/octet-stream"): File {
   const file = new File(["x"], name, { type })
@@ -195,5 +195,28 @@ describe("smartUploadArtifact", () => {
       reason: "artifact",
       source: "smartUploadArtifact:local-presigned"
     })
+  })
+})
+
+describe("bundled layer loading acceptance artifact", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    eoapiGet.mockResolvedValue({ success: false, message: "offline" })
+  })
+
+  it("exposes an ordinary JPG report in the dataset attachment list", async () => {
+    const result = await getArtifacts({ datasetId: "local_layer_loading_acceptance" })
+
+    expect(result.success).toBe(true)
+    expect(result.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        artifactId: "local_art_layer_loading_report",
+        name: "图层加载验收监测报告.jpg",
+        type: "report",
+        mime: "image/jpeg",
+        datasetId: "local_layer_loading_acceptance"
+      })
+    ]))
   })
 })

@@ -9,6 +9,7 @@ import { RestoreStrategy, applyRestoreStrategy, ConflictResolution } from "./str
 import { applyDefaultRasterStyleOptions } from "../services/layer-style-defaults"
 import { ensureUniqueMapLayerId, normalizeLayerIdToken } from "../services/layer-id"
 import { findSourceRegistryEntry } from "../services/source-registry"
+import { createMvtLayer } from "../services/mvt-layer"
 
 const Cesium = mars3d.Cesium
 
@@ -284,7 +285,7 @@ async function createLayerFromInfo(
 ): Promise<void> {
   const { sourceType, sourceRef, name, visible, opacity } = layerInfo
   const nextName = `${options?.namePrefix || ""}${name || layerId}`
-  const pid = options?.pid
+  const pid = options?.pid ?? (layerInfo as any)?.pid
   const timeAt = typeof options?.timeAt === "number" ? options?.timeAt : Date.now()
   const resolvedSourceRef = applyTemporalToUrl(String(sourceRef || ""), (layerInfo as any)?.temporal, timeAt, (layerInfo as any)?.timeExtent)
   const storedOptions = (layerInfo as any)?.options
@@ -369,6 +370,20 @@ async function createLayerFromInfo(
         maximumTerrainLevel: 18,
         pid
       }))
+      map.addLayer(layer)
+      break
+    }
+
+    case "mvt": {
+      const layer = createMvtLayer(withRasterDefaults({
+        ...(storedOptions && typeof storedOptions === "object" ? storedOptions : {}),
+        id: layerId,
+        name: nextName,
+        url: resolvedSourceRef,
+        show: visible ?? true,
+        opacity: opacity ?? 1,
+        pid
+      }) as any)
       map.addLayer(layer)
       break
     }
@@ -585,7 +600,7 @@ async function createLayerFromInfo(
 
     default:
       // 未知类型，尝试使用通用图层
-      if (resolvedSourceRef) {
+      if (resolvedSourceRef && !/\.(png|jpg|jpeg|webp)(\?.*)?$/i.test(resolvedSourceRef)) {
         const layer = new mars3d.layer.XyzLayer(withRasterDefaults({
           id: layerId,
           name: nextName,
@@ -617,6 +632,11 @@ function inferSourceTypeFromUrl(url: string, layerOptions?: any): string {
     return ""
   }
   const lower = u.toLowerCase()
+
+  const isMvt = /\.(mvt|pbf)(\?.*)?$/.test(lower)
+  if (isMvt && ["{x}", "{y}", "{z}"].every((tag) => lower.includes(tag))) {
+    return "mvt"
+  }
 
   const hasTilePlaceholder = /\{x\}|\{y\}|\{z\}|\{s\}|\{a-c\}/i.test(u)
   if (hasTilePlaceholder) {

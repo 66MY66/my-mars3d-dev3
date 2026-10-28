@@ -12,7 +12,7 @@ function detectCategory(layer: LayerMetadata): "raster" | "vector" | "result" | 
   const type = String(layer.type || layer.sourceType || "").toLowerCase()
   const format = String(layer.format || "").toLowerCase()
 
-  if (["xyz", "image", "geotiff", "tif", "tiff", "cog", "wmts", "wms", "raster"].includes(type)) {
+  if (["xyz", "image", "img", "png", "jpg", "jpeg", "webp", "geotiff", "tif", "tiff", "cog", "wmts", "wms", "raster"].includes(type)) {
     return "raster"
   }
   if (["geojson", "json", "csv", "shp", "shapefile", "mvt", "vector"].includes(type)) {
@@ -25,7 +25,7 @@ function detectCategory(layer: LayerMetadata): "raster" | "vector" | "result" | 
     return "basemap"
   }
 
-  if (["cog", "geotiff", "tif", "tiff", "wmts", "wms"].includes(format)) {
+  if (["image", "img", "png", "jpg", "jpeg", "webp", "cog", "geotiff", "tif", "tiff", "xyz", "wmts", "wms"].includes(format)) {
     return "raster"
   }
   if (["geojson", "csv", "shp", "mvt"].includes(format)) {

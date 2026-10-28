@@ -6,6 +6,7 @@
 import * as mars3d from "mars3d"
 import { applyDefaultRasterStyleOptions } from "./services/layer-style-defaults"
 import { buildThermalHeatLayerOptions, shouldRenderThermalHeatmap } from "./services/thermal-heatmap"
+import { createMvtLayer } from "./services/mvt-layer"
 const Cesium = mars3d.Cesium
 
 let map: mars3d.Map // 地图对象
@@ -707,21 +708,7 @@ export async function addThematicProtocolLayer(id: string, type: string, url: st
     if (!options.layer || !options.tileMatrixSetID) { throw new Error("WMTS 服务缺少 layer 或 tileMatrixSetID 元数据") }
     layer = new mars3d.layer.WmtsLayer({ ...options, id, url })
   } else if (type === "mvt") {
-    if (!["{z}", "{x}", "{y}"].every(tag => url.includes(tag))) { throw new Error("MVT 服务需要包含 {z}/{x}/{y} 的瓦片地址") }
-    const { paintVectorTile } = await import("./services/thematic-mvt")
-    const Cesium = mars3d.Cesium
-    class MvtLayer extends mars3d.layer.BaseTileLayer {
-      async _createImageryProvider() {
-        const provider = new Cesium.UrlTemplateImageryProvider({ url, maximumLevel: options.maxZoom || 18, ...(options.bounds ? { rectangle: Cesium.Rectangle.fromDegrees(...options.bounds) } : {}) })
-        provider.requestImage = (x: number, y: number, z: number, request: any) => {
-          const resource = new Cesium.Resource({ url: url.replaceAll("{x}", String(x)).replaceAll("{y}", String(y)).replaceAll("{z}", String(z)), request })
-          const pending = resource.fetchArrayBuffer()
-          return pending?.then(buffer => paintVectorTile(buffer, options)) as any
-        }
-        return provider
-      }
-    }
-    layer = new MvtLayer({ ...options, id })
+    layer = createMvtLayer({ ...options, id, url })
   } else { throw new Error(`不支持的服务类型：${type}`) }
   map.addLayer(layer)
   return layer

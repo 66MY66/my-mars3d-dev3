@@ -1599,6 +1599,79 @@ const MODIS_TRUECOLOR_APRIL = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/bes
 const MODIS_TRUECOLOR_OCTOBER = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2024-10-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg"
 const ESRI_WORLD_IMAGERY = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 const MULTI_LAYER_DATASET_ID = "local_multi_layer_test"
+const LAYER_LOADING_ACCEPTANCE_DATASET_ID = "local_layer_loading_acceptance"
+
+function bundledLayerLoadingAcceptanceManifest(): Manifest {
+  return {
+    manifestVersion: "1.0",
+    createdAt: Date.parse("2026-10-28T00:00:00Z"),
+    viewState: { center: { longitude: 0, latitude: 20 }, zoom: 2, heading: 0, pitch: -45 },
+    layers: [
+      {
+        id: "acceptance-cog",
+        name: "COG 在线样例",
+        sourceType: "cog" as any,
+        sourceRef: "https://raw.githubusercontent.com/cogeotiff/rio-tiler/main/tests/fixtures/cog.tif",
+        visible: false,
+        opacity: 0.85,
+        order: 0
+      },
+      {
+        id: "acceptance-image",
+        name: "JPG 全球投影地理影像",
+        sourceType: "image",
+        sourceRef: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Equirectangular_projection_SW.jpg/1280px-Equirectangular_projection_SW.jpg",
+        visible: false,
+        opacity: 0.8,
+        order: 1,
+        options: { bounds: [-180, -90, 180, 90] }
+      },
+      {
+        id: "acceptance-xyz",
+        name: "OpenStreetMap XYZ",
+        sourceType: "xyz",
+        sourceRef: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        visible: true,
+        opacity: 1,
+        order: 2
+      },
+      {
+        id: "acceptance-wms",
+        name: "NASA GIBS WMS 真彩色",
+        sourceType: "wms",
+        sourceRef: "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi",
+        visible: false,
+        opacity: 0.85,
+        order: 3,
+        options: {
+          layers: "VIIRS_SNPP_CorrectedReflectance_TrueColor",
+          format: "image/png",
+          transparent: true,
+          parameters: { time: "2025-01-01" }
+        }
+      },
+      {
+        id: "acceptance-mvt",
+        name: "Esri World Basemap MVT",
+        sourceType: "mvt" as any,
+        sourceRef: "https://basemaps.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer/tile/{z}/{y}/{x}.pbf",
+        visible: false,
+        opacity: 0.9,
+        order: 4,
+        options: { maximumLevel: 16, lineColor: "#4da3ff", fillColor: "rgba(77, 163, 255, 0.18)" }
+      },
+      {
+        id: "acceptance-unknown",
+        name: "未知类型（应进入临时图层）",
+        sourceType: "custom-unknown" as any,
+        sourceRef: "",
+        visible: true,
+        opacity: 1,
+        order: 5
+      }
+    ]
+  }
+}
 
 function bundledMultiLayerManifest(): Manifest {
   return {
@@ -1751,6 +1824,18 @@ function ensureBundledDemoDatasets() {
     revisions: [{ revisionId: "multi-layer-v1", message: "Initial multi-layer test dataset", createdAt: Date.parse("2026-01-01T00:00:00Z") }],
     createdAt: Date.parse("2026-01-01T00:00:00Z"),
     updatedAt: Date.parse("2026-01-01T00:00:00Z")
+  })
+  const layerLoadingAcceptanceManifest = bundledLayerLoadingAcceptanceManifest()
+  rememberDataset(saved, LAYER_LOADING_ACCEPTANCE_DATASET_ID, {
+    name: "图层数据接入综合验收数据集",
+    description: "用于验证 COG、JPG 地理影像、XYZ、WMS、MVT、未知类型临时归类，以及普通 JPG 报告附件展示。地图服务均为公开联网资源。",
+    visibility: "private",
+    tags: ["图层验收", "栅格", "MVT", "公开服务"],
+    manifest: layerLoadingAcceptanceManifest,
+    revisionManifests: { "layer-loading-acceptance-v1": layerLoadingAcceptanceManifest },
+    revisions: [{ revisionId: "layer-loading-acceptance-v1", message: "公开服务综合验收数据", createdAt: Date.parse("2026-10-28T00:00:00Z") }],
+    createdAt: Date.parse("2026-10-28T00:00:00Z"),
+    updatedAt: Date.parse("2026-10-28T00:00:00Z")
   })
   const earthquakeRevisions: Record<string, Manifest> = {}
   const earthquakeRevisionRows = years.map((year) => {
