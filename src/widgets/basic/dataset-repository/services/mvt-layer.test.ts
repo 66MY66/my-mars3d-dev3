@@ -32,9 +32,11 @@ class MockUrlTemplateImageryProvider {
 
 class MockResource {
   static lastUrl = ""
+
   constructor(options: { url: string }) {
     MockResource.lastUrl = options.url
   }
+
   fetchArrayBuffer = fetchArrayBuffer
 }
 
