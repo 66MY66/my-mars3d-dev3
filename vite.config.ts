@@ -51,6 +51,12 @@ export default ({ mode }: ConfigEnv) => {
         protocol: (hmrProtocol as "ws" | "wss") || undefined
       },
       proxy: {
+        // 项目一 JEECG 数据管理接口；部署时可通过环境变量替换实际服务地址
+        "/api/data-management": {
+          target: ENV.VITE_DATA_MANAGEMENT_PROXY_TARGET || "http://localhost:9100",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/data-management/, "/jeecg-boot")
+        },
         // datasets-api 代理 - 数据集/成果管理、附件、发布审核（优先匹配，必须在 eoapi 之前）
         "/api/eoapi/datasets": {
           target: "http://192.168.10.15:5960",
@@ -159,7 +165,7 @@ export default ({ mode }: ConfigEnv) => {
           warn(warning)
         },
         input: {
-          index: path.resolve(__dirname, "index.html"),
+          index: path.resolve(__dirname, "index.html")
         },
         output: {
           manualChunks: (id) => {

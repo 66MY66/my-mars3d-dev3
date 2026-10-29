@@ -204,6 +204,8 @@ import {
   ReloadOutlined,
   InfoCircleOutlined
 } from "@ant-design/icons-vue"
+import { buildCatalogTree, fromCatalog, fromMetadata, toCatalogPayload } from "../api/adapters"
+import { catalogApi, metadataApi } from "../api/services"
 
 export default {
   name: "SatelliteDataCatalogLayout",
@@ -230,45 +232,7 @@ export default {
       },
 
       // 目录树
-      catalogTree: [
-        {
-          title: "根目录",
-          key: "root",
-          level: 0,
-          count: 450,
-          children: [
-            {
-              title: "GF-1",
-              key: "cat-gf1",
-              level: 1,
-              count: 150,
-              children: [
-                { title: "PMS传感器", key: "cat-gf1-pms", level: 2, count: 90 },
-                { title: "WFV传感器", key: "cat-gf1-wfv", level: 2, count: 60 }
-              ]
-            },
-            {
-              title: "GF-6",
-              key: "cat-gf6",
-              level: 1,
-              count: 120,
-              children: [
-                { title: "WFV传感器", key: "cat-gf6-wfv", level: 2, count: 120 }
-              ]
-            },
-            {
-              title: "Sentinel",
-              key: "cat-sentinel",
-              level: 1,
-              count: 180,
-              children: [
-                { title: "Sentinel-1 (SAR)", key: "cat-sentinel-1", level: 2, count: 100 },
-                { title: "Sentinel-2 (MSI)", key: "cat-sentinel-2", level: 2, count: 80 }
-              ]
-            }
-          ]
-        }
-      ],
+      catalogTree: [],
       expandedKeys: ["root"],
       selectedKeys: [],
       currentCatalog: null,
@@ -329,21 +293,31 @@ export default {
     }
   },
   mounted() {
-    // 默认选中第一个目录
-    if (this.catalogTree[0] && this.catalogTree[0].children && this.catalogTree[0].children[0]) {
-      const firstChild = this.catalogTree[0].children[0]
-      this.selectedKeys = [firstChild.key]
-      this.currentCatalog = firstChild
-      this.loadAssociatedMetadata(firstChild.key)
-    }
+    this.loadCatalogs()
   },
   methods: {
-    refreshData() {
+    async loadCatalogs(showSuccess = false) {
       this.loading = true
-      setTimeout(() => {
-        message.success("数据已刷新")
+      try {
+        const page = await catalogApi.list({ pageNo: 1, pageSize: 1000 })
+        const nodes = page.records.map(fromCatalog)
+        this.catalogTree = buildCatalogTree(nodes)
+        this.statistics.totalCatalogs = page.total
+        this.statistics.totalMetadata = nodes.reduce((sum, node) => sum + Number(node.count || 0), 0)
+        if (!this.currentCatalog && this.catalogTree[0]) {
+          this.currentCatalog = this.catalogTree[0]
+          this.selectedKeys = [this.currentCatalog.key]
+        }
+        this.loadAssociatedMetadata()
+        if (showSuccess) { message.success("数据已刷新") }
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "目录数据加载失败")
+      } finally {
         this.loading = false
-      }, 500)
+      }
+    },
+    refreshData() {
+      this.loadCatalogs(true)
     },
 
     getLevelName(level) {
@@ -381,45 +355,36 @@ export default {
     },
 
     loadAssociatedMetadata() {
-      this.loading = true
-      setTimeout(() => {
-        // 模拟数据
-        this.associatedMetadata = [
-          {
-            metadataId: "META-GF1-20241118-001",
-            satellite: "GF-1",
-            sensor: "PMS",
-            dataType: "光学",
-            associateTime: "2024-11-18 10:30:25"
-          },
-          {
-            metadataId: "META-GF1-20241118-002",
-            satellite: "GF-1",
-            sensor: "PMS",
-            dataType: "光学",
-            associateTime: "2024-11-18 11:15:40"
-          }
-        ]
-        this.paginationConfig.total = this.associatedMetadata.length
-        this.loading = false
-      }, 500)
+      this.associatedMetadata = []
+      this.paginationConfig.total = 0
     },
 
     showCreateDialog() {
       this.dialogVisible = true
     },
 
-    handleSaveCatalog() {
-      this.$refs.catalogFormRef.validate().then(() => {
+    async handleSaveCatalog() {
+      try {
+        await this.$refs.catalogFormRef.validate()
         this.confirmLoading = true
-        setTimeout(() => {
-          message.success("目录创建成功")
-          this.statistics.totalCatalogs++
-          this.dialogVisible = false
-          this.confirmLoading = false
-          this.$refs.catalogFormRef.resetFields()
-        }, 500)
-      }).catch(() => {})
+        const parent = this.currentCatalog
+        await catalogApi.add(toCatalogPayload({
+          ...this.catalogForm,
+          parentId: parent?.id || "",
+          level: Number(parent?.level ?? -1) + 1,
+          dataCount: 0,
+          status: "正常",
+          isLeaf: true
+        }))
+        message.success("目录创建成功")
+        this.dialogVisible = false
+        this.$refs.catalogFormRef.resetFields()
+        await this.loadCatalogs()
+      } catch (error) {
+        if (error instanceof Error) { message.error(error.message) }
+      } finally {
+        this.confirmLoading = false
+      }
     },
 
     showAssociateDialog() {
@@ -431,25 +396,13 @@ export default {
       this.associateDialogVisible = true
     },
 
-    loadAvailableMetadata() {
-      this.availableMetadata = [
-        {
-          metadataId: "META-GF1-20241118-003",
-          satellite: "GF-1",
-          sensor: "PMS",
-          dataType: "光学",
-          acquisitionTime: "2024-11-18 12:30:25",
-          associated: false
-        },
-        {
-          metadataId: "META-GF1-20241118-004",
-          satellite: "GF-1",
-          sensor: "PMS",
-          dataType: "光学",
-          acquisitionTime: "2024-11-18 13:15:40",
-          associated: false
-        }
-      ]
+    async loadAvailableMetadata() {
+      try {
+        const page = await metadataApi.list({ pageNo: 1, pageSize: 1000 })
+        this.availableMetadata = page.records.map((record) => ({ ...fromMetadata(record), associated: false }))
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "元数据加载失败")
+      }
     },
 
     onSelectChange(selectedRowKeys) {
@@ -461,16 +414,7 @@ export default {
         message.warning("请选择要关联的元数据")
         return
       }
-      this.confirmLoading = true
-      setTimeout(() => {
-        const count = this.selectedMetadataKeys.length
-        message.success(`成功关联${count}条元数据`)
-        this.associateDialogVisible = false
-        this.confirmLoading = false
-        this.selectedMetadataKeys = []
-        this.loadAssociatedMetadata(this.currentCatalog.key)
-        this.statistics.totalMetadata += count
-      }, 500)
+      message.info("项目一当前后端未提供目录与元数据关联接口")
     },
 
     viewMetadataDetail(record) {
@@ -494,17 +438,7 @@ export default {
         okText: "确定",
         okType: "danger",
         cancelText: "取消",
-        onOk: () => {
-          const index = this.associatedMetadata.findIndex(
-            (item) => item.metadataId === record.metadataId
-          )
-          if (index !== -1) {
-            this.associatedMetadata.splice(index, 1)
-            this.paginationConfig.total--
-            this.statistics.totalMetadata--
-            message.success("解除关联成功")
-          }
-        }
+        onOk: () => message.info("项目一当前后端未提供解除关联接口")
       })
     }
   }

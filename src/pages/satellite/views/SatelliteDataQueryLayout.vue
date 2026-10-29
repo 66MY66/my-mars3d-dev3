@@ -289,6 +289,8 @@ import {
   CalendarOutlined,
   EnvironmentOutlined
 } from "@ant-design/icons-vue"
+import { filterMetadata, fromMetadata, toSharePayload } from "../api/adapters"
+import { downloadBlob, metadataApi, shareApi } from "../api/services"
 
 export default {
   name: "SatelliteDataQueryLayout",
@@ -368,54 +370,12 @@ export default {
     }
   },
   methods: {
-    handleSearch() {
+    async handleSearch() {
       this.loading = true
       const startTime = Date.now()
-
-      setTimeout(() => {
-        // 模拟搜索结果
-        this.searchResults = [
-          {
-            metadataId: "META-GF1-20241118-001",
-            satellite: "GF-1",
-            sensor: "PMS",
-            resolution: 2,
-            dataType: "光学",
-            acquisitionTime: "2024-11-18 10:30:25",
-            cloudCover: 5,
-            region: "北京市",
-            catalogPath: "GF-1/PMS传感器/2024年",
-            centerLon: 116.4074,
-            centerLat: 39.9042
-          },
-          {
-            metadataId: "META-SEN2-20241118-002",
-            satellite: "Sentinel-2",
-            sensor: "MSI",
-            resolution: 10,
-            dataType: "光学",
-            acquisitionTime: "2024-11-18 09:15:40",
-            cloudCover: 10,
-            region: "上海市",
-            catalogPath: "Sentinel/Sentinel-2 (MSI)/2024年",
-            centerLon: 121.4737,
-            centerLat: 31.2304
-          },
-          {
-            metadataId: "META-GF6-20241117-003",
-            satellite: "GF-6",
-            sensor: "WFV",
-            resolution: 16,
-            dataType: "光学",
-            acquisitionTime: "2024-11-17 14:22:10",
-            cloudCover: 15,
-            region: "广州市",
-            catalogPath: "GF-6/WFV传感器/2024年",
-            centerLon: 113.2644,
-            centerLat: 23.1291
-          }
-        ]
-
+      try {
+        const page = await metadataApi.list({ pageNo: 1, pageSize: 1000 })
+        this.searchResults = filterMetadata(page.records.map(fromMetadata), this.searchForm)
         const endTime = Date.now()
         const responseTime = ((endTime - startTime) / 1000).toFixed(2)
 
@@ -429,8 +389,11 @@ export default {
           message.warning(`查询完成！找到 ${this.searchResults.length} 条结果，耗时 ${responseTime}秒（超过3秒要求）`)
         }
 
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "查询失败")
+      } finally {
         this.loading = false
-      }, 800)
+      }
     },
 
     resetSearchForm() {
@@ -450,12 +413,18 @@ export default {
       this.searchStatistics.responseTime = 0
     },
 
-    exportResults() {
+    async exportResults() {
       if (this.searchResults.length === 0) {
         message.warning("没有可导出的结果")
         return
       }
-      message.success("导出成功！文件保存为 query_results.xlsx")
+      try {
+        const blob = await metadataApi.exportExcel()
+        downloadBlob(blob, "query_results.xlsx")
+        message.success("导出成功！文件保存为 query_results.xlsx")
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "导出失败")
+      }
     },
 
     showMapSelector() {
@@ -483,7 +452,7 @@ export default {
         okText: "确定",
         cancelText: "取消",
         onOk: () => {
-          message.success(`正在下载：${record.metadataId}`)
+          message.info(`项目一当前后端未提供数据文件下载接口：${record.metadataId}`)
         }
       })
     },
@@ -494,16 +463,27 @@ export default {
       this.shareDialogVisible = true
     },
 
-    handleShareConfirm() {
+    async handleShareConfirm() {
       if (!this.shareTarget) {
         message.warning("请输入接收人邮箱或用户ID")
         return
       }
       const id = this.shareRecord ? this.shareRecord.metadataId : ""
-      message.success(`数据 ${id} 已分享给 ${this.shareTarget}`)
-      this.shareDialogVisible = false
-      this.shareTarget = ""
-      this.shareRecord = null
+      try {
+        await shareApi.add(toSharePayload({
+          dataIds: [id],
+          authType: "用户",
+          authTarget: [this.shareTarget],
+          permissions: ["查看"],
+          status: "已启用"
+        }))
+        message.success(`数据 ${id} 已分享给 ${this.shareTarget}`)
+        this.shareDialogVisible = false
+        this.shareTarget = ""
+        this.shareRecord = null
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "分享失败")
+      }
     }
   }
 }

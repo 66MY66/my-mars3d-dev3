@@ -186,6 +186,8 @@ import {
   SearchOutlined,
   FileTextOutlined
 } from "@ant-design/icons-vue"
+import { fromMetadata, toMetadataPayload } from "../api/adapters"
+import { downloadBlob, metadataApi } from "../api/services"
 
 export default {
   name: "SatelliteMetadataLayout",
@@ -212,38 +214,7 @@ export default {
       },
 
       // 元数据列表
-      metadataList: [
-        {
-          metadataId: "META-GF1-20241118-001",
-          satellite: "GF-1",
-          sensor: "PMS",
-          dataType: "光学",
-          resolution: 2,
-          acquisitionTime: "2024-11-18 10:30:25",
-          region: "北京市",
-          status: "已验证"
-        },
-        {
-          metadataId: "META-SEN2-20241118-002",
-          satellite: "Sentinel-2",
-          sensor: "MSI",
-          dataType: "光学",
-          resolution: 10,
-          acquisitionTime: "2024-11-18 09:15:40",
-          region: "上海市",
-          status: "已验证"
-        },
-        {
-          metadataId: "META-GF6-20241117-003",
-          satellite: "GF-6",
-          sensor: "WFV",
-          dataType: "光学",
-          resolution: 16,
-          acquisitionTime: "2024-11-17 14:22:10",
-          region: "广州市",
-          status: "未验证"
-        }
-      ],
+      metadataList: [],
 
       // 表格列
       columns: [
@@ -262,7 +233,7 @@ export default {
       paginationConfig: {
         current: 1,
         pageSize: 10,
-        total: 3,
+        total: 0,
         showSizeChanger: true,
         showQuickJumper: true,
         showTotal: (total) => `共 ${total} 条数据`,
@@ -290,17 +261,35 @@ export default {
       }
     }
   },
+  mounted() {
+    this.loadMetadata()
+  },
   methods: {
-    refreshData() {
+    async loadMetadata(showSuccess = false) {
       this.loading = true
-      setTimeout(() => {
-        message.success("数据已刷新")
+      try {
+        const page = await metadataApi.list({
+          pageNo: this.paginationConfig.current,
+          pageSize: this.paginationConfig.pageSize,
+          satellite: this.filters.satellite,
+          dataType: this.filters.dataType
+        })
+        this.metadataList = page.records.map(fromMetadata)
+        this.paginationConfig.total = page.total
+        if (showSuccess) { message.success("数据已刷新") }
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "元数据加载失败")
+      } finally {
         this.loading = false
-      }, 500)
+      }
+    },
+    refreshData() {
+      this.loadMetadata(true)
     },
 
     handleSearch() {
-      message.success("查询完成")
+      this.paginationConfig.current = 1
+      this.loadMetadata(true)
     },
 
     resetFilters() {
@@ -309,11 +298,14 @@ export default {
         dataType: undefined,
         dateRange: []
       }
+      this.paginationConfig.current = 1
+      this.loadMetadata()
     },
 
     handleTableChange(pagination) {
       this.paginationConfig.current = pagination.current
       this.paginationConfig.pageSize = pagination.pageSize
+      this.loadMetadata()
     },
 
     showCreateDialog() {
@@ -322,32 +314,48 @@ export default {
     },
 
     showBatchImportDialog() {
-      message.info("批量导入功能开发中...")
+      const input = document.createElement("input")
+      input.type = "file"
+      input.accept = ".xls,.xlsx"
+      input.onchange = async () => {
+        const file = input.files?.[0]
+        if (!file) { return }
+        try {
+          await metadataApi.importExcel(file)
+          message.success("批量导入成功")
+          await this.loadMetadata()
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : "批量导入失败")
+        }
+      }
+      input.click()
     },
 
-    exportMetadata() {
-      message.success("导出成功！文件保存为 metadata_export.xlsx")
+    async exportMetadata() {
+      try {
+        const blob = await metadataApi.exportExcel()
+        downloadBlob(blob, "metadata_export.xlsx")
+        message.success("导出成功！文件保存为 metadata_export.xlsx")
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "导出失败")
+      }
     },
 
-    handleSaveMetadata() {
-      this.$refs.metadataFormRef.validate().then(() => {
+    async handleSaveMetadata() {
+      try {
+        await this.$refs.metadataFormRef.validate()
         this.confirmLoading = true
-        setTimeout(() => {
-          if (!this.editMode) {
-            const newMetadata = {
-              ...this.metadataForm,
-              metadataId: `META-${new Date().getTime()}`,
-              status: "未验证"
-            }
-            this.metadataList.unshift(newMetadata)
-            this.paginationConfig.total++
-          }
-          message.success(this.editMode ? "元数据更新成功" : "元数据创建成功")
-          this.dialogVisible = false
-          this.confirmLoading = false
-          this.$refs.metadataFormRef.resetFields()
-        }, 500)
-      }).catch(() => {})
+        const payload = toMetadataPayload({ ...this.metadataForm, status: this.metadataForm.status || "未验证" })
+        if (this.editMode) { await metadataApi.edit(payload) } else { await metadataApi.add(payload) }
+        message.success(this.editMode ? "元数据更新成功" : "元数据创建成功")
+        this.dialogVisible = false
+        this.$refs.metadataFormRef.resetFields()
+        await this.loadMetadata()
+      } catch (error) {
+        if (error instanceof Error) { message.error(error.message) }
+      } finally {
+        this.confirmLoading = false
+      }
     },
 
     viewDetail(record) {
@@ -380,9 +388,14 @@ export default {
         content: "验证将检查数据完整性和格式正确性",
         okText: "确定",
         cancelText: "取消",
-        onOk: () => {
-          record.status = "已验证"
-          message.success("元数据验证成功")
+        onOk: async () => {
+          try {
+            await metadataApi.edit(toMetadataPayload({ ...record, status: "已验证" }))
+            message.success("元数据验证成功")
+            await this.loadMetadata()
+          } catch (error) {
+            message.error(error instanceof Error ? error.message : "元数据验证失败")
+          }
         }
       })
     },
@@ -394,14 +407,13 @@ export default {
         okText: "确定",
         okType: "danger",
         cancelText: "取消",
-        onOk: () => {
-          const index = this.metadataList.findIndex(
-            (item) => item.metadataId === record.metadataId
-          )
-          if (index !== -1) {
-            this.metadataList.splice(index, 1)
-            this.paginationConfig.total--
+        onOk: async () => {
+          try {
+            await metadataApi.remove(record.metadataId)
             message.success("删除成功")
+            await this.loadMetadata()
+          } catch (error) {
+            message.error(error instanceof Error ? error.message : "删除失败")
           }
         }
       })

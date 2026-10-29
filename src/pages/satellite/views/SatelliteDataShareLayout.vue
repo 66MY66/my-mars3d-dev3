@@ -375,6 +375,8 @@ import {
   FolderOpenOutlined,
   InboxOutlined
 } from "@ant-design/icons-vue"
+import { fromMetadata, fromShare, toSharePayload } from "../api/adapters"
+import { metadataApi, shareApi } from "../api/services"
 
 export default {
   name: "SatelliteDataShareLayout",
@@ -398,28 +400,7 @@ export default {
 
       // 授权管理
       authSearchKeyword: "",
-      authorizationList: [
-        {
-          ruleId: "AUTH-20241118-001",
-          dataId: "META-GF1-20241118-001",
-          authType: "角色",
-          authTarget: "科研人员",
-          permissions: ["查看", "下载"],
-          validPeriod: "2024-11-18 ~ 2025-11-18",
-          status: "已启用",
-          createTime: "2024-11-18 10:00:00"
-        },
-        {
-          ruleId: "AUTH-20241118-002",
-          dataId: "META-SEN2-20241118-002",
-          authType: "用户",
-          authTarget: "user_001",
-          permissions: ["查看", "预览"],
-          validPeriod: "2024-11-18 ~ 2024-12-18",
-          status: "已启用",
-          createTime: "2024-11-18 11:30:00"
-        }
-      ],
+      authorizationList: [],
       authColumns: [
         { title: "规则ID", dataIndex: "ruleId", key: "ruleId", width: 180 },
         { title: "数据ID", dataIndex: "dataId", key: "dataId", width: 180 },
@@ -433,7 +414,7 @@ export default {
       authPaginationConfig: {
         current: 1,
         pageSize: 10,
-        total: 2,
+        total: 0,
         showSizeChanger: true,
         showTotal: (total) => `共 ${total} 条数据`
       },
@@ -450,41 +431,7 @@ export default {
         dataId: "",
         result: undefined
       },
-      accessLogs: [
-        {
-          time: "2024-11-18 14:25:35",
-          userId: "user_001",
-          userName: "张三",
-          role: "科研人员",
-          dataId: "META-GF1-20241118-001",
-          action: "下载",
-          result: "成功",
-          responseTime: 1500,
-          ip: "192.168.1.100"
-        },
-        {
-          time: "2024-11-18 14:20:15",
-          userId: "user_002",
-          userName: "李四",
-          role: "业务人员",
-          dataId: "META-SEN2-20241118-002",
-          action: "查看",
-          result: "成功",
-          responseTime: 1200,
-          ip: "192.168.1.101"
-        },
-        {
-          time: "2024-11-18 14:15:40",
-          userId: "user_003",
-          userName: "王五",
-          role: "访客",
-          dataId: "META-GF6-20241117-003",
-          action: "下载",
-          result: "失败",
-          responseTime: 800,
-          ip: "192.168.1.102"
-        }
-      ],
+      accessLogs: [],
       logColumns: [
         { title: "访问时间", dataIndex: "time", key: "time", width: 180 },
         { title: "用户ID", dataIndex: "userId", key: "userId", width: 120 },
@@ -499,24 +446,13 @@ export default {
       logPaginationConfig: {
         current: 1,
         pageSize: 10,
-        total: 3,
+        total: 0,
         showSizeChanger: true,
         showTotal: (total) => `共 ${total} 条数据`
       },
 
       // 我的共享
-      mySharedData: [
-        {
-          shareId: "SHARE-20241118-001",
-          dataId: "META-GF1-20241118-001",
-          dataName: "GF-1 PMS 北京地区 2024-11-18",
-          shareType: "公开",
-          accessCount: 25,
-          downloadCount: 8,
-          shareTime: "2024-11-18 10:00:00",
-          expireTime: "2025-11-18 10:00:00"
-        }
-      ],
+      mySharedData: [],
       myShareColumns: [
         { title: "分享ID", dataIndex: "shareId", key: "shareId", width: 180 },
         { title: "数据名称", dataIndex: "dataName", key: "dataName" },
@@ -527,17 +463,7 @@ export default {
       ],
 
       // 共享给我的
-      sharedToMeData: [
-        {
-          dataId: "META-GF6-20241117-003",
-          dataName: "GF-6 WFV 广州地区 2024-11-17",
-          shareFrom: "张三",
-          permissions: ["查看", "下载"],
-          receiveTime: "2024-11-17 16:00:00",
-          expireTime: "2025-05-17 16:00:00",
-          status: "有效"
-        }
-      ],
+      sharedToMeData: [],
       sharedToMeColumns: [
         { title: "数据名称", dataIndex: "dataName", key: "dataName" },
         { title: "分享人", dataIndex: "shareFrom", key: "shareFrom", width: 100 },
@@ -562,10 +488,7 @@ export default {
         permissions: [{ required: true, message: "请选择权限", trigger: "change" }],
         validPeriod: [{ required: true, message: "请选择有效期", trigger: "change" }]
       },
-      availableData: [
-        { id: "META-GF1-20241118-001", name: "GF-1 PMS 北京地区 2024-11-18" },
-        { id: "META-SEN2-20241118-002", name: "Sentinel-2 MSI 上海地区 2024-11-18" }
-      ],
+      availableData: [],
       availableRoles: [
         { id: "role_001", name: "科研人员" },
         { id: "role_002", name: "业务人员" }
@@ -593,13 +516,40 @@ export default {
       return this.availableUsers
     }
   },
+  mounted() {
+    this.loadAuthorizations()
+    this.loadAvailableData()
+  },
   methods: {
-    refreshAuthorizations() {
+    async loadAuthorizations(showSuccess = false) {
       this.loading = true
-      setTimeout(() => {
-        message.success("数据已刷新")
+      try {
+        const page = await shareApi.list({
+          pageNo: this.authPaginationConfig.current,
+          pageSize: this.authPaginationConfig.pageSize
+        })
+        this.authorizationList = page.records.map(fromShare)
+        this.authPaginationConfig.total = page.total
+        if (showSuccess) { message.success("数据已刷新") }
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "授权数据加载失败")
+      } finally {
         this.loading = false
-      }, 500)
+      }
+    },
+    async loadAvailableData() {
+      try {
+        const page = await metadataApi.list({ pageNo: 1, pageSize: 1000 })
+        this.availableData = page.records.map(fromMetadata).map((record) => ({
+          id: record.metadataId,
+          name: [record.satellite, record.sensor, record.region, record.acquisitionTime].filter(Boolean).join(" ")
+        }))
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "可授权数据加载失败")
+      }
+    },
+    refreshAuthorizations() {
+      this.loadAuthorizations(true)
     },
 
     handleSearch() {
@@ -618,16 +568,29 @@ export default {
       this.authDialogVisible = true
     },
 
-    handleSaveAuthorization() {
-      this.$refs.authFormRef.validate().then(() => {
+    async handleSaveAuthorization() {
+      try {
+        await this.$refs.authFormRef.validate()
         this.confirmLoading = true
-        setTimeout(() => {
-          message.success(this.editMode ? "授权规则更新成功" : "授权规则创建成功")
-          this.authDialogVisible = false
-          this.confirmLoading = false
-          this.$refs.authFormRef.resetFields()
-        }, 500)
-      }).catch(() => {})
+        const [validStart, validEnd] = this.authForm.validPeriod || []
+        const payload = toSharePayload({
+          ...this.authForm,
+          authId: this.authForm.authId,
+          authType: this.authForm.authType === "role" ? "角色" : "用户",
+          validStart,
+          validEnd,
+          status: this.authForm.status || "已启用"
+        })
+        if (this.editMode) { await shareApi.edit(payload) } else { await shareApi.add(payload) }
+        message.success(this.editMode ? "授权规则更新成功" : "授权规则创建成功")
+        this.authDialogVisible = false
+        this.$refs.authFormRef.resetFields()
+        await this.loadAuthorizations()
+      } catch (error) {
+        if (error instanceof Error) { message.error(error.message) }
+      } finally {
+        this.confirmLoading = false
+      }
     },
 
     viewAuthDetail(record) {
@@ -650,11 +613,13 @@ export default {
     editAuthorization(record) {
       this.editMode = true
       this.authForm = {
+        authId: record.authId,
         dataIds: [record.dataId],
         authType: record.authType === "角色" ? "role" : "user",
-        authTarget: [],
+        authTarget: Array.isArray(record.authTarget) ? [...record.authTarget] : [record.authTarget],
         permissions: [...record.permissions],
-        validPeriod: []
+        validPeriod: [record.validStart, record.validEnd],
+        status: record.status
       }
       this.authDialogVisible = true
     },
@@ -666,9 +631,14 @@ export default {
         title: `确定要${actionText}该授权规则吗？`,
         okText: "确定",
         cancelText: "取消",
-        onOk: () => {
-          record.status = newStatus
-          message.success(`已${newStatus}`)
+        onOk: async () => {
+          try {
+            await shareApi.edit(toSharePayload({ ...record, status: newStatus }))
+            message.success(`状态已更新为${newStatus}`)
+            await this.loadAuthorizations()
+          } catch (error) {
+            message.error(error instanceof Error ? error.message : "状态更新失败")
+          }
         }
       })
     },
@@ -679,19 +649,20 @@ export default {
         okText: "确定",
         okType: "danger",
         cancelText: "取消",
-        onOk: () => {
-          const index = this.authorizationList.findIndex((item) => item.ruleId === record.ruleId)
-          if (index !== -1) {
-            this.authorizationList.splice(index, 1)
-            this.authPaginationConfig.total--
+        onOk: async () => {
+          try {
+            await shareApi.remove(record.ruleId)
             message.success("删除成功")
+            await this.loadAuthorizations()
+          } catch (error) {
+            message.error(error instanceof Error ? error.message : "删除失败")
           }
         }
       })
     },
 
     filterAccessLogs() {
-      message.success("查询完成")
+      message.info("操作审计按当前接入范围暂缓")
     },
 
     resetLogFilter() {
@@ -703,35 +674,42 @@ export default {
     },
 
     exportAccessLogs() {
-      message.success("访问日志导出成功")
+      message.info("操作审计按当前接入范围暂缓")
     },
 
     showShareDataDialog() {
       this.shareDialogVisible = true
     },
 
-    handleShareData() {
+    async handleShareData() {
       if (!this.shareForm.dataId) {
         message.warning("请选择要分享的数据")
         return
       }
-      this.confirmLoading = true
-      setTimeout(() => {
+      try {
+        this.confirmLoading = true
+        const recipients = this.shareForm.recipients
+          ? this.shareForm.recipients.split(",").map((item) => item.trim()).filter(Boolean)
+          : ["公开"]
+        await shareApi.add(toSharePayload({
+          dataIds: [this.shareForm.dataId],
+          authType: this.shareForm.shareType === "public" ? "公开" : "用户",
+          authTarget: recipients,
+          permissions: ["查看"],
+          status: "已启用"
+        }))
         message.success("数据分享成功")
         this.shareDialogVisible = false
+        await this.loadAuthorizations()
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "数据分享失败")
+      } finally {
         this.confirmLoading = false
-      }, 500)
+      }
     },
 
     viewShareLink(record) {
-      Modal.info({
-        title: "分享链接",
-        content: () => h("div", [
-          h("p", [h("strong", "分享链接：")]),
-          h("p", `https://example.com/share/${record.shareId}`)
-        ]),
-        okText: "关闭"
-      })
+      message.info(`项目一当前后端未提供分享链接接口：${record.shareId}`)
     },
 
     viewShareStats() {
@@ -754,15 +732,11 @@ export default {
     },
 
     accessSharedData() {
-      this.loading = true
-      setTimeout(() => {
-        message.success("访问成功！")
-        this.loading = false
-      }, 1000)
+      message.info("共享给我的功能按当前接入范围暂缓")
     },
 
     downloadSharedData(record) {
-      message.success(`正在下载：${record.dataName}`)
+      message.info(`项目一当前后端未提供数据文件下载接口：${record.dataName}`)
     }
   }
 }

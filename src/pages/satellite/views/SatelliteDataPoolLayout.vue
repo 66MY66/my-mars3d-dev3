@@ -223,6 +223,8 @@ import {
   ReloadOutlined,
   DatabaseOutlined
 } from "@ant-design/icons-vue"
+import { fromPool, toPoolPayload } from "../api/adapters"
+import { poolApi } from "../api/services"
 
 export default {
   name: "SatelliteDataPoolLayout",
@@ -249,35 +251,7 @@ export default {
       },
 
       // 资源池列表
-      poolList: [
-        {
-          poolId: "POOL-20240101-001",
-          poolName: "GF-1光学数据池",
-          dataType: "光学",
-          totalCapacity: 500,
-          usedCapacity: 380,
-          usageRate: 76,
-          status: "正常"
-        },
-        {
-          poolId: "POOL-20240101-002",
-          poolName: "Sentinel-SAR数据池",
-          dataType: "SAR",
-          totalCapacity: 800,
-          usedCapacity: 680,
-          usageRate: 85,
-          status: "预警"
-        },
-        {
-          poolId: "POOL-20240101-003",
-          poolName: "混合遥感数据池",
-          dataType: "混合",
-          totalCapacity: 1000,
-          usedCapacity: 450,
-          usageRate: 45,
-          status: "正常"
-        }
-      ],
+      poolList: [],
 
       // 表格列
       columns: [
@@ -295,7 +269,7 @@ export default {
       paginationConfig: {
         current: 1,
         pageSize: 10,
-        total: 3,
+        total: 0,
         showSizeChanger: true,
         showQuickJumper: true,
         showTotal: (total) => `共 ${total} 条数据`,
@@ -335,6 +309,9 @@ export default {
       }
     }
   },
+  mounted() {
+    this.loadPools()
+  },
   computed: {
     filteredPoolList() {
       if (!this.searchKeyword) {
@@ -348,6 +325,28 @@ export default {
     }
   },
   methods: {
+    async loadPools(showSuccess = false) {
+      this.loading = true
+      try {
+        const page = await poolApi.list({
+          pageNo: this.paginationConfig.current,
+          pageSize: this.paginationConfig.pageSize
+        })
+        this.poolList = page.records.map(fromPool)
+        this.paginationConfig.total = page.total
+        this.statistics.totalPools = page.total
+        this.statistics.totalDataSources = new Set(this.poolList.flatMap((pool) => pool.satellites || [])).size
+        this.statistics.avgUsageRate = this.poolList.length
+          ? Math.round(this.poolList.reduce((sum, pool) => sum + pool.usageRate, 0) / this.poolList.length)
+          : 0
+        this.statistics.alertCount = this.poolList.filter((pool) => pool.status !== "正常").length
+        if (showSuccess) { message.success("数据已刷新") }
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "资源池数据加载失败")
+      } finally {
+        this.loading = false
+      }
+    },
     dataTypeColor(text) {
       if (text === "光学") {
         return "green"
@@ -369,11 +368,7 @@ export default {
     },
 
     refreshData() {
-      this.loading = true
-      setTimeout(() => {
-        message.success("数据已刷新")
-        this.loading = false
-      }, 500)
+      this.loadPools(true)
     },
 
     handleSearch() {
@@ -383,34 +378,27 @@ export default {
     handleTableChange(pagination) {
       this.paginationConfig.current = pagination.current
       this.paginationConfig.pageSize = pagination.pageSize
+      this.loadPools()
     },
 
     showCreateDialog() {
       this.createDialogVisible = true
     },
 
-    handleCreatePool() {
-      this.$refs.createFormRef.validate().then(() => {
+    async handleCreatePool() {
+      try {
+        await this.$refs.createFormRef.validate()
         this.confirmLoading = true
-        setTimeout(() => {
-          const newPool = {
-            poolId: `POOL-${new Date().getTime()}`,
-            poolName: this.createForm.poolName,
-            dataType: this.createForm.dataType,
-            totalCapacity: this.createForm.totalCapacity,
-            usedCapacity: 0,
-            usageRate: 0,
-            status: "正常"
-          }
-          this.poolList.unshift(newPool)
-          this.paginationConfig.total++
-          this.statistics.totalPools++
-          message.success("资源池创建成功")
-          this.createDialogVisible = false
-          this.confirmLoading = false
-          this.$refs.createFormRef.resetFields()
-        }, 500)
-      }).catch(() => {})
+        await poolApi.add(toPoolPayload({ ...this.createForm, usedCapacity: 0, status: "正常" }))
+        message.success("资源池创建成功")
+        this.createDialogVisible = false
+        this.$refs.createFormRef.resetFields()
+        await this.loadPools()
+      } catch (error) {
+        if (error instanceof Error) { message.error(error.message) }
+      } finally {
+        this.confirmLoading = false
+      }
     },
 
     showImportDialog() {
@@ -423,13 +411,7 @@ export default {
 
     handleDataImport() {
       this.$refs.importFormRef.validate().then(() => {
-        this.confirmLoading = true
-        setTimeout(() => {
-          message.success("数据接入任务已启动，正在后台处理")
-          this.importDialogVisible = false
-          this.confirmLoading = false
-          this.$refs.importFormRef.resetFields()
-        }, 1000)
+        message.info("项目一当前后端未提供数据接入任务接口")
       }).catch(() => {})
     },
 
@@ -465,13 +447,13 @@ export default {
         okText: "确定",
         okType: "danger",
         cancelText: "取消",
-        onOk: () => {
-          const index = this.poolList.findIndex((item) => item.poolId === record.poolId)
-          if (index !== -1) {
-            this.poolList.splice(index, 1)
-            this.paginationConfig.total--
-            this.statistics.totalPools--
+        onOk: async () => {
+          try {
+            await poolApi.remove(record.poolId)
             message.success("删除成功")
+            await this.loadPools()
+          } catch (error) {
+            message.error(error instanceof Error ? error.message : "删除失败")
           }
         }
       })
