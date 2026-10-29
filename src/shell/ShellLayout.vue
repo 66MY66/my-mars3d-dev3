@@ -1,6 +1,9 @@
 <template>
   <div class="shell" :style="shellStyle">
-    <Sidebar :collapsed="isSidebarIconOnly" @toggle="toggleSidebar" />
+    <!-- 默认渲染 mars3d 自带的侧栏；业务子系统可通过 #sidebar 插槽替换 -->
+    <slot name="sidebar">
+      <Sidebar :collapsed="isSidebarIconOnly" @toggle="toggleSidebar" />
+    </slot>
 
     <header class="header">
       <div class="brand">
@@ -49,6 +52,9 @@ import { initTheme } from "@/shell/theme"
 import { useWidget } from "@mars/common/store/widget"
 import logoUrl from "@/assets/logo.png?url"
 
+// 业务子系统可固定侧栏宽度（不传则沿用 mars3d 的收起/展开逻辑）
+const props = defineProps<{ sidebarWidth?: number }>()
+
 const sidebarCollapsed = ref(getStoredSidebarCollapsed())
 const viewportWidth = ref<number>(window.innerWidth)
 
@@ -62,7 +68,7 @@ const collapsedWidth = 64
 const expandedWidth = computed(() => 240)
 
 const shellStyle = computed(() => {
-  const visible = isSidebarIconOnly.value ? collapsedWidth : expandedWidth.value
+  const visible = props.sidebarWidth ?? (isSidebarIconOnly.value ? collapsedWidth : expandedWidth.value)
   return {
     "--sidebar-collapsed-width": `${collapsedWidth}px`,
     "--sidebar-expanded-width": `${expandedWidth.value}px`,

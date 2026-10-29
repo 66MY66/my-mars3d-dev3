@@ -143,6 +143,8 @@ vi.mock("./map", () => ({
   updateLayerShowOnly,
   getLayerByAttr: vi.fn(() => []),
   exchangeLayer: vi.fn(),
+  snapshotLayerZIndex: vi.fn(() => ({ "layer-1": 1, "vector-1": 2 })),
+  restoreLayerZIndex: vi.fn(),
   removeLayerById,
   setLayerName: vi.fn(() => true),
   setLayerPid: vi.fn(() => true),
@@ -276,6 +278,30 @@ describe("manage-layers/index.vue", () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it("opens layer properties from a plain tree node without parent helpers", async () => {
+    const wrapper = mountManageLayers()
+    await flushUi()
+
+    const vm: any = wrapper.vm
+    const node = {
+      id: "layer-1",
+      key: "layer-1",
+      title: "灾后真彩影像"
+    }
+
+    expect(() => vm.onContextMenuClick(node, "5")).not.toThrow()
+    await flushUi()
+
+    expect(vm.showLayerProps).toBe(true)
+    expect(vm.inspectedLayerId).toBe("layer-1")
+    expect(vm.currentLayerProps).toMatchObject({
+      id: "layer-1",
+      name: "灾后真彩影像",
+      type: "xyz",
+      source: "eoapi"
+    })
   })
 
   it("applies opacity and raster style changes immediately and persists them", async () => {

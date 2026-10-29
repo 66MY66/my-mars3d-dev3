@@ -15,6 +15,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import { useWidget } from "@mars/common/store/widget"
 
 type ModuleItem = {
@@ -37,7 +38,17 @@ const LOSS_WIDGET = "loss-assessment-blank"
 const ACTIVE_MODULE_STORAGE_KEY = "top_module_active"
 
 const { activate, disable, disableAll, isActivate } = useWidget()
-const activeModuleId = ref(localStorage.getItem(ACTIVE_MODULE_STORAGE_KEY) || modules[0].id)
+const router = useRouter()
+const route = useRoute()
+
+const DATA_MANAGEMENT_MODULE_ID = "data-management"
+const DATA_MANAGEMENT_HOME = "/satellite/data-pool"
+
+const activeModuleId = ref(
+  route.path.startsWith("/satellite")
+    ? DATA_MANAGEMENT_MODULE_ID
+    : localStorage.getItem(ACTIVE_MODULE_STORAGE_KEY) || modules[0].id
+)
 
 function goToFreshMap() {
   disableAll(true)
@@ -60,6 +71,14 @@ function reloadInitial3DView() {
 function onModuleClick(module: ModuleItem) {
   activeModuleId.value = module.id
   localStorage.setItem(ACTIVE_MODULE_STORAGE_KEY, module.id)
+
+  if (module.id === DATA_MANAGEMENT_MODULE_ID) {
+    disableAll(true)
+    if (route.path !== DATA_MANAGEMENT_HOME) {
+      router.push(DATA_MANAGEMENT_HOME)
+    }
+    return
+  }
 
   if (module.id === "visualization") {
     reloadInitial3DView()

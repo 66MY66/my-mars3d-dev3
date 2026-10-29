@@ -1,10 +1,20 @@
 import * as mars3d from "mars3d"
-import { runBufferAnalysis, runNeighborAnalysis, runOverlayAnalysis, type AnalysisTarget } from "@/api/spatialAnalysis"
+import { exportNeighborRaster, runBufferAnalysis, runNeighborAnalysis, runNeighborRasterAnalysis, runOverlayAnalysis, type AnalysisTarget } from "@/api/spatialAnalysis"
+import { collectNeighborRasterSources } from "./neighbor-analysis"
+import {
+  analyzeLocalRaster,
+  createLocalRiskRaster,
+  describeLocalRasterSource,
+  rasterToCanvas,
+  type LocalNeighborRaster
+} from "./local-neighbor-raster"
 
 let map: mars3d.Map // mars3d.Map三维地图对象
 let polygonLayer: any = null
 let pointLayer: any = null
 let heatLayer: any = null
+let localRasterPreviewLayer: any = null
+let localRaster: LocalNeighborRaster | null = null
 let lastFeatureCollection: any = null
 let lastPointItems: Array<{
   idx: number
@@ -44,6 +54,10 @@ export function onUnmounted(): void {
       map?.removeLayer(heatLayer, true)
       heatLayer = null
     }
+    if (localRasterPreviewLayer) {
+      map?.removeLayer(localRasterPreviewLayer, true)
+      localRasterPreviewLayer = null
+    }
     if (drawLayer) {
       map?.removeLayer(drawLayer, true)
       drawLayer = null
@@ -64,6 +78,47 @@ function ensureLayers() {
   if (!pointLayer) {
     pointLayer = new mars3d.layer.GraphicLayer({ name: "分析结果-点" })
     map.addLayer(pointLayer)
+  }
+}
+
+function isLocalApiMode() {
+  return String((process.env.API_LOCAL as any) ?? "") === "1"
+}
+
+function getLocalRaster() {
+  if (!localRaster) {
+    localRaster = createLocalRiskRaster()
+  }
+  return localRaster
+}
+
+function addRasterGraphic(layer: any, raster: LocalNeighborRaster, name: string, opacity: number) {
+  const [west, south, east, north] = raster.bounds
+  const graphic = new mars3d.graphic.RectangleEntity({
+    rectangle: mars3d.Cesium.Rectangle.fromDegrees(west, south, east, north),
+    style: {
+      image: rasterToCanvas(raster).toDataURL("image/png"),
+      opacity,
+      clampToGround: true,
+      outline: false
+    },
+    attr: { name, rasterSourceId: raster.id }
+  })
+  layer.addGraphic(graphic)
+  return graphic
+}
+
+function renderLocalRasterPreview(raster: LocalNeighborRaster | null) {
+  if (!map || !isLocalApiMode()) {
+    return
+  }
+  if (!localRasterPreviewLayer) {
+    localRasterPreviewLayer = new mars3d.layer.GraphicLayer({ id: "local-synthetic-risk-preview", name: "本地焦点统计预览" })
+    map.addLayer(localRasterPreviewLayer)
+  }
+  localRasterPreviewLayer.clear?.()
+  if (raster) {
+    addRasterGraphic(localRasterPreviewLayer, raster, "焦点统计预览", 0.9)
   }
 }
 
@@ -91,6 +146,7 @@ function clearAnalysisLayers() {
     map.removeLayer(heatLayer, true)
     heatLayer = null
   }
+  localRasterPreviewLayer?.clear?.()
   lastFeatureCollection = null
   lastPointItems = []
   lastSelectedGraphic = null
@@ -492,6 +548,50 @@ export function exportAnalysisCSV(toolType: string, summary?: Record<string, any
   mars3d.Util.downloadFile(`空间分析_${toolType}_${now}.csv`, ["key,value", ...rows].join("\n"))
 }
 
+export function getNeighborRasterSources() {
+  const layers = map?.getLayers?.() ?? []
+  const sources = collectNeighborRasterSources(layers)
+  if (isLocalApiMode()) {
+    const localSource = describeLocalRasterSource(getLocalRaster())
+    if (!sources.some((source) => source.id === localSource.id)) {
+      sources.unshift(localSource)
+    }
+  }
+  return sources
+}
+
+function buildNeighborRasterRequest(params: Record<string, any>, target: AnalysisTarget) {
+  if (target.type !== "polygon") {
+    throw new Error("邻域分析仅支持面要素")
+  }
+  const source = getNeighborRasterSources().find((item) => item.id === String(params.rasterSource))
+  if (!source) {
+    throw new Error("请选择当前可见的可分析栅格数据源")
+  }
+  const mode = params.analysisMode === "focal" ? "focal" : "area"
+  return {
+    target,
+    mode: mode as "area" | "focal",
+    rasterSource: { id: source.id, sourceType: source.sourceType, sourceRef: source.sourceRef },
+    band: String(params.rasterBand ?? "1"),
+    statistic: params.statistic,
+    windowShape: params.windowShape,
+    windowSize: Number(params.windowSize ?? 3),
+    noDataMode: params.noDataMode === "include" ? "include" as const : "ignore" as const,
+    previewResolution: params.previewResolution
+  }
+}
+
+export async function exportNeighborRasterResult(format: "geotiff" | "cog", params: Record<string, any>, target: AnalysisTarget) {
+  const blob = await exportNeighborRaster(buildNeighborRasterRequest(params, target), format)
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = `邻域分析_${Date.now()}.${format === "cog" ? "cog.tif" : "tif"}`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function runToolAnalysis(toolType: string, params: Record<string, any>, target: AnalysisTarget) {
   ensureLayers()
   const requestId = ++analysisRequestId
@@ -530,6 +630,34 @@ export async function runToolAnalysis(toolType: string, params: Record<string, a
     if (target.type !== "polygon") {
       throw new Error("邻域分析仅支持面要素")
     }
+    const analysisMode = String(params.analysisMode ?? "hazard")
+    if (analysisMode === "area" || analysisMode === "focal") {
+      if (isLocalApiMode() && String(params.rasterSource) === getLocalRaster().id) {
+        const localResult = analyzeLocalRaster(getLocalRaster(), {
+          mode: analysisMode,
+          ring: target.ring,
+          noDataMode: params.noDataMode === "include" ? "include" : "ignore",
+          statistic: params.statistic,
+          windowShape: params.windowShape,
+          windowSize: Number(params.windowSize ?? 3),
+          previewResolution: params.previewResolution
+        })
+        renderFeatureCollection({
+          type: "FeatureCollection",
+          features: [{
+            type: "Feature",
+            geometry: { type: "Polygon", coordinates: [target.ring] },
+            properties: { analysis: "neighbor-raster", analysisMode }
+          }]
+        }, "neighbor")
+        renderLocalRasterPreview(localResult.previewRaster)
+        return localResult.summary
+      }
+      const res = await runNeighborRasterAnalysis(buildNeighborRasterRequest(params, target))
+      renderFeatureCollection(res.geojson, "neighbor")
+      return res.summary
+    }
+
     const du = String(params.distanceUnit ?? "m")
     const toM = (v: any) => {
       const n = Number(v)

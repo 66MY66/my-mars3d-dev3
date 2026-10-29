@@ -1635,6 +1635,24 @@ const onContextMenuClick = (node: any, type: string) => {
     showGroupLayers(node)
     return
   }
+  if (type === "5") {
+    const layer = mapWork.getLayerById(node.id)
+    if (layer) {
+      inspectedLayerId.value = String(layer.id || "")
+      syncEditorsFromLayer(layer)
+      // 合并 options 中的 metadata 和基础属性
+      const metadata = layer.options.metadata || {}
+      currentLayerProps.value = {
+        name: layer.name,
+        type: layer.type,
+        id: layer.id,
+        ...layer.options, // 兜底：显示所有配置项
+        ...metadata // 优先显示 metadata 中的规范字段
+      }
+      showLayerProps.value = true
+    }
+    return
+  }
 
   const parent = node._getParent()
   const children = parent?.children
@@ -1680,25 +1698,6 @@ const onContextMenuClick = (node: any, type: string) => {
       while (layerIndex < children.length - 1) {
         mapWork.exchangeLayer(children[index].id, children[layerIndex + 1].id)
         layerIndex++
-      }
-      break
-    }
-    // <a-menu-item key="5">查看属性</a-menu-item>
-    case "5": {
-      const layer = mapWork.getLayerById(node.id)
-      if (layer) {
-        inspectedLayerId.value = String(layer.id || "")
-        syncEditorsFromLayer(layer)
-        // 合并 options 中的 metadata 和基础属性
-        const metadata = layer.options.metadata || {}
-        currentLayerProps.value = {
-          name: layer.name,
-          type: layer.type,
-          id: layer.id,
-          ...layer.options, // 兜底：显示所有配置项
-          ...metadata // 优先显示 metadata 中的规范字段
-        }
-        showLayerProps.value = true
       }
       break
     }

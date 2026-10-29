@@ -186,10 +186,22 @@ export const toolParamDefs: Record<string, any[]> = {
   ],
   neighbor: [
     {
+      label: "分析方式",
+      key: "analysisMode",
+      type: "select",
+      value: "hazard",
+      options: [
+        { label: "隐患点分析", value: "hazard" },
+        { label: "区域统计", value: "area" },
+        { label: "焦点统计", value: "focal" }
+      ]
+    },
+    {
       label: "数据集",
       key: "dataset",
       type: "select",
       value: "hazard-point",
+      modes: ["hazard"],
       options: [{ label: "隐患点", value: "hazard-point" }]
     },
     {
@@ -197,6 +209,7 @@ export const toolParamDefs: Record<string, any[]> = {
       key: "render",
       type: "select",
       value: "heat+point",
+      modes: ["hazard"],
       options: [
         { label: "热力图+点", value: "heat+point" },
         { label: "仅点", value: "point" },
@@ -208,13 +221,14 @@ export const toolParamDefs: Record<string, any[]> = {
       key: "distanceUnit",
       type: "select",
       value: "m",
+      modes: ["hazard"],
       options: [
         { label: "米(m)", value: "m" },
         { label: "公里(km)", value: "km" }
       ]
     },
-    { label: "分析半径", key: "radius", type: "number", value: 50000, step: 5000, unitKey: "distanceUnit", min: 0 },
-    { label: "返回数量", key: "limit", type: "number", value: 200, step: 10, unit: "条", min: 1 },
+    { label: "分析半径", key: "radius", type: "number", value: 50000, step: 5000, unitKey: "distanceUnit", min: 0, modes: ["hazard"] },
+    { label: "返回数量", key: "limit", type: "number", value: 200, step: 10, unit: "条", min: 1, modes: ["hazard"] },
     {
       label: "热力半径",
       key: "heatRadius",
@@ -222,7 +236,64 @@ export const toolParamDefs: Record<string, any[]> = {
       value: 28,
       step: 1,
       unit: "px",
-      min: 5
+      min: 5,
+      modes: ["hazard"]
+    },
+    {
+      label: "栅格数据源",
+      key: "rasterSource",
+      type: "select",
+      value: "",
+      modes: ["area", "focal"],
+      options: []
+    },
+    { label: "波段", key: "rasterBand", type: "select", value: "1", modes: ["area", "focal"], options: [] },
+    {
+      label: "NoData处理",
+      key: "noDataMode",
+      type: "select",
+      value: "ignore",
+      modes: ["area", "focal"],
+      options: [
+        { label: "忽略NoData", value: "ignore" },
+        { label: "计入NoData", value: "include" }
+      ]
+    },
+    {
+      label: "统计方法",
+      key: "statistic",
+      type: "select",
+      value: "mean",
+      modes: ["focal"],
+      options: [
+        { label: "均值", value: "mean" },
+        { label: "最大值", value: "maximum" },
+        { label: "最小值", value: "minimum" },
+        { label: "标准差", value: "stddev" }
+      ]
+    },
+    {
+      label: "窗口形状",
+      key: "windowShape",
+      type: "select",
+      value: "square",
+      modes: ["focal"],
+      options: [
+        { label: "方形", value: "square" },
+        { label: "圆形", value: "circle" }
+      ]
+    },
+    { label: "窗口大小", key: "windowSize", type: "number", value: 3, step: 2, min: 3, max: 31, unit: "像元", modes: ["focal"] },
+    {
+      label: "预览精度",
+      key: "previewResolution",
+      type: "select",
+      value: "low",
+      modes: ["focal"],
+      options: [
+        { label: "低分辨率（快速）", value: "low" },
+        { label: "中分辨率", value: "medium" }
+      ]
     }
   ]
 }

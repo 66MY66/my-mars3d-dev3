@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { area as turfArea } from "@turf/turf"
-import { runBufferAnalysis, runNeighborAnalysis, runOverlayAnalysis } from "@/api/spatialAnalysis"
+import { runBufferAnalysis, runNeighborAnalysis, runNeighborRasterAnalysis, runOverlayAnalysis } from "@/api/spatialAnalysis"
 
 describe("spatialAnalysis mock", () => {
   it("buffer returns polygon feature", async () => {
@@ -89,5 +89,49 @@ describe("spatialAnalysis mock", () => {
     const polys = res.geojson.features.filter((f: any) => f.geometry?.type === "Polygon")
     expect(polys.length).toBeGreaterThanOrEqual(1)
     expect(points.length).toBeGreaterThan(0)
+  })
+
+  it("raster area statistics deterministically return all four metrics", async () => {
+    ;(process.env as any).API_LOCAL = "1"
+    const request = {
+      target: { type: "polygon" as const, ring: [[0, 0], [0.02, 0], [0.02, 0.02], [0, 0.02]] as Array<[number, number]> },
+      mode: "area" as const,
+      rasterSource: { id: "dem", sourceType: "cog", sourceRef: "/dem.tif" },
+      band: "1",
+      noDataMode: "ignore" as const
+    }
+    const first = await runNeighborRasterAnalysis(request)
+    const second = await runNeighborRasterAnalysis(request)
+
+    expect(first.summary).toMatchObject({ analysisMode: "area", count: expect.any(Number) })
+    expect(first.summary.mean).toEqual(expect.any(Number))
+    expect(first.summary.maximum).toBeGreaterThanOrEqual(first.summary.mean)
+    expect(first.summary.minimum).toBeLessThanOrEqual(first.summary.mean)
+    expect(first.summary.stddev).toBeGreaterThanOrEqual(0)
+    expect(second.summary).toEqual(first.summary)
+  })
+
+  it("focal statistics preserve the selected window and preview settings", async () => {
+    ;(process.env as any).API_LOCAL = "1"
+    const res = await runNeighborRasterAnalysis({
+      target: { type: "polygon", ring: [[0, 0], [0.01, 0], [0.01, 0.01], [0, 0.01]] },
+      mode: "focal",
+      rasterSource: { id: "dem", sourceType: "geotiff", sourceRef: "/dem.tif" },
+      band: "2",
+      statistic: "stddev",
+      windowShape: "square",
+      windowSize: 5,
+      noDataMode: "ignore",
+      previewResolution: "low"
+    })
+
+    expect(res.summary).toMatchObject({
+      analysisMode: "focal",
+      statistic: "stddev",
+      windowShape: "square",
+      windowSize: 5,
+      previewResolution: "low"
+    })
+    expect(res.geojson.features[0].properties.analysis).toBe("neighbor-raster")
   })
 })

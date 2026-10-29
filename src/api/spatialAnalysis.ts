@@ -39,6 +39,18 @@ export type NeighborRequest = {
   heatRadius?: number
 }
 
+export type NeighborRasterRequest = {
+  target: PolygonAnalysisTarget
+  mode: "area" | "focal"
+  rasterSource: { id: string; sourceType: string; sourceRef: string }
+  band: string
+  statistic?: "mean" | "maximum" | "minimum" | "stddev"
+  windowShape?: "square" | "circle"
+  windowSize?: number
+  noDataMode: "ignore" | "include"
+  previewResolution?: "low" | "medium"
+}
+
 export type AnalysisResult = {
   geojson: any
   summary: Record<string, any>
@@ -359,4 +371,66 @@ export async function runNeighborAnalysis(req: NeighborRequest): Promise<Analysi
   const heatRadius = Math.max(5, Math.min(80, Math.round(clampNumber(req.heatRadius, 28))))
   const features = [makePolygonFeature(neighborRing, { analysis: "neighbor", dataset: req.dataset, radiusM, render, heatRadius }), ...points]
   return { geojson: makeFeatureCollection(features), summary: { dataset: req.dataset, radiusM, count: points.length, areaM2, perimeterM, render, heatRadius } }
+}
+
+function stableSeed(value: string) {
+  let hash = 2166136261
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+export async function runNeighborRasterAnalysis(req: NeighborRasterRequest): Promise<AnalysisResult> {
+  if (!isMockEnabled()) {
+    const base = (process.env.API_BASE as string) || "/v1/"
+    const url = joinUrl(base, "analysis/neighbor/raster")
+    const res = await axios.post(url, req, { timeout: 60_000 })
+    return res.data as AnalysisResult
+  }
+
+  const seed = stableSeed(`${req.rasterSource.sourceRef}|${req.band}|${JSON.stringify(req.target.ring)}`)
+  const count = 256 + (seed % 4096)
+  const mean = Number((((seed % 20000) - 5000) / 100).toFixed(3))
+  const stddev = Number((0.5 + ((seed >>> 8) % 2500) / 100).toFixed(3))
+  const minimum = Number((mean - stddev * 1.75).toFixed(3))
+  const maximum = Number((mean + stddev * 2.1).toFixed(3))
+  const windowSize = Math.max(3, Math.round(clampNumber(req.windowSize, 3)))
+  const properties = {
+    analysis: "neighbor-raster",
+    analysisMode: req.mode,
+    statistic: req.statistic,
+    windowShape: req.windowShape,
+    windowSize,
+    previewResolution: req.previewResolution
+  }
+
+  return {
+    geojson: makeFeatureCollection([makePolygonFeature(req.target.ring, properties)]),
+    summary: {
+      analysisMode: req.mode,
+      rasterSourceId: req.rasterSource.id,
+      band: req.band,
+      count,
+      mean,
+      maximum,
+      minimum,
+      stddev,
+      statistic: req.statistic,
+      windowShape: req.windowShape,
+      windowSize,
+      previewResolution: req.previewResolution
+    }
+  }
+}
+
+export async function exportNeighborRaster(req: NeighborRasterRequest, format: "geotiff" | "cog"): Promise<Blob> {
+  if (isMockEnabled()) {
+    throw new Error("本地模拟模式仅提供预览；请连接栅格分析服务后执行正式导出")
+  }
+  const base = (process.env.API_BASE as string) || "/v1/"
+  const url = joinUrl(base, "analysis/neighbor/raster/export")
+  const res = await axios.post(url, { ...req, format }, { timeout: 120_000, responseType: "blob" })
+  return res.data as Blob
 }

@@ -230,8 +230,8 @@
       </div>
 
       <!-- 参数设置 -->
-      <div v-else-if="currentParamDefs.length" class="params-list">
-        <div v-for="def in currentParamDefs" :key="def.key" class="param-item">
+      <div v-else-if="visibleParamDefs.length" class="params-list">
+        <div v-for="def in visibleParamDefs" :key="def.key" class="param-item">
           <span class="param-label">{{ def.label }}：</span>
           <div class="param-content">
             <!-- 数字输入 -->
@@ -278,6 +278,7 @@
       <!-- 操作按钮 -->
       <div v-if="toolType !== 'buffer'" class="actions">
         <mars-button type="primary" block :loading="running" @click="runAnalysis">开始分析</mars-button>
+        <mars-button v-if="toolType === 'neighbor'" block @click="resetNeighborParams">重置参数</mars-button>
         <mars-button block @click="clearResult">清除结果</mars-button>
       </div>
 
@@ -293,7 +294,7 @@
           <div class="legend-row"><span class="swatch b"></span><span class="legend-text">人口密集区（B）</span></div>
           <div class="legend-row"><span class="swatch r"></span><span class="legend-text">高风险重叠区（结果）</span></div>
         </div>
-        <div v-if="toolType === 'neighbor'" class="legend">
+        <div v-if="toolType === 'neighbor' && neighborMode === 'hazard'" class="legend">
           <div class="legend-row"><span class="swatch g3"></span><span class="legend-text">深绿色：低风险/高韧性</span></div>
           <div class="legend-row"><span class="swatch g2"></span><span class="legend-text">浅绿色：中等韧性</span></div>
           <div class="legend-row"><span class="swatch y"></span><span class="legend-text">黄色：中等风险</span></div>
@@ -301,15 +302,17 @@
           <div class="legend-row"><span class="swatch red"></span><span class="legend-text">红色：高风险</span></div>
         </div>
         <div class="summary-actions">
-          <mars-button @click="exportGeoJSON">导出GeoJSON</mars-button>
-          <mars-button @click="exportCSV">导出CSV</mars-button>
+          <mars-button v-if="toolType !== 'neighbor' || neighborMode === 'hazard'" @click="exportGeoJSON">导出GeoJSON</mars-button>
+          <mars-button v-if="toolType !== 'neighbor' || neighborMode !== 'focal'" @click="exportCSV">导出CSV</mars-button>
+          <mars-button v-if="toolType === 'neighbor' && neighborMode === 'focal'" @click="exportRaster('geotiff')">导出GeoTIFF</mars-button>
+          <mars-button v-if="toolType === 'neighbor' && neighborMode === 'focal'" @click="exportRaster('cog')">导出COG</mars-button>
         </div>
         <div v-for="item in displaySummary" :key="item.k" class="summary-row">
           <span class="k">{{ item.label }}</span>
           <span class="v">{{ item.v }}</span>
         </div>
 
-        <div v-if="toolType === 'neighbor' && pointsForList.length" class="points">
+        <div v-if="toolType === 'neighbor' && neighborMode === 'hazard' && pointsForList.length" class="points">
           <div class="points-head">
             <div class="points-title">隐患点列表</div>
             <div class="points-topn">
@@ -348,6 +351,7 @@ import { $alert, $message } from "@mars/components/mars-ui/index"
 import { smartUploadArtifact } from "../dataset-repository/services/eoapi-artifacts"
 import { getCurrentDataset } from "@/shell/currentDataset"
 import * as mars3d from "mars3d"
+import { formatNeighborRasterSummary, getNeighborParamDefs, type NeighborMode } from "./neighbor-analysis"
 
 // 启用map.ts生命周期
 useLifecycle(mapWork)
@@ -402,6 +406,28 @@ const running = ref(false)
 const resultSummary = ref<Record<string, any> | null>(null)
 const resultPoints = ref<Array<{ idx: number; lng: number; lat: number; level: number; name: string; properties: any }>>([])
 const topN = ref(20)
+const neighborRasterSources = ref<ReturnType<typeof mapWork.getNeighborRasterSources>>([])
+
+const neighborMode = computed<NeighborMode>(() => {
+  const mode = String(currentParams.value.analysisMode ?? "hazard")
+  return mode === "area" || mode === "focal" ? mode : "hazard"
+})
+
+const visibleParamDefs = computed(() => {
+  if (toolType.value !== "neighbor") {
+    return currentParamDefs.value
+  }
+  return getNeighborParamDefs(currentParamDefs.value, neighborMode.value).map((def) => {
+    if (def.key === "rasterSource") {
+      return { ...def, options: neighborRasterSources.value.map((source) => ({ label: source.label, value: source.id })) }
+    }
+    if (def.key === "rasterBand") {
+      const source = neighborRasterSources.value.find((item) => item.id === String(currentParams.value.rasterSource))
+      return { ...def, options: source?.bands ?? [] }
+    }
+    return def
+  })
+})
 
 const stepIndex = ref(0)
 const previewOn = ref(true)
@@ -593,12 +619,16 @@ watch(
 onMounted(() => {
   applyWidgetData(getOwnedWidgetData() ?? currentWidget?.data)
   loadTemplates()
+  refreshNeighborRasterSources()
 })
 
 function initParams(type: string) {
   const defs = toolParamDefs[type] || []
   currentParamDefs.value = defs
   initParamsFromDefs(defs)
+  if (type === "neighbor") {
+    refreshNeighborRasterSources()
+  }
 }
 
 function initParamsFromDefs(defs: any[]) {
@@ -608,6 +638,50 @@ function initParamsFromDefs(defs: any[]) {
   })
   currentParams.value = params
 }
+
+function refreshNeighborRasterSources() {
+  neighborRasterSources.value = mapWork.getNeighborRasterSources?.() ?? []
+  const selected = neighborRasterSources.value.find((source) => source.id === String(currentParams.value.rasterSource))
+  const source = selected ?? neighborRasterSources.value[0]
+  if (source && !selected) {
+    currentParams.value.rasterSource = source.id
+  }
+  if (source && !source.bands.some((band) => band.value === String(currentParams.value.rasterBand))) {
+    currentParams.value.rasterBand = source.bands[0]?.value ?? "1"
+  }
+}
+
+function resetNeighborParams() {
+  const mode = neighborMode.value
+  const defaults = Object.fromEntries(currentParamDefs.value.map((def) => [def.key, def.value]))
+  currentParams.value = { ...defaults, analysisMode: mode }
+  refreshNeighborRasterSources()
+  clearResult()
+}
+
+watch(
+  () => currentParams.value.analysisMode,
+  () => {
+    if (toolType.value !== "neighbor") {
+      return
+    }
+    refreshNeighborRasterSources()
+    clearResult()
+  }
+)
+
+watch(
+  () => currentParams.value.rasterSource,
+  (sourceId) => {
+    if (toolType.value !== "neighbor") {
+      return
+    }
+    const source = neighborRasterSources.value.find((item) => item.id === String(sourceId))
+    if (source && !source.bands.some((band) => band.value === String(currentParams.value.rasterBand))) {
+      currentParams.value.rasterBand = source.bands[0]?.value ?? "1"
+    }
+  }
+)
 
 const hasValidTarget = computed(() => {
   const value = target.value
@@ -792,6 +866,19 @@ const displaySummary = computed(() => {
   }
 
   if (toolType.value === "neighbor") {
+    if (s.analysisMode === "area" || s.analysisMode === "focal") {
+      const source = neighborRasterSources.value.find((item) => item.id === String(s.rasterSourceId))
+      if (source) { push("rasterSource", "栅格数据源", source.label) }
+      if (s.band != null) { push("band", "波段", s.band) }
+      formatNeighborRasterSummary(s).forEach((item) => push(item.key, item.label, item.value))
+      if (s.analysisMode === "focal") {
+        const statistics: Record<string, string> = { mean: "均值", maximum: "最大值", minimum: "最小值", stddev: "标准差" }
+        push("statistic", "统计方法", statistics[s.statistic] || s.statistic)
+        push("window", "邻域窗口", `${s.windowShape === "circle" ? "圆形" : "方形"} ${s.windowSize}×${s.windowSize}`)
+        push("previewResolution", "预览精度", s.previewResolution === "medium" ? "中分辨率" : "低分辨率")
+      }
+      return items
+    }
     if (s.dataset) { push("dataset", "数据集", s.dataset === "hazard-point" ? "隐患点" : s.dataset) }
     if (s.radiusM != null) {
       const u = String(currentParams.value?.distanceUnit ?? "m")
@@ -833,6 +920,14 @@ function exportGeoJSON() {
 
 function exportCSV() {
   mapWork.exportAnalysisCSV(toolType.value || "unknown", resultSummary.value)
+}
+
+async function exportRaster(format: "geotiff" | "cog") {
+  try {
+    await mapWork.exportNeighborRasterResult(format, currentParams.value, target.value)
+  } catch (e: any) {
+    $alert(e?.message || "栅格导出失败", title.value)
+  }
 }
 
 function showBufferHelp() {
