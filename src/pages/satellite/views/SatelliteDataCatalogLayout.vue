@@ -3,7 +3,6 @@
     <div class="content-header">
       <div class="header-text">
         <div class="page-label">卫星遥感数据管理子系统 · 数据目录管理</div>
-        <div class="page-subtitle">地震监测分析系统 / 数据管理子系统 / WXYG-SJGL-003</div>
       </div>
       <div class="header-actions">
         <a-button type="primary" @click="showCreateDialog">
@@ -465,12 +464,6 @@ export default {
         font-size: 20px;
         font-weight: 600;
         color: #1890ff;
-        margin-bottom: 8px;
-      }
-
-      .page-subtitle {
-        font-size: 14px;
-        color: #8c8c8c;
       }
     }
 

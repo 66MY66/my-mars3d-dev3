@@ -3,53 +3,64 @@
     <div class="content-header">
       <div class="header-text">
         <div class="page-label">卫星遥感数据管理子系统 · 数据共享访问</div>
-        <div class="page-subtitle">地震监测分析系统 / 数据管理子系统 / WXYG-SJGL-005</div>
       </div>
     </div>
 
     <!-- 选项卡 -->
     <a-tabs v-model:activeKey="activeTab" type="card">
-      <!-- 共享授权管理 -->
-      <a-tab-pane key="authorization" tab="共享授权管理">
+      <!-- 我的共享 -->
+      <a-tab-pane key="myshare" tab="我的共享">
         <div class="operation-area">
-          <a-button type="primary" @click="showAuthorizationDialog">
-            <PlusOutlined />
-            新建授权
+          <a-button type="primary" @click="showShareDataDialog">
+            <ShareAltOutlined />
+            分享数据
           </a-button>
-          <a-button @click="refreshAuthorizations">
-            <ReloadOutlined />
-            刷新
-          </a-button>
-          <div style="float: right">
-            <a-input-search
-              v-model:value="authSearchKeyword"
-              placeholder="搜索授权规则"
-              style="width: 250px"
-              @search="handleSearch"
-            />
-          </div>
         </div>
 
-        <!-- 授权列表 -->
         <a-card :bordered="false" style="margin-top: 16px">
           <template #title>
-            <SafetyCertificateOutlined /> 授权规则列表
+            <FolderOpenOutlined /> 我分享的数据
           </template>
 
           <a-table
-            :columns="authColumns"
-            :data-source="authorizationList"
-            :pagination="authPaginationConfig"
+            :columns="myShareColumns"
+            :data-source="mySharedData"
             :loading="loading"
-            row-key="ruleId"
+            row-key="shareId"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'authType'">
-                <a-tag :color="record.authType === '角色' ? 'green' : 'blue'">
-                  {{ record.authType }}
+              <template v-if="column.key === 'shareType'">
+                <a-tag :color="record.shareType === '公开' ? 'green' : 'orange'" size="small">
+                  {{ record.shareType }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'permissions'">
+              <template v-else-if="column.key === 'operation'">
+                <a @click="viewShareLink(record)">查看链接</a>
+                <a-divider type="vertical" />
+                <a @click="viewShareStats(record)">统计</a>
+                <a-divider type="vertical" />
+                <a style="color: #f5222d" @click="cancelShare(record)">取消分享</a>
+              </template>
+            </template>
+          </a-table>
+        </a-card>
+      </a-tab-pane>
+
+      <!-- 共享给我的 -->
+      <a-tab-pane key="sharedtome" tab="共享给我的">
+        <a-card :bordered="false">
+          <template #title>
+            <InboxOutlined /> 共享给我的数据
+          </template>
+
+          <a-table
+            :columns="sharedToMeColumns"
+            :data-source="sharedToMeData"
+            :loading="loading"
+            row-key="dataId"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'permissions'">
                 <a-tag
                   v-for="perm in record.permissions"
                   :key="perm"
@@ -61,23 +72,16 @@
               </template>
               <template v-else-if="column.key === 'status'">
                 <a-badge
-                  :status="record.status === '已启用' ? 'success' : 'default'"
+                  :status="record.status === '有效' ? 'success' : 'error'"
                   :text="record.status"
                 />
               </template>
               <template v-else-if="column.key === 'operation'">
-                <a @click="viewAuthDetail(record)">详情</a>
-                <a-divider type="vertical" />
-                <a @click="editAuthorization(record)">编辑</a>
-                <a-divider type="vertical" />
-                <a
-                  :style="{ color: record.status === '已启用' ? '#faad14' : '#52c41a' }"
-                  @click="toggleAuthStatus(record)"
-                >
-                  {{ record.status === "已启用" ? "禁用" : "启用" }}
-                </a>
-                <a-divider type="vertical" />
-                <a style="color: #f5222d" @click="deleteAuthorization(record)">删除</a>
+                <a @click="accessSharedData(record)">访问</a>
+                <template v-if="record.permissions.includes('下载')">
+                  <a-divider type="vertical" />
+                  <a @click="downloadSharedData(record)">下载</a>
+                </template>
               </template>
             </template>
           </a-table>
@@ -174,153 +178,7 @@
           </a-table>
         </a-card>
       </a-tab-pane>
-
-      <!-- 我的共享 -->
-      <a-tab-pane key="myshare" tab="我的共享">
-        <div class="operation-area">
-          <a-button type="primary" @click="showShareDataDialog">
-            <ShareAltOutlined />
-            分享数据
-          </a-button>
-        </div>
-
-        <a-card :bordered="false" style="margin-top: 16px">
-          <template #title>
-            <FolderOpenOutlined /> 我分享的数据
-          </template>
-
-          <a-table
-            :columns="myShareColumns"
-            :data-source="mySharedData"
-            :loading="loading"
-            row-key="shareId"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'shareType'">
-                <a-tag :color="record.shareType === '公开' ? 'green' : 'orange'" size="small">
-                  {{ record.shareType }}
-                </a-tag>
-              </template>
-              <template v-else-if="column.key === 'operation'">
-                <a @click="viewShareLink(record)">查看链接</a>
-                <a-divider type="vertical" />
-                <a @click="viewShareStats(record)">统计</a>
-                <a-divider type="vertical" />
-                <a style="color: #f5222d" @click="cancelShare(record)">取消分享</a>
-              </template>
-            </template>
-          </a-table>
-        </a-card>
-      </a-tab-pane>
-
-      <!-- 共享给我的 -->
-      <a-tab-pane key="sharedtome" tab="共享给我的">
-        <a-card :bordered="false">
-          <template #title>
-            <InboxOutlined /> 共享给我的数据
-          </template>
-
-          <a-table
-            :columns="sharedToMeColumns"
-            :data-source="sharedToMeData"
-            :loading="loading"
-            row-key="dataId"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'permissions'">
-                <a-tag
-                  v-for="perm in record.permissions"
-                  :key="perm"
-                  size="small"
-                  style="margin-right: 5px"
-                >
-                  {{ perm }}
-                </a-tag>
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <a-badge
-                  :status="record.status === '有效' ? 'success' : 'error'"
-                  :text="record.status"
-                />
-              </template>
-              <template v-else-if="column.key === 'operation'">
-                <a @click="accessSharedData(record)">访问</a>
-                <template v-if="record.permissions.includes('下载')">
-                  <a-divider type="vertical" />
-                  <a @click="downloadSharedData(record)">下载</a>
-                </template>
-              </template>
-            </template>
-          </a-table>
-        </a-card>
-      </a-tab-pane>
     </a-tabs>
-
-    <!-- 新建授权对话框 -->
-    <a-modal
-      :title="editMode ? '编辑授权规则' : '新建授权规则'"
-      :open="authDialogVisible"
-      :confirm-loading="confirmLoading"
-      width="700px"
-      @ok="handleSaveAuthorization"
-      @cancel="authDialogVisible = false"
-    >
-      <a-form
-        ref="authFormRef"
-        :model="authForm"
-        :rules="authRules"
-        :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 16 }"
-      >
-        <a-form-item label="数据选择" name="dataIds">
-          <a-select v-model:value="authForm.dataIds" mode="multiple" placeholder="请选择要共享的数据">
-            <a-select-option v-for="data in availableData" :key="data.id" :value="data.id">
-              {{ data.name }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-
-        <a-form-item label="授权类型" name="authType">
-          <a-radio-group v-model:value="authForm.authType">
-            <a-radio value="role">按角色授权</a-radio>
-            <a-radio value="user">按用户授权</a-radio>
-          </a-radio-group>
-        </a-form-item>
-
-        <a-form-item
-          :label="authForm.authType === 'role' ? '选择角色' : '选择用户'"
-          name="authTarget"
-        >
-          <a-select v-model:value="authForm.authTarget" mode="multiple" placeholder="请选择">
-            <a-select-option
-              v-for="item in authTargetOptions"
-              :key="item.id"
-              :value="item.id"
-            >
-              {{ item.name }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-
-        <a-form-item label="授权权限" name="permissions">
-          <a-checkbox-group v-model:value="authForm.permissions">
-            <a-checkbox value="查看">查看</a-checkbox>
-            <a-checkbox value="下载">下载</a-checkbox>
-            <a-checkbox value="预览">预览</a-checkbox>
-            <a-checkbox value="分享">分享</a-checkbox>
-          </a-checkbox-group>
-        </a-form-item>
-
-        <a-form-item label="有效期" name="validPeriod">
-          <a-range-picker
-            v-model:value="authForm.validPeriod"
-            show-time
-            format="YYYY-MM-DD HH:mm:ss"
-            style="width: 100%"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
 
     <!-- 分享数据对话框 -->
     <a-modal
@@ -364,26 +222,19 @@
 </template>
 
 <script>
-import { h } from "vue"
 import { message, Modal, Statistic, Badge } from "ant-design-vue"
 import {
-  PlusOutlined,
-  ReloadOutlined,
-  SafetyCertificateOutlined,
   FileTextOutlined,
   ShareAltOutlined,
   FolderOpenOutlined,
   InboxOutlined
 } from "@ant-design/icons-vue"
-import { fromMetadata, fromShare, toSharePayload } from "../api/adapters"
+import { fromMetadata, toSharePayload } from "../api/adapters"
 import { metadataApi, shareApi } from "../api/services"
 
 export default {
   name: "SatelliteDataShareLayout",
   components: {
-    PlusOutlined,
-    ReloadOutlined,
-    SafetyCertificateOutlined,
     FileTextOutlined,
     ShareAltOutlined,
     FolderOpenOutlined,
@@ -395,29 +246,7 @@ export default {
     return {
       loading: false,
       confirmLoading: false,
-      activeTab: "authorization",
-      editMode: false,
-
-      // 授权管理
-      authSearchKeyword: "",
-      authorizationList: [],
-      authColumns: [
-        { title: "规则ID", dataIndex: "ruleId", key: "ruleId", width: 180 },
-        { title: "数据ID", dataIndex: "dataId", key: "dataId", width: 180 },
-        { title: "授权类型", dataIndex: "authType", key: "authType", width: 120 },
-        { title: "授权对象", dataIndex: "authTarget", key: "authTarget", width: 150 },
-        { title: "权限", dataIndex: "permissions", key: "permissions", width: 180 },
-        { title: "有效期", dataIndex: "validPeriod", key: "validPeriod", width: 200 },
-        { title: "状态", dataIndex: "status", key: "status", width: 100 },
-        { title: "操作", key: "operation", fixed: "right", width: 220 }
-      ],
-      authPaginationConfig: {
-        current: 1,
-        pageSize: 10,
-        total: 0,
-        showSizeChanger: true,
-        showTotal: (total) => `共 ${total} 条数据`
-      },
+      activeTab: "myshare",
 
       // 访问监控
       accessStatistics: {
@@ -473,30 +302,7 @@ export default {
         { title: "操作", key: "operation", width: 150 }
       ],
 
-      // 授权表单
-      authDialogVisible: false,
-      authForm: {
-        dataIds: [],
-        authType: "role",
-        authTarget: [],
-        permissions: [],
-        validPeriod: []
-      },
-      authRules: {
-        dataIds: [{ required: true, message: "请选择数据", trigger: "change" }],
-        authTarget: [{ required: true, message: "请选择授权对象", trigger: "change" }],
-        permissions: [{ required: true, message: "请选择权限", trigger: "change" }],
-        validPeriod: [{ required: true, message: "请选择有效期", trigger: "change" }]
-      },
       availableData: [],
-      availableRoles: [
-        { id: "role_001", name: "科研人员" },
-        { id: "role_002", name: "业务人员" }
-      ],
-      availableUsers: [
-        { id: "user_001", name: "张三" },
-        { id: "user_002", name: "李四" }
-      ],
 
       // 分享表单
       shareDialogVisible: false,
@@ -508,35 +314,10 @@ export default {
       }
     }
   },
-  computed: {
-    authTargetOptions() {
-      if (this.authForm.authType === "role") {
-        return this.availableRoles
-      }
-      return this.availableUsers
-    }
-  },
   mounted() {
-    this.loadAuthorizations()
     this.loadAvailableData()
   },
   methods: {
-    async loadAuthorizations(showSuccess = false) {
-      this.loading = true
-      try {
-        const page = await shareApi.list({
-          pageNo: this.authPaginationConfig.current,
-          pageSize: this.authPaginationConfig.pageSize
-        })
-        this.authorizationList = page.records.map(fromShare)
-        this.authPaginationConfig.total = page.total
-        if (showSuccess) { message.success("数据已刷新") }
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : "授权数据加载失败")
-      } finally {
-        this.loading = false
-      }
-    },
     async loadAvailableData() {
       try {
         const page = await metadataApi.list({ pageNo: 1, pageSize: 1000 })
@@ -548,119 +329,6 @@ export default {
         message.error(error instanceof Error ? error.message : "可授权数据加载失败")
       }
     },
-    refreshAuthorizations() {
-      this.loadAuthorizations(true)
-    },
-
-    handleSearch() {
-      // 搜索逻辑
-    },
-
-    showAuthorizationDialog() {
-      this.editMode = false
-      this.authForm = {
-        dataIds: [],
-        authType: "role",
-        authTarget: [],
-        permissions: [],
-        validPeriod: []
-      }
-      this.authDialogVisible = true
-    },
-
-    async handleSaveAuthorization() {
-      try {
-        await this.$refs.authFormRef.validate()
-        this.confirmLoading = true
-        const [validStart, validEnd] = this.authForm.validPeriod || []
-        const payload = toSharePayload({
-          ...this.authForm,
-          authId: this.authForm.authId,
-          authType: this.authForm.authType === "role" ? "角色" : "用户",
-          validStart,
-          validEnd,
-          status: this.authForm.status || "已启用"
-        })
-        if (this.editMode) { await shareApi.edit(payload) } else { await shareApi.add(payload) }
-        message.success(this.editMode ? "授权规则更新成功" : "授权规则创建成功")
-        this.authDialogVisible = false
-        this.$refs.authFormRef.resetFields()
-        await this.loadAuthorizations()
-      } catch (error) {
-        if (error instanceof Error) { message.error(error.message) }
-      } finally {
-        this.confirmLoading = false
-      }
-    },
-
-    viewAuthDetail(record) {
-      Modal.info({
-        title: "授权详情",
-        content: () =>
-          h("div", [
-            h("p", [h("strong", "规则ID："), record.ruleId]),
-            h("p", [h("strong", "数据ID："), record.dataId]),
-            h("p", [h("strong", "授权类型："), record.authType]),
-            h("p", [h("strong", "授权对象："), record.authTarget]),
-            h("p", [h("strong", "权限："), record.permissions.join(", ")]),
-            h("p", [h("strong", "有效期："), record.validPeriod]),
-            h("p", [h("strong", "状态："), record.status])
-          ]),
-        okText: "关闭"
-      })
-    },
-
-    editAuthorization(record) {
-      this.editMode = true
-      this.authForm = {
-        authId: record.authId,
-        dataIds: [record.dataId],
-        authType: record.authType === "角色" ? "role" : "user",
-        authTarget: Array.isArray(record.authTarget) ? [...record.authTarget] : [record.authTarget],
-        permissions: [...record.permissions],
-        validPeriod: [record.validStart, record.validEnd],
-        status: record.status
-      }
-      this.authDialogVisible = true
-    },
-
-    toggleAuthStatus(record) {
-      const newStatus = record.status === "已启用" ? "已禁用" : "已启用"
-      const actionText = newStatus === "已禁用" ? "禁用" : "启用"
-      Modal.confirm({
-        title: `确定要${actionText}该授权规则吗？`,
-        okText: "确定",
-        cancelText: "取消",
-        onOk: async () => {
-          try {
-            await shareApi.edit(toSharePayload({ ...record, status: newStatus }))
-            message.success(`状态已更新为${newStatus}`)
-            await this.loadAuthorizations()
-          } catch (error) {
-            message.error(error instanceof Error ? error.message : "状态更新失败")
-          }
-        }
-      })
-    },
-
-    deleteAuthorization(record) {
-      Modal.confirm({
-        title: "确定要删除该授权规则吗？",
-        okText: "确定",
-        okType: "danger",
-        cancelText: "取消",
-        onOk: async () => {
-          try {
-            await shareApi.remove(record.ruleId)
-            message.success("删除成功")
-            await this.loadAuthorizations()
-          } catch (error) {
-            message.error(error instanceof Error ? error.message : "删除失败")
-          }
-        }
-      })
-    },
-
     filterAccessLogs() {
       message.info("操作审计按当前接入范围暂缓")
     },
@@ -700,7 +368,6 @@ export default {
         }))
         message.success("数据分享成功")
         this.shareDialogVisible = false
-        await this.loadAuthorizations()
       } catch (error) {
         message.error(error instanceof Error ? error.message : "数据分享失败")
       } finally {
@@ -762,12 +429,6 @@ export default {
         font-size: 20px;
         font-weight: 600;
         color: #1890ff;
-        margin-bottom: 8px;
-      }
-
-      .page-subtitle {
-        font-size: 14px;
-        color: #8c8c8c;
       }
     }
   }

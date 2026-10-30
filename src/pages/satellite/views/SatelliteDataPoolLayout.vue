@@ -3,7 +3,6 @@
     <div class="content-header">
       <div class="header-text">
         <div class="page-label">卫星遥感数据管理子系统 · 数据资源池管理</div>
-        <div class="page-subtitle">地震监测分析系统 / 数据管理子系统 / WXYG-SJGL-001</div>
       </div>
       <div class="header-actions">
         <a-button type="primary" @click="showCreateDialog">
@@ -23,28 +22,21 @@
 
     <!-- 统计卡片 -->
     <a-row :gutter="16" style="margin-bottom: 16px">
-      <a-col :span="6">
+      <a-col :span="8">
         <a-card>
           <a-statistic title="资源池总数" :value="statistics.totalPools">
             <template #prefix>📦</template>
           </a-statistic>
         </a-card>
       </a-col>
-      <a-col :span="6">
+      <a-col :span="8">
         <a-card>
-          <a-statistic title="接入数据源" :value="statistics.totalDataSources">
-            <template #prefix>📡</template>
-          </a-statistic>
-        </a-card>
-      </a-col>
-      <a-col :span="6">
-        <a-card>
-          <a-statistic title="平均占用率" :value="statistics.avgUsageRate" suffix="%">
+          <a-statistic title="存储使用率" :value="statistics.avgUsageRate" suffix="%">
             <template #prefix>💾</template>
           </a-statistic>
         </a-card>
       </a-col>
-      <a-col :span="6">
+      <a-col :span="8">
         <a-card>
           <a-statistic
             title="预警数量"
@@ -245,7 +237,6 @@ export default {
       // 统计数据
       statistics: {
         totalPools: 3,
-        totalDataSources: 5,
         avgUsageRate: 68,
         alertCount: 1
       },
@@ -335,7 +326,6 @@ export default {
         this.poolList = page.records.map(fromPool)
         this.paginationConfig.total = page.total
         this.statistics.totalPools = page.total
-        this.statistics.totalDataSources = new Set(this.poolList.flatMap((pool) => pool.satellites || [])).size
         this.statistics.avgUsageRate = this.poolList.length
           ? Math.round(this.poolList.reduce((sum, pool) => sum + pool.usageRate, 0) / this.poolList.length)
           : 0
@@ -482,12 +472,6 @@ export default {
         font-size: 20px;
         font-weight: 600;
         color: #1890ff;
-        margin-bottom: 8px;
-      }
-
-      .page-subtitle {
-        font-size: 14px;
-        color: #8c8c8c;
       }
     }
 

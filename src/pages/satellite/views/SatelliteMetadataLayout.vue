@@ -3,17 +3,8 @@
     <div class="content-header">
       <div class="header-text">
         <div class="page-label">卫星遥感数据管理子系统 · 元数据管理</div>
-        <div class="page-subtitle">地震监测分析系统 / 数据管理子系统 / WXYG-SJGL-002</div>
       </div>
       <div class="header-actions">
-        <a-button type="primary" @click="showCreateDialog">
-          <PlusOutlined />
-          创建元数据
-        </a-button>
-        <a-button @click="showBatchImportDialog">
-          <ImportOutlined />
-          批量导入
-        </a-button>
         <a-button @click="exportMetadata">
           <ExportOutlined />
           导出
@@ -110,9 +101,9 @@
       </a-table>
     </a-card>
 
-    <!-- 创建/编辑元数据对话框 -->
+    <!-- 编辑元数据对话框 -->
     <a-modal
-      :title="editMode ? '编辑元数据' : '创建元数据'"
+      title="编辑元数据"
       :open="dialogVisible"
       :confirm-loading="confirmLoading"
       width="800px"
@@ -126,7 +117,7 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item v-if="editMode" label="元数据ID" name="metadataId">
+        <a-form-item label="元数据ID" name="metadataId">
           <a-input v-model:value="metadataForm.metadataId" disabled />
         </a-form-item>
         <a-form-item label="卫星型号" name="satellite">
@@ -179,8 +170,6 @@
 import { h } from "vue"
 import { message, Modal, Badge } from "ant-design-vue"
 import {
-  PlusOutlined,
-  ImportOutlined,
   ExportOutlined,
   ReloadOutlined,
   SearchOutlined,
@@ -192,8 +181,6 @@ import { downloadBlob, metadataApi } from "../api/services"
 export default {
   name: "SatelliteMetadataLayout",
   components: {
-    PlusOutlined,
-    ImportOutlined,
     ExportOutlined,
     ReloadOutlined,
     SearchOutlined,
@@ -204,7 +191,6 @@ export default {
     return {
       loading: false,
       confirmLoading: false,
-      editMode: false,
 
       // 过滤条件
       filters: {
@@ -308,29 +294,6 @@ export default {
       this.loadMetadata()
     },
 
-    showCreateDialog() {
-      this.editMode = false
-      this.dialogVisible = true
-    },
-
-    showBatchImportDialog() {
-      const input = document.createElement("input")
-      input.type = "file"
-      input.accept = ".xls,.xlsx"
-      input.onchange = async () => {
-        const file = input.files?.[0]
-        if (!file) { return }
-        try {
-          await metadataApi.importExcel(file)
-          message.success("批量导入成功")
-          await this.loadMetadata()
-        } catch (error) {
-          message.error(error instanceof Error ? error.message : "批量导入失败")
-        }
-      }
-      input.click()
-    },
-
     async exportMetadata() {
       try {
         const blob = await metadataApi.exportExcel()
@@ -346,8 +309,8 @@ export default {
         await this.$refs.metadataFormRef.validate()
         this.confirmLoading = true
         const payload = toMetadataPayload({ ...this.metadataForm, status: this.metadataForm.status || "未验证" })
-        if (this.editMode) { await metadataApi.edit(payload) } else { await metadataApi.add(payload) }
-        message.success(this.editMode ? "元数据更新成功" : "元数据创建成功")
+        await metadataApi.edit(payload)
+        message.success("元数据更新成功")
         this.dialogVisible = false
         this.$refs.metadataFormRef.resetFields()
         await this.loadMetadata()
@@ -377,7 +340,6 @@ export default {
     },
 
     editMetadata(record) {
-      this.editMode = true
       this.metadataForm = { ...record }
       this.dialogVisible = true
     },
@@ -442,12 +404,6 @@ export default {
         font-size: 20px;
         font-weight: 600;
         color: #1890ff;
-        margin-bottom: 8px;
-      }
-
-      .page-subtitle {
-        font-size: 14px;
-        color: #8c8c8c;
       }
     }
 

@@ -30,11 +30,6 @@ function createCrudService(resource: ResourceName) {
     removeBatch(ids: string[]): Promise<string> {
       return requestJeecg({ url: `${base}/deleteBatch`, method: "delete", params: { ids: ids.join(",") } })
     },
-    importExcel(file: File): Promise<unknown> {
-      const data = new FormData()
-      data.append("file", file)
-      return requestJeecg({ url: `${base}/importExcel`, method: "post", data })
-    },
     async exportExcel(params: Record<string, unknown> = {}): Promise<Blob> {
       const config: AxiosRequestConfig = { url: `${base}/exportXls`, method: "get", params, responseType: "blob" }
       const response = await dataManagementHttp.request<Blob>(config)

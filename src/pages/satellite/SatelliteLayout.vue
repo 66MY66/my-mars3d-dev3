@@ -54,7 +54,7 @@ export default {
       groupCollapsed: false,
       menus: [
         { label: "卫星遥感数据资源池管理", path: "/satellite/data-pool" },
-        { label: "卫星遥感元数据维护", path: "/satellite/metadata" },
+        { label: "卫星遥感元数据管理", path: "/satellite/metadata" },
         { label: "卫星遥感数据目录管理", path: "/satellite/catalog" },
         { label: "卫星遥感数据查询检索服务", path: "/satellite/query" },
         { label: "卫星遥感数据共享访问", path: "/satellite/share" }
