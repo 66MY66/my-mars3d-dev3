@@ -105,7 +105,7 @@
                 >
                   <mars-icon :icon="statsUi.collapsed[c.key] ? 'preview-open' : 'preview-close'" width="16" />
                 </a-button>
-                <a-button size="small" type="text" @click="toggleCardOnMap(c.key)">{{ statsUi.onMap[c.key] ? "取消上图" : "上图展示" }}</a-button>
+                <a-button size="small" type="text" @click="toggleStatsOnMapUi(c.key)">{{ statsOnMapUi[c.key] ? "取消上图" : "上图展示" }}</a-button>
                 <a-button size="small" type="text" @click="toggleReorderMode">{{ statsUi.reorderMode ? "完成" : "调整顺序" }}</a-button>
                 <a-button v-if="statsUi.reorderMode" size="small" type="text" @click="moveCard(c.key, -1)">上移</a-button>
                 <a-button v-if="statsUi.reorderMode" size="small" type="text" @click="moveCard(c.key, 1)">下移</a-button>
@@ -306,16 +306,14 @@ import { getContextMenu as getNewContextMenu } from "@mars/utils/contextmenu/con
 import type { ContextMenuOptions } from "@mars/utils/contextmenu/types"
 
 import { computed, nextTick, onUnmounted, onMounted, reactive, ref, toRaw, watch } from "vue"
-import { getAdaptiveStatsPeakMetrics, getStatsOverlayLod } from "@/utils/stats-overlay-metrics"
-import {
-  assignStatsRowsToAnchors,
-  buildStatsAnalysisRegion,
-  buildStatsColumnAnchors,
-  getStatsElevationDomain,
-  mapStatsElevationColor,
-  type StatsAnalysisRegion
-} from "@/utils/stats-terrain-overlay"
 import { buildStatsChartOption, getStatsDivisionLabel } from "@/utils/stats-chart-model"
+import {
+  buildPopulationVisualCell,
+  parsePopulationWm3d,
+  POPULATION_COLUMNS_MAX_DISTANCE,
+  selectPopulationCells,
+  type PopulationWm3d
+} from "@/utils/population-wm3d"
 import { getIdentifyFocusAction } from "@/utils/identify-focus"
 import { $alert, $message } from "@mars/components/mars-ui/index"
 import { logInfo } from "@mars/utils/mars-util"
@@ -621,7 +619,6 @@ type StatsPlaybackRecord = {
     autoRefresh: boolean
     cardsOrder: string[]
     collapsed: Record<string, boolean>
-    onMap: Record<string, boolean>
     level: Record<string, number>
   }
 }
@@ -637,20 +634,12 @@ const statsUi = reactive<{
   reorderMode: boolean
   cardsOrder: string[]
   collapsed: Record<string, boolean>
-  onMap: Record<string, boolean>
   level: Record<string, number>
 }>({
   autoRefresh: false,
   reorderMode: false,
   cardsOrder: ["population", "economy", "housing", "radiation", "vegetation"],
   collapsed: {
-    population: false,
-    economy: false,
-    housing: false,
-    radiation: false,
-    vegetation: false
-  },
-  onMap: {
     population: false,
     economy: false,
     housing: false,
@@ -675,6 +664,21 @@ const statsCards = [
 ] as const
 type StatsCardKey = (typeof statsCards)[number]["key"]
 
+const statsOnMapUi = reactive<Record<StatsCardKey, boolean>>({
+  population: false,
+  economy: false,
+  housing: false,
+  radiation: false,
+  vegetation: false
+})
+const populationWm3dUrl = "http://192.168.10.15:9002/rs-products/spatial/china-2020/pop2020_surface.bin"
+let populationWm3dPromise: Promise<PopulationWm3d> | null = null
+let populationColumnsPrimitive: any = null
+let populationColorBlocksPrimitive: any = null
+let populationCameraHandler: (() => void) | null = null
+let populationRenderRun = 0
+let populationRefreshTimer: number | null = null
+
 const orderedStatsCards = computed(() => {
   const byKey = new Map(statsCards.map((c) => [c.key, c]))
   const ordered: any[] = []
@@ -693,16 +697,6 @@ const orderedStatsCards = computed(() => {
 const chartEls = new Map<string, HTMLElement>()
 const chartInstances = new Map<string, echarts.ECharts>()
 let statsAutoTimer: number | null = null
-let statsOverlayLayer: any = null
-let statsAnalysisSurfaceOverlay: any = null
-let statsElevationSurfacePrimitive: any = null
-let statsElevationSurfaceRun = 0
-let statsAnalysisRegion: StatsAnalysisRegion | null = null
-let statsAnalysisRegionHash = ""
-let statsOverlayByKey = new Map<string, any[]>()
-const statsOverlayLabels = new Map<any, any>()
-let statsOverlayCameraTimer: number | null = null
-let statsOverlayCameraHandler: (() => void) | null = null
 let statsThemeObserver: MutationObserver | null = null
 const statsDataByKey = new Map<string, Array<Record<string, any>>>()
 const statsUpdatedAtByKey = new Map<string, number>()
@@ -833,9 +827,6 @@ function loadPrefs() {
       if (data.statsUi.collapsed && typeof data.statsUi.collapsed === "object") {
         Object.assign(statsUi.collapsed, data.statsUi.collapsed)
       }
-      if (data.statsUi.onMap && typeof data.statsUi.onMap === "object") {
-        Object.assign(statsUi.onMap, data.statsUi.onMap)
-      }
       if (data.statsUi.level && typeof data.statsUi.level === "object") {
         Object.assign(statsUi.level, data.statsUi.level)
       }
@@ -916,7 +907,6 @@ function savePrefs() {
       autoRefresh: statsUi.autoRefresh,
       cardsOrder: statsUi.cardsOrder,
       collapsed: statsUi.collapsed,
-      onMap: statsUi.onMap,
       level: statsUi.level
     }
     localStorage.setItem(statsStorageKey, JSON.stringify({ statsUi: keepStatsUi, unitPrefs, model, identify: keepIdentify, panelPos }))
@@ -932,7 +922,6 @@ function snapshotStatsUi() {
     autoRefresh: !!statsUi.autoRefresh,
     cardsOrder: Array.isArray(statsUi.cardsOrder) ? [...statsUi.cardsOrder] : [],
     collapsed: { ...statsUi.collapsed },
-    onMap: { ...statsUi.onMap },
     level: { ...statsUi.level }
   }
 }
@@ -981,7 +970,6 @@ function readStatsPlaybackRecords(): StatsPlaybackRecord[] {
             autoRefresh: !!item?.statsUi?.autoRefresh,
             cardsOrder: Array.isArray(item?.statsUi?.cardsOrder) ? item.statsUi.cardsOrder.map((x: any) => String(x)) : [],
             collapsed: typeof item?.statsUi?.collapsed === "object" && item?.statsUi?.collapsed ? { ...item.statsUi.collapsed } : {},
-            onMap: typeof item?.statsUi?.onMap === "object" && item?.statsUi?.onMap ? { ...item.statsUi.onMap } : {},
             level: typeof item?.statsUi?.level === "object" && item?.statsUi?.level ? { ...item.statsUi.level } : {}
           }
         }
@@ -1010,7 +998,7 @@ watch(
   savePrefs
 )
 watch(
-  () => [statsUi.autoRefresh, statsUi.reorderMode, statsUi.cardsOrder, statsUi.collapsed, statsUi.onMap, statsUi.level],
+  () => [statsUi.autoRefresh, statsUi.reorderMode, statsUi.cardsOrder, statsUi.collapsed, statsUi.level],
   savePrefs,
   { deep: true }
 )
@@ -1261,312 +1249,6 @@ function formatCardValue(key: StatsCardKey, value: number) {
     return `${value.toFixed(2)}`
   }
   return `${value.toFixed(3)}`
-}
-
-function getStatsGradientColor(ratio: number) {
-  if (ratio >= 0.85) {
-    return "#ff4d4f"
-  }
-  if (ratio >= 0.65) {
-    return "#fa8c16"
-  }
-  if (ratio >= 0.45) {
-    return "#fadb14"
-  }
-  if (ratio >= 0.25) {
-    return "#13c2c2"
-  }
-  return "#2f54eb"
-}
-
-function getStatsCategoryColor(key: StatsCardKey) {
-  const colors: Record<StatsCardKey, string> = {
-    population: "#F76560",
-    economy: "#FBE842",
-    housing: "#B5E241",
-    radiation: "#57A9FB",
-    vegetation: "#E13EDB"
-  }
-  return colors[key]
-}
-
-/** 相邻侧面固定明暗，顶面单独更亮，不随数值或视角改变 */
-const STATS_PRISM_FACE_SHADE = [0.08, 0.38, 0.18, 0.5]
-/** 柱身竖向高度相对原尺度的比例，只缩小上下尺寸 */
-const STATS_PRISM_HEIGHT_SCALE = 0.5
-/** 矩形底面阶段的面积比例，作为当前底面面积的基准 */
-const STATS_PRISM_FOOTPRINT_AREA_SCALE = 1 / 3
-/** 在当前底面面积上再缩小到 1/2，并改为正方形 */
-const STATS_PRISM_SQUARE_AREA_SCALE = 1 / 2
-
-function getStatsPrismTopColor(baseColor: string) {
-  return mixHexColor(baseColor, "#ffffff", 0.46)
-}
-
-function getStatsPrismFaceColor(baseColor: string, faceIndex: number) {
-  const shade = STATS_PRISM_FACE_SHADE[faceIndex] ?? 0.24
-  return mixHexColor(baseColor, "#141414", shade)
-}
-
-const statsPrismSideImages = new Map<string, string>()
-
-function getStatsPrismSideImage(faceColor: string) {
-  const cached = statsPrismSideImages.get(faceColor)
-  if (cached) {
-    return cached
-  }
-  const bottomColor = mixHexColor(faceColor, "#ffffff", 0.82)
-  const canvas = document.createElement("canvas")
-  canvas.width = 4
-  canvas.height = 128
-  const ctx = canvas.getContext("2d")
-  if (!ctx) {
-    return ""
-  }
-  const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0)
-  gradient.addColorStop(0, bottomColor)
-  gradient.addColorStop(1, faceColor)
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  const image = canvas.toDataURL("image/png")
-  statsPrismSideImages.set(faceColor, image)
-  return image
-}
-
-function applyOpaqueGradient(wallGraphic: any, faceColor: string) {
-  const Cesium = (mars3d as any).Cesium
-  const wall = wallGraphic?.entity?.wall
-  if (!wall || !Cesium) {
-    return
-  }
-  wall.material = new Cesium.ImageMaterialProperty({
-    image: getStatsPrismSideImage(faceColor),
-    color: Cesium.Color.WHITE,
-    transparent: false
-  })
-}
-
-/** 按统计区面积推算方柱底边与最大高度（原站三维柱尺度） */
-function hexToRgb(hex: string) {
-  const normalized = String(hex || "").replace("#", "")
-  const source = normalized.length === 3
-    ? normalized.split("").map((part) => `${part}${part}`).join("")
-    : normalized.padStart(6, "0").slice(0, 6)
-  const value = Number.parseInt(source, 16)
-  return {
-    r: (value >> 16) & 255,
-    g: (value >> 8) & 255,
-    b: value & 255
-  }
-}
-
-function rgbToHex(r: number, g: number, b: number) {
-  const toHex = (value: number) => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0")
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
-}
-
-function mixHexColor(hex: string, target: string, weight: number) {
-  const sourceRgb = hexToRgb(hex)
-  const targetRgb = hexToRgb(target)
-  return rgbToHex(
-    sourceRgb.r + (targetRgb.r - sourceRgb.r) * weight,
-    sourceRgb.g + (targetRgb.g - sourceRgb.g) * weight,
-    sourceRgb.b + (targetRgb.b - sourceRgb.b) * weight
-  )
-}
-
-function getStatsPeakMetrics(cameraHeight = 50000) {
-  return getAdaptiveStatsPeakMetrics(Number(metrics.areaM2) || 0, cameraHeight)
-}
-
-function buildStatsTooltip(key: StatsCardKey, row: Record<string, any>, ratio: number) {
-  return `
-    <div style="min-width: 160px">
-      <div style="font-weight: 600; margin-bottom: 4px;">${getCardLabel(row)}</div>
-      <div>卡片：${statsCards.find((item) => item.key === key)?.title || key}</div>
-      <div>数值：${formatCardValue(key, getCardValueByKey(key, row))}</div>
-      <div>强度：${Math.round(ratio * 100)}%</div>
-      <div>空间表达：${row.__spatialMode || "估算"}</div>
-    </div>
-  `
-}
-
-function ensureStatsOverlayLayer() {
-  if (statsOverlayLayer || !map) {
-    return
-  }
-  statsOverlayLayer = new mars3d.layer.GraphicLayer({ name: "", isPrivate: true, statsAnalysisOverlay: true } as any)
-  map.addLayer(statsOverlayLayer)
-  statsOverlayLayer.on?.(mars3d.EventType.mouseOver, (event: any) => {
-    const label = statsOverlayLabels.get(event?.graphic)
-    if (label) {
-      label.show = true
-    }
-  })
-  statsOverlayLayer.on?.(mars3d.EventType.mouseOut, (event: any) => {
-    const label = statsOverlayLabels.get(event?.graphic)
-    if (label) {
-      const cameraHeight = Number(map?.camera?.positionCartographic?.height ?? 50000)
-      label.show = getStatsOverlayLod(cameraHeight) === "labels"
-    }
-  })
-}
-
-function ensureStatsAnalysisSurfaceOverlay() {
-  if (statsAnalysisSurfaceOverlay || !map) {
-    return
-  }
-  // This is an ephemeral rendering container owned by 综合统计面板. It is
-  // intentionally not registered with dataset, layer-tree or basemap state.
-  statsAnalysisSurfaceOverlay = new mars3d.layer.GraphicLayer({ name: "", isPrivate: true, statsAnalysisOverlay: true } as any)
-  map.addLayer(statsAnalysisSurfaceOverlay)
-}
-
-function clearStatsElevationSurface() {
-  statsElevationSurfaceRun += 1
-  if (statsElevationSurfacePrimitive && map?.scene?.primitives) {
-    try {
-      map.scene.primitives.remove(statsElevationSurfacePrimitive)
-    } catch {}
-  }
-  statsElevationSurfacePrimitive = null
-}
-
-function clearStatsAnalysisRegion() {
-  clearStatsElevationSurface()
-  statsAnalysisSurfaceOverlay?.clear?.(true)
-  statsAnalysisRegion = null
-  statsAnalysisRegionHash = ""
-}
-
-function hasStatsOverlayEnabled() {
-  return Object.values(statsUi.onMap).some(Boolean)
-}
-
-async function renderStatsElevationSurface(region: StatsAnalysisRegion, fallbackGraphic: any) {
-  if (!map) {
-    return
-  }
-  const Cesium = (mars3d as any).Cesium
-  const run = ++statsElevationSurfaceRun
-  const hierarchy = new Cesium.PolygonHierarchy(
-    region.sourceRing.map(([lng, lat]) => Cesium.Cartesian3.fromDegrees(lng, lat))
-  )
-  const longitudeSpan = Math.max(0, region.bbox[2] - region.bbox[0])
-  const latitudeSpan = Math.max(0, region.bbox[3] - region.bbox[1])
-  const granularityDegrees = Math.max(0.00018, Math.min(0.008, Math.max(longitudeSpan, latitudeSpan) / 56))
-  const polygon = new Cesium.PolygonGeometry({
-    polygonHierarchy: hierarchy,
-    vertexFormat: Cesium.VertexFormat.POSITION_ONLY,
-    granularity: Cesium.Math.toRadians(granularityDegrees)
-  })
-  const geometry = Cesium.PolygonGeometry.createGeometry(polygon)
-  const positionValues = geometry?.attributes?.position?.values
-  if (!geometry || !positionValues?.length) {
-    return
-  }
-  const ellipsoid = Cesium.Ellipsoid.WGS84
-  const cartographics: any[] = []
-  for (let index = 0; index < positionValues.length; index += 3) {
-    const position = new Cesium.Cartesian3(positionValues[index], positionValues[index + 1], positionValues[index + 2])
-    cartographics.push(ellipsoid.cartesianToCartographic(position))
-  }
-  try {
-    const terrainProvider = (map as any).viewer?.terrainProvider
-    const sampled = await Cesium.sampleTerrainMostDetailed(terrainProvider, cartographics)
-    if (run !== statsElevationSurfaceRun || !map || region.hash !== statsAnalysisRegionHash) {
-      return
-    }
-    const heights = sampled.map((item: any) => Number.isFinite(Number(item?.height)) ? Number(item.height) : 0)
-    const elevationDomain = getStatsElevationDomain(heights)
-    const colors = new Uint8Array(sampled.length * 4)
-    sampled.forEach((item: any, index: number) => {
-      const height = heights[index]
-      const raisedPosition = Cesium.Cartesian3.fromRadians(item.longitude, item.latitude, height + 1.8, ellipsoid)
-      positionValues[index * 3] = raisedPosition.x
-      positionValues[index * 3 + 1] = raisedPosition.y
-      positionValues[index * 3 + 2] = raisedPosition.z
-      colors.set(mapStatsElevationColor(height, elevationDomain), index * 4)
-    })
-    geometry.attributes.color = new Cesium.GeometryAttribute({
-      componentDatatype: Cesium.ComponentDatatype.UNSIGNED_BYTE,
-      componentsPerAttribute: 4,
-      normalize: true,
-      values: colors
-    })
-    geometry.boundingSphere = Cesium.BoundingSphere.fromVertices(positionValues)
-    Cesium.GeometryPipeline.computeNormal(geometry)
-    const primitive = new Cesium.Primitive({
-      geometryInstances: new Cesium.GeometryInstance({ geometry }),
-      appearance: new Cesium.PerInstanceColorAppearance({
-        translucent: true,
-        flat: false,
-        closed: false
-      }),
-      asynchronous: false
-    })
-    if (run !== statsElevationSurfaceRun || !map) {
-      primitive.destroy?.()
-      return
-    }
-    statsElevationSurfacePrimitive = map.scene.primitives.add(primitive)
-    const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
-    statsElevationSurfacePrimitive.show = getStatsOverlayLod(cameraHeight) !== "hidden" && hasStatsOverlayEnabled()
-    fallbackGraphic.show = false
-    map.scene?.requestRender?.()
-  } catch {
-    // Keep the exact terrain-clamped fallback surface when detailed terrain
-    // sampling is unavailable or interrupted.
-  }
-}
-
-function renderStatsAnalysisRegion(force = false) {
-  if (!map || !hasStatsOverlayEnabled()) {
-    clearStatsAnalysisRegion()
-    return null
-  }
-  const next = buildStatsAnalysisRegion(activeRing.value, { targetCells: 196, maxCells: 900, edgeCoverageThreshold: 0.36 })
-  if (!next) {
-    clearStatsAnalysisRegion()
-    return null
-  }
-  if (!force && statsAnalysisRegionHash === next.hash && statsAnalysisRegion) {
-    return statsAnalysisRegion
-  }
-  ensureStatsAnalysisSurfaceOverlay()
-  clearStatsElevationSurface()
-  statsAnalysisSurfaceOverlay.clear?.(true)
-  statsAnalysisRegion = next
-  statsAnalysisRegionHash = next.hash
-  const sourcePositions = next.sourceRing.map(([lng, lat]) => [lng, lat])
-  const closedSourcePositions = [...sourcePositions, sourcePositions[0]]
-  const classificationType = (mars3d as any).Cesium?.ClassificationType?.TERRAIN
-  const fallbackSurface = new mars3d.graphic.PolygonEntity({
-    positions: sourcePositions,
-    style: {
-      color: "#5A3F86",
-      opacity: 0.66,
-      clampToGround: true,
-      outline: false,
-      classificationType
-    },
-    attr: { visualType: "stats-analysis-surface-base", regionHash: next.hash, transient: true }
-  })
-  statsAnalysisSurfaceOverlay.addGraphic(fallbackSurface)
-  renderStatsElevationSurface(next, fallbackSurface)
-
-  statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolylineEntity({
-    positions: closedSourcePositions,
-    style: { color: "#241C49", width: 5, opacity: 0.88, clampToGround: true },
-    attr: { visualType: "stats-analysis-source-boundary-shadow", regionHash: next.hash, transient: true }
-  }))
-  statsAnalysisSurfaceOverlay.addGraphic(new mars3d.graphic.PolylineEntity({
-    positions: closedSourcePositions,
-    style: { color: "#F4D8EC", width: 2, opacity: 0.98, clampToGround: true },
-    attr: { visualType: "stats-analysis-source-boundary", regionHash: next.hash, transient: true }
-  }))
-  map.scene?.requestRender?.()
-  return next
 }
 
 function getRingBbox(ring: RingLonLat): [number, number, number, number] | null {
@@ -2178,9 +1860,6 @@ function refreshStats(showToast = true) {
       initOrReinitChart(key)
     }
     renderCard(key)
-    if (statsUi.onMap[key]) {
-      renderOverlayForCard(key)
-    }
   })
   if (showToast) {
     $message("已刷新", "success")
@@ -2190,11 +1869,10 @@ function refreshStats(showToast = true) {
 function closeStats() {
   statsVisible.value = false
   statsUi.reorderMode = false
-  Object.keys(statsUi.onMap).forEach((key) => {
-    statsUi.onMap[key] = false
-    clearOverlayForCard(key)
+  Object.keys(statsOnMapUi).forEach((key) => {
+    statsOnMapUi[key as StatsCardKey] = false
   })
-  clearStatsAnalysisRegion()
+  clearPopulationOnMap()
 }
 
 function closeIdentify() {
@@ -2211,12 +1889,10 @@ function clearWorkspaceLayers(_options?: { clearStorage?: boolean }) {
     return
   }
   clearIdentifyResult()
-  Object.keys(statsUi.onMap).forEach((key) => {
-    statsUi.onMap[key] = false
-    clearOverlayForCard(key)
+  Object.keys(statsOnMapUi).forEach((key) => {
+    statsOnMapUi[key as StatsCardKey] = false
   })
-  statsOverlayLayer?.setShow?.(false)
-  clearStatsAnalysisRegion()
+  clearPopulationOnMap()
   if (drawingOverviewCamera && typeof map.setCameraView === "function") {
     try {
       map.setCameraView(drawingOverviewCamera, { duration: 0.8 })
@@ -2287,6 +1963,154 @@ async function toggleCardCollapsed(key: string) {
       chart.resize?.()
     } catch {}
   }
+}
+
+function removePopulationPrimitive(primitive: any) {
+  if (!primitive || !map?.scene?.primitives) { return }
+  try {
+    map.scene.primitives.remove(primitive)
+  } catch {}
+}
+
+function clearPopulationPrimitives() {
+  removePopulationPrimitive(populationColumnsPrimitive)
+  removePopulationPrimitive(populationColorBlocksPrimitive)
+  populationColumnsPrimitive = null
+  populationColorBlocksPrimitive = null
+  map?.scene?.requestRender?.()
+}
+
+function clearPopulationOnMap() {
+  populationRenderRun += 1
+  clearPopulationPrimitives()
+}
+
+function applyPopulationOnMapLod() {
+  const cameraHeight = Number(map?.camera?.positionCartographic?.height ?? Number.POSITIVE_INFINITY)
+  const showColumns = cameraHeight <= POPULATION_COLUMNS_MAX_DISTANCE
+  if (populationColumnsPrimitive) { populationColumnsPrimitive.show = showColumns }
+  if (populationColorBlocksPrimitive) { populationColorBlocksPrimitive.show = !showColumns }
+  map?.scene?.requestRender?.()
+}
+
+function ensurePopulationCameraHandler() {
+  if (!map || populationCameraHandler) { return }
+  populationCameraHandler = applyPopulationOnMapLod
+  map.on(mars3d.EventType.cameraChanged, populationCameraHandler)
+}
+
+async function loadPopulationWm3d() {
+  if (!populationWm3dPromise) {
+    populationWm3dPromise = fetch(populationWm3dUrl)
+      .then((response) => {
+        if (!response.ok) { throw new Error(`HTTP ${response.status}`) }
+        return response.arrayBuffer()
+      })
+      .then(parsePopulationWm3d)
+      .catch((error) => {
+        populationWm3dPromise = null
+        throw error
+      })
+  }
+  return populationWm3dPromise
+}
+
+function createPopulationPrimitives(data: PopulationWm3d) {
+  const Cesium = (mars3d as any).Cesium
+  const selected = selectPopulationCells(data, activeRing.value)
+  if (!selected.length) { return null }
+  const boxInstances = selected.map((cell) => {
+    const visual = buildPopulationVisualCell(cell)
+    const lng = (visual.west + visual.east) / 2
+    const lat = (visual.north + visual.south) / 2
+    const width = Math.max(1, (visual.east - visual.west) * 111320 * Math.cos(Cesium.Math.toRadians(lat)))
+    const depth = Math.max(1, (visual.north - visual.south) * 111320)
+    return new Cesium.GeometryInstance({
+      geometry: Cesium.BoxGeometry.fromDimensions({
+        dimensions: new Cesium.Cartesian3(width, depth, visual.height),
+        vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT
+      }),
+      modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, visual.height / 2)),
+      attributes: { color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromBytes(...visual.color, 255)) }
+    })
+  })
+  const blockInstances = selected.map((cell) => new Cesium.GeometryInstance({
+    geometry: new Cesium.RectangleGeometry({
+      rectangle: Cesium.Rectangle.fromDegrees(cell.west, cell.south, cell.east, cell.north),
+      vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT
+    }),
+    attributes: { color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromBytes(...cell.color, 210)) }
+  }))
+  return {
+    columns: new Cesium.Primitive({
+      geometryInstances: boxInstances,
+      appearance: new Cesium.PerInstanceColorAppearance({ closed: true, translucent: false }),
+      asynchronous: true
+    }),
+    blocks: new Cesium.GroundPrimitive({
+      geometryInstances: blockInstances,
+      appearance: new Cesium.PerInstanceColorAppearance({ flat: true, translucent: true }),
+      asynchronous: true
+    }),
+    count: selected.length
+  }
+}
+
+async function renderPopulationOnMap(showToast = true) {
+  if (!map || !statsOnMapUi.population || activeRing.value.length < 3) { return }
+  const run = ++populationRenderRun
+  statsCardState.population.loading = true
+  try {
+    const data = await loadPopulationWm3d()
+    if (run !== populationRenderRun || !statsOnMapUi.population || !map) { return }
+    const primitives = createPopulationPrimitives(data)
+    clearPopulationPrimitives()
+    if (!primitives) {
+      statsOnMapUi.population = false
+      if (showToast) { $message("当前绘制范围内没有相交的人口网格", "warning") }
+      return
+    }
+    populationColumnsPrimitive = map.scene.primitives.add(primitives.columns)
+    populationColorBlocksPrimitive = map.scene.primitives.add(primitives.blocks)
+    ensurePopulationCameraHandler()
+    applyPopulationOnMapLod()
+    if (showToast) { $message(`已展示 ${primitives.count} 个人口网格`, "success") }
+  } catch (error: any) {
+    if (run === populationRenderRun) {
+      statsOnMapUi.population = false
+      clearPopulationPrimitives()
+      $message(`人口三维数据加载失败：${error?.message || error}`, "error")
+    }
+  } finally {
+    if (run === populationRenderRun) { statsCardState.population.loading = false }
+  }
+}
+
+function schedulePopulationOnMapRefresh() {
+  if (!statsOnMapUi.population) { return }
+  if (populationRefreshTimer != null) { window.clearTimeout(populationRefreshTimer) }
+  populationRefreshTimer = window.setTimeout(() => {
+    populationRefreshTimer = null
+    renderPopulationOnMap(false)
+  }, 180)
+}
+
+function toggleStatsOnMapUi(key: StatsCardKey) {
+  if (key !== "population") {
+    statsOnMapUi[key] = !statsOnMapUi[key]
+    return
+  }
+  if (statsOnMapUi.population) {
+    statsOnMapUi.population = false
+    clearPopulationOnMap()
+    return
+  }
+  if (activeRing.value.length < 3) {
+    $message("请先绘制面或矩形范围", "warning")
+    return
+  }
+  statsOnMapUi.population = true
+  renderPopulationOnMap()
 }
 
 function toggleReorderMode() {
@@ -2376,256 +2200,6 @@ function adjustCardLevel(key: string, event: WheelEvent) {
     return
   }
   statsUi.level[key] = next
-}
-
-function toggleCardOnMap(key: string) {
-  const next = !statsUi.onMap[key]
-  statsUi.onMap[key] = next
-  if (!next) {
-    clearOverlayForCard(key)
-    if (!hasStatsOverlayEnabled()) {
-      clearStatsAnalysisRegion()
-    }
-    return
-  }
-  renderStatsAnalysisRegion()
-  renderOverlayForCard(key as StatsCardKey)
-}
-
-function clearOverlayForCard(key: string) {
-  const list = statsOverlayByKey.get(key) || []
-  if (statsOverlayLayer) {
-    try {
-      list.forEach((g) => {
-        statsOverlayLabels.delete(g)
-        statsOverlayLayer.removeGraphic?.(g, true)
-      })
-    } catch {}
-  }
-  statsOverlayByKey.delete(key)
-}
-
-function renderOverlayForCard(key: StatsCardKey) {
-  if (!map) {
-    return
-  }
-  ensureStatsOverlayLayer()
-  clearOverlayForCard(key)
-  const sourceRows = statsDataByKey.get(key) || buildCardData(key)
-  statsDataByKey.set(key, sourceRows)
-  const region = renderStatsAnalysisRegion()
-  if (!region || !sourceRows.length) {
-    return
-  }
-  let rows: Array<Record<string, any>> = sourceRows.slice(0, 6).map((row) => ({ ...row, __spatialMode: "估算网格" }))
-  if (key === "housing") {
-    const total = Math.max(1, sourceRows.length)
-    rows = [{
-      分类: "区域汇总",
-      高风险: sourceRows.reduce((sum, row) => sum + Number(row["高风险"] || 0), 0) / total,
-      较高风险: sourceRows.reduce((sum, row) => sum + Number(row["较高风险"] || 0), 0) / total,
-      __spatialMode: "汇总估算"
-    }]
-  } else if (key === "radiation" || key === "vegetation") {
-    rows = [{ ...sourceRows[sourceRows.length - 1], __spatialMode: "当前时点汇总" }]
-  }
-  const n = rows.length
-  const graphics: any[] = []
-  const numericValues = rows.map((row) => getCardValueByKey(key, row))
-  const maxValue = Math.max(...numericValues, 0)
-  const Cesium = (mars3d as any).Cesium
-  const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
-  const lod = getStatsOverlayLod(cameraHeight)
-  const { radius, maxHeight } = getStatsPeakMetrics(cameraHeight)
-  const peakMaxDistance = 280000
-  const span = Math.max(radius * 6, maxHeight * 0.22) * Math.sqrt(STATS_PRISM_FOOTPRINT_AREA_SCALE)
-  const requestedSide = Math.sqrt(span * (span * 0.72) * STATS_PRISM_SQUARE_AREA_SCALE)
-  const rowKeys = rows.map((row, index) => `${getCardLabel(row)}:${index}`)
-  let footprintMeters = requestedSide
-  let anchors = buildStatsColumnAnchors(region, n, footprintMeters)
-  while (anchors.length < n && footprintMeters > 36) {
-    footprintMeters *= 0.72
-    anchors = buildStatsColumnAnchors(region, n, footprintMeters)
-  }
-  const assignments = assignStatsRowsToAnchors(rowKeys, anchors)
-  for (let i = 0; i < n; i++) {
-    const anchor = assignments.get(rowKeys[i])
-    if (!anchor) {
-      continue
-    }
-    const lng = anchor.lng
-    const lat = anchor.lat
-    const row = rows[i] || {}
-    const numericValue = getCardValueByKey(key, row)
-    const ratio = maxValue > 0 ? Math.max(0.08, Math.min(1, numericValue / maxValue)) : 0.1
-    const height = Math.max(800, ratio * maxHeight)
-    const color = getStatsCategoryColor(key)
-    const tooltip = buildStatsTooltip(key, row, ratio)
-    const columnHeight = height * STATS_PRISM_HEIGHT_SCALE
-    const topColor = getStatsPrismTopColor(color)
-    let ground = 0
-    try {
-      const sampled = map.getHeight?.([lng, lat])
-      if (Number.isFinite(sampled)) {
-        ground = sampled
-      }
-    } catch {
-      ground = 0
-    }
-    const topAlt = ground + columnHeight
-    const metersPerDegLat = 111320
-    const metersPerDegLng = Math.max(1, metersPerDegLat * Math.cos((lat * Math.PI) / 180))
-    const squareSide = anchor.footprintMeters
-    const halfLng = squareSide / 2 / metersPerDegLng
-    const halfLat = squareSide / 2 / metersPerDegLat
-    const footprint = [
-      [lng - halfLng, lat - halfLat],
-      [lng + halfLng, lat - halfLat],
-      [lng + halfLng, lat + halfLat],
-      [lng - halfLng, lat + halfLat]
-    ]
-    const columnAttr = {
-      statsKey: key,
-      row,
-      value: numericValue,
-      height,
-      ratio,
-      visualType: "peak-main"
-    }
-    footprint.forEach((corner, faceIndex) => {
-      const next = footprint[(faceIndex + 1) % footprint.length]
-      const faceColor = getStatsPrismFaceColor(color, faceIndex)
-      const wallGraphic = new mars3d.graphic.WallEntity({
-        positions: [
-          [corner[0], corner[1], ground],
-          [next[0], next[1], ground]
-        ],
-        style: {
-          diffHeight: columnHeight,
-          materialType: "Color",
-          color: faceColor,
-          opacity: 1,
-          outline: false,
-          closure: false,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, peakMaxDistance)
-        },
-        tooltip,
-        popup: tooltip,
-        attr: columnAttr
-      })
-      statsOverlayLayer.addGraphic(wallGraphic)
-      applyOpaqueGradient(wallGraphic, faceColor)
-      graphics.push(wallGraphic)
-    })
-    const topGraphic = new mars3d.graphic.PolygonEntity({
-      positions: footprint.map(([cornerLng, cornerLat]) => [cornerLng, cornerLat, topAlt]),
-      style: {
-        height: topAlt,
-        perPositionHeight: true,
-        color: topColor,
-        opacity: 1,
-        outline: false,
-        clampToGround: false,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, peakMaxDistance)
-      },
-      tooltip,
-      popup: tooltip,
-      attr: columnAttr
-    })
-    statsOverlayLayer.addGraphic(topGraphic)
-    graphics.push(topGraphic)
-
-    const labelGraphic = new mars3d.graphic.PointEntity({
-      position: [lng, lat, topAlt],
-      style: {
-        color: topColor,
-        pixelSize: 1,
-        outline: false,
-        clampToGround: false,
-        show: lod === "labels",
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 180000),
-        label: {
-          text: formatCardValue(key, numericValue),
-          color: "#1a1a1a",
-          outline: true,
-          outlineColor: "#ffffff",
-          outlineWidth: 3,
-          font_size: 13,
-          font_weight: "bold",
-          horizontalOrigin: (mars3d as any).Cesium?.HorizontalOrigin?.CENTER,
-          verticalOrigin: (mars3d as any).Cesium?.VerticalOrigin?.BOTTOM,
-          pixelOffsetY: -4
-        }
-      },
-      tooltip,
-      popup: tooltip,
-      attr: {
-        statsKey: key,
-        row,
-        value: numericValue,
-        height,
-        ratio,
-        visualType: "label-top"
-      }
-    })
-    statsOverlayLayer.addGraphic(labelGraphic)
-    graphics.push(labelGraphic)
-    statsOverlayLabels.set(topGraphic, labelGraphic)
-
-    // Keep overlay rendering side-effect free: drawing statistics must never
-    // change the user's current map view or camera position.
-  }
-  statsOverlayByKey.set(key, graphics)
-  applyStatsOverlayLod()
-}
-
-function applyStatsOverlayLod() {
-  if (!map) {
-    return
-  }
-  const cameraHeight = Number(map.camera?.positionCartographic?.height ?? 50000)
-  const lod = getStatsOverlayLod(cameraHeight)
-  statsAnalysisSurfaceOverlay?.setShow?.(lod !== "hidden" && hasStatsOverlayEnabled())
-  if (statsElevationSurfacePrimitive) {
-    statsElevationSurfacePrimitive.show = lod !== "hidden" && hasStatsOverlayEnabled()
-  }
-  statsOverlayLayer?.setShow?.((lod === "columns" || lod === "labels") && hasStatsOverlayEnabled())
-  statsOverlayLabels.forEach((label) => {
-    label.show = lod === "labels"
-  })
-  map.scene?.requestRender?.()
-}
-
-function scheduleStatsOverlayCameraUpdate() {
-  if (statsOverlayCameraTimer != null || !map) {
-    return
-  }
-  statsOverlayCameraTimer = window.setTimeout(() => {
-    statsOverlayCameraTimer = null
-    if (!map || !statsOverlayLayer) {
-      return
-    }
-    applyStatsOverlayLod()
-  }, 120)
-}
-
-function bindStatsOverlayCameraAdapter() {
-  if (!map || statsOverlayCameraHandler) {
-    return
-  }
-  statsOverlayCameraHandler = scheduleStatsOverlayCameraUpdate
-  map.on(mars3d.EventType.cameraChanged, statsOverlayCameraHandler)
-}
-
-function unbindStatsOverlayCameraAdapter() {
-  if (statsOverlayCameraTimer != null) {
-    window.clearTimeout(statsOverlayCameraTimer)
-    statsOverlayCameraTimer = null
-  }
-  if (map && statsOverlayCameraHandler) {
-    map.off(mars3d.EventType.cameraChanged, statsOverlayCameraHandler)
-  }
-  statsOverlayCameraHandler = null
 }
 
 function downloadDataUrl(filename: string, dataUrl: string) {
@@ -2828,9 +2402,6 @@ watch(
       if (chartInstances.has(key)) {
         renderCard(key)
       }
-      if (statsUi.onMap[key]) {
-        renderOverlayForCard(key)
-      }
     })
   },
   { deep: true }
@@ -2893,6 +2464,7 @@ function openStatsPanel() {
 
 function updateMetrics(ring: RingLonLat, source?: "selection" | "buffer" | "view") {
   activeRing.value = ring
+  schedulePopulationOnMapRefresh()
   statsRingMeta.source = source || (ring && ring.length >= 3 ? classifyRingSource(ring) : "none")
   const next = estimateMetrics(ring, model)
   metrics.areaM2 = next.areaM2
@@ -2907,9 +2479,6 @@ function updateMetrics(ring: RingLonLat, source?: "selection" | "buffer" | "view
     )
   )
   levelsToWarm.forEach((levelIdx) => prewarmStatsAdminHierarchy(levelIdx, ring))
-  if (hasStatsOverlayEnabled()) {
-    renderStatsAnalysisRegion(true)
-  }
   if (statsVisible.value) {
     refreshStats(false)
   }
@@ -3006,21 +2575,10 @@ async function applyStatsPlayback(record: StatsPlaybackRecord) {
     statsUi.level[key] = 2
   })
   Object.assign(statsUi.level, record.statsUi?.level || {})
-  Object.keys(statsUi.onMap).forEach((key) => {
-    statsUi.onMap[key] = false
-    clearOverlayForCard(key)
-  })
   updateMetrics(cloneRing(record.ring), record.source === "none" ? undefined : record.source)
-  Object.assign(statsUi.onMap, record.statsUi?.onMap || {})
   statsVisible.value = true
   await nextTick()
   refreshStats(false)
-  ;(orderedStatsCards.value || []).forEach((c: any) => {
-    const key = c.key as StatsCardKey
-    if (statsUi.onMap[key]) {
-      renderOverlayForCard(key)
-    }
-  })
   $message("已回放统计快照", "success")
 }
 
@@ -3657,7 +3215,6 @@ const initMars3d = async () => {
 
   mars3dVersionMatched = isMars3dExactVersion("3.10.12")
   map = new mars3d.Map(withKeyId.value, mapOptions)
-  bindStatsOverlayCameraAdapter()
   try {
     const containerEl = document.getElementById(withKeyId.value)
     startNoWatermarkGuard(containerEl, map)
@@ -4382,7 +3939,6 @@ onUnmounted(() => {
     workspaceClearHandler = null
   }
   stopAutoRefresh()
-  unbindStatsOverlayCameraAdapter()
   if (statsThemeObserver) {
     try {
       statsThemeObserver.disconnect()
@@ -4398,21 +3954,15 @@ onUnmounted(() => {
   chartEls.clear()
   statsDataByKey.clear()
   statsUpdatedAtByKey.clear()
-  statsOverlayByKey.forEach((_v, k) => clearOverlayForCard(k))
-  statsOverlayByKey = new Map<string, any[]>()
-  clearStatsAnalysisRegion()
-  if (statsAnalysisSurfaceOverlay && map) {
-    try {
-      map.removeLayer(statsAnalysisSurfaceOverlay, true)
-    } catch {}
+  if (populationRefreshTimer != null) {
+    window.clearTimeout(populationRefreshTimer)
+    populationRefreshTimer = null
   }
-  statsAnalysisSurfaceOverlay = null
-  if (statsOverlayLayer && map) {
-    try {
-      map.removeLayer(statsOverlayLayer, true)
-    } catch {}
+  if (map && populationCameraHandler) {
+    map.off(mars3d.EventType.cameraChanged, populationCameraHandler)
+    populationCameraHandler = null
   }
-  statsOverlayLayer = null
+  clearPopulationOnMap()
 
   // 性能优化：清理事件监听器，防止内存泄漏
   if (map?.graphicLayer) {
