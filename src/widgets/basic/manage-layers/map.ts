@@ -229,6 +229,36 @@ export function exchangeLayer(thisLayerId, moveLayerId) {
   return true
 }
 
+/**
+ * 按图层列表顺序同步渲染层级：列表越靠前，zIndex 越大、影像越靠上。
+ * 仅修改现有图层实例，不重新添加、移除或加载图层。
+ */
+export function syncLayerZIndexByIds(ids: Array<string | number>): boolean {
+  if (!map || !Array.isArray(ids)) {
+    return false
+  }
+  const layers = ids
+    .map((id) => getLayerById(id))
+    .filter((layer: any) => layer != null)
+  if (layers.length === 0) {
+    return false
+  }
+
+  const currentValues = layers
+    .map((layer: any) => Number(layer.zIndex))
+    .filter((value: number) => Number.isFinite(value))
+  const uniqueValues = Array.from(new Set(currentValues)).sort((a, b) => b - a)
+  const zIndexes = uniqueValues.length === layers.length
+    ? uniqueValues
+    : layers.map((_layer: any, index: number) => layers.length - index)
+
+  layers.forEach((layer: any, index: number) => {
+    layer.zIndex = zIndexes[index]
+  })
+  triggerMapRender()
+  return true
+}
+
 /** 记录图层默认 zIndex，供刷新按钮恢复顺序 */
 export function snapshotLayerZIndex(): Record<string, number> {
   const out: Record<string, number> = {}

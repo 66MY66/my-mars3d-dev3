@@ -1,16 +1,28 @@
 import { describe, expect, it, vi } from "vitest"
 import { GDP_DENSITY_LAYER_ID, installGdpDensityIdentify } from "./gdp-density-identify"
 
-function createMap(layerShow = true) {
+const FACEBOOK_POPULATION_LAYER_ID = 412002
+
+function createMap(layerShow = true, gdpZIndex = 2, facebookShow = false, facebookZIndex = 1) {
   let clickHandler: ((event: any) => void | Promise<void>) | undefined
   const layerHandlers: Map<string, VoidFunction> = new Map()
   const layer = {
     show: layerShow,
+    zIndex: gdpZIndex,
     on: vi.fn((type: string, handler: () => void) => layerHandlers.set(type, handler)),
     off: vi.fn()
   }
+  const facebookLayer = { show: facebookShow, zIndex: facebookZIndex }
   const map = {
-    getLayerById: vi.fn((id: number) => id === GDP_DENSITY_LAYER_ID ? layer : undefined),
+    getLayerById: vi.fn((id: number) => {
+      if (id === GDP_DENSITY_LAYER_ID) {
+        return layer
+      }
+      if (id === FACEBOOK_POPULATION_LAYER_ID) {
+        return facebookLayer
+      }
+      return undefined
+    }),
     on: vi.fn((_type: string, handler: typeof clickHandler) => { clickHandler = handler }),
     off: vi.fn(),
     openPopup: vi.fn()
@@ -18,6 +30,7 @@ function createMap(layerShow = true) {
   return {
     map,
     layer,
+    facebookLayer,
     emitClick: (event: any) => clickHandler?.(event),
     emitLayer: (type: string) => layerHandlers.get(type)?.()
   }
@@ -63,6 +76,21 @@ describe("GDP density point identify", () => {
 
     expect(fetcher).not.toHaveBeenCalled()
     expect(map.openPopup).not.toHaveBeenCalled()
+  })
+
+  it("does not query when a visible Facebook layer is above GDP in the list order", async () => {
+    const { map, emitClick } = createMap(true, 1, true, 2)
+    const fetcher = vi.fn()
+
+    installGdpDensityIdentify({
+      map,
+      clickEvent: "click",
+      toLngLat: () => ({ lng: 105, lat: 38 }),
+      fetcher
+    })
+    await emitClick({ cartesian: {} })
+
+    expect(fetcher).not.toHaveBeenCalled()
   })
 
   it("shows no data for the raster nodata sentinel", async () => {
@@ -118,5 +146,21 @@ describe("GDP density point identify", () => {
     cleanup()
     expect(layer.off).toHaveBeenCalledWith("show", expect.any(Function))
     expect(layer.off).toHaveBeenCalledWith("hide", expect.any(Function))
+  })
+
+  it("keeps the Facebook population layer visible when GDP becomes visible", () => {
+    const { map, layer, facebookLayer, emitLayer } = createMap(false, 2, true, 1)
+    installGdpDensityIdentify({
+      map,
+      clickEvent: "click",
+      showEvent: "show",
+      hideEvent: "hide",
+      toLngLat: () => ({ lng: 105, lat: 38 }),
+      fetcher: vi.fn()
+    })
+    layer.show = true
+    emitLayer("show")
+
+    expect(facebookLayer.show).toBe(true)
   })
 })

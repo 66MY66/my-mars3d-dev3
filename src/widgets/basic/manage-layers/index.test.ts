@@ -86,6 +86,7 @@ const updateLayerShowOnly = vi.fn((layer: any, show: boolean) => {
   layer.show = show
 })
 const removeLayerById = vi.fn(() => true)
+const syncLayerZIndexByIds = vi.fn(() => true)
 
 vi.mock("@mars/common/uses/use-lifecycle", () => ({
   default: vi.fn()
@@ -143,6 +144,7 @@ vi.mock("./map", () => ({
   updateLayerShowOnly,
   getLayerByAttr: vi.fn(() => []),
   exchangeLayer: vi.fn(),
+  syncLayerZIndexByIds,
   snapshotLayerZIndex: vi.fn(() => ({ "layer-1": 1, "vector-1": 2 })),
   restoreLayerZIndex: vi.fn(),
   removeLayerById,
@@ -353,6 +355,21 @@ describe("manage-layers/index.vue", () => {
         gamma: 0.8
       }
     })
+  })
+
+  it("keeps the real layer opacity when persisted opacity state has no matching value", async () => {
+    localStorage.setItem("mars3d_layer_opacity_values", JSON.stringify({}))
+    layerFixture.opacity = 1
+
+    const wrapper = mountManageLayers()
+    await flushUi()
+
+    const vm: any = wrapper.vm
+    expect(vm.opacityValue["layer-1"]).toBe(1)
+    expect(layerFixture.opacity).toBe(1)
+
+    wrapper.unmount()
+    vi.clearAllTimers()
   })
 
   it("applies vector point size and label field changes and persists them", async () => {

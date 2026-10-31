@@ -41,26 +41,48 @@ describe("population density layers", () => {
         temporalRange: "2020"
       }
     })
+    expect(layer.radio).toBeUndefined()
     expect(layer.url).toBe(
       "/api/titiler/collections/spatial-thematic/items/SP-china-gdp2020/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual&resampling=nearest"
     )
   })
 
-  it("keeps an empty Facebook population density layer with standard layer controls", () => {
+  it("loads the Facebook population visual asset as the next positioned STAC tile layer", () => {
     const layer = findLayer(config.layers || [], "Facebook 人口密度")
 
     expect(layer).toMatchObject({
+      id: 412002,
       pid: 4120,
-      type: "graphic",
-      data: [],
+      type: "xyz",
+      minimumLevel: 2,
+      maximumLevel: 14,
+      rectangle: {
+        xmin: 67.5,
+        ymin: 15,
+        xmax: 136.8,
+        ymax: 55
+      },
       show: false,
       hasOpacity: true,
-      flyTo: false,
+      flyTo: true,
       metadata: {
-        source: "待接入",
-        description: "Facebook population density placeholder"
+        source: "eoAPI STAC",
+        description: "China 2020 Facebook population density visual asset",
+        temporalRange: "2020"
       }
     })
-    expect(layer.url).toBeUndefined()
+    expect(layer.url).toBe(
+      "/api/titiler/collections/spatial-thematic/items/SP-china-pop2020/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual&resampling=nearest"
+    )
+    expect(layer.radio).toBeUndefined()
+  })
+
+  it("keeps GDP before Facebook in the configured imagery order", () => {
+    const layers = config.layers || []
+    const gdpIndex = layers.findIndex((item: any) => item?.name === "人口GDP分布密度")
+    const facebookIndex = layers.findIndex((item: any) => item?.name === "Facebook 人口密度")
+
+    expect(gdpIndex).toBeGreaterThanOrEqual(0)
+    expect(facebookIndex).toBe(gdpIndex + 1)
   })
 })

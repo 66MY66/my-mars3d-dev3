@@ -1,4 +1,5 @@
 export const GDP_DENSITY_LAYER_ID = 412001
+const FACEBOOK_POPULATION_LAYER_ID = 412002
 
 const GDP_POINT_API = "/api/titiler/collections/spatial-thematic/items/SP-china-gdp2020/point"
 const GDP_BOUNDS = { xmin: 67.5, ymin: 15, xmax: 136.8, ymax: 55 }
@@ -47,7 +48,12 @@ export function installGdpDensityIdentify(options: InstallGdpDensityIdentifyOpti
   let requestSequence = 0
   const layer = map.getLayerById(GDP_DENSITY_LAYER_ID)
   const handleLayerShow = () => onVisibilityChange?.(true)
-  const handleLayerHide = () => onVisibilityChange?.(false)
+  const handleLayerHide = () => {
+    requestSequence += 1
+    activeController?.abort()
+    activeController = null
+    onVisibilityChange?.(false)
+  }
 
   onVisibilityChange?.(Boolean(layer?.show))
   if (layer?.on && showEvent != null && hideEvent != null) {
@@ -58,6 +64,10 @@ export function installGdpDensityIdentify(options: InstallGdpDensityIdentifyOpti
   const handleClick = async (event: any) => {
     const activeLayer = map.getLayerById(GDP_DENSITY_LAYER_ID)
     if (!activeLayer?.show || !event?.cartesian) {
+      return
+    }
+    const facebookLayer = map.getLayerById(FACEBOOK_POPULATION_LAYER_ID)
+    if (facebookLayer?.show && Number(facebookLayer.zIndex) > Number(activeLayer.zIndex)) {
       return
     }
 

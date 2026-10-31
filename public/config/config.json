@@ -910,17 +910,27 @@
       "flyTo": true
     },
     {
+      "id": 412002,
       "pid": 4120,
       "name": "Facebook 人口密度",
-      "type": "graphic",
-      "data": [],
+      "type": "xyz",
+      "url": "/api/titiler/collections/spatial-thematic/items/SP-china-pop2020/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual&resampling=nearest",
+      "minimumLevel": 2,
+      "maximumLevel": 14,
+      "rectangle": {
+        "xmin": 67.5,
+        "ymin": 15.0,
+        "xmax": 136.8,
+        "ymax": 55.0
+      },
       "metadata": {
-        "source": "待接入",
-        "description": "Facebook population density placeholder"
+        "source": "eoAPI STAC",
+        "description": "China 2020 Facebook population density visual asset",
+        "temporalRange": "2020"
       },
       "show": false,
       "hasOpacity": true,
-      "flyTo": false
+      "flyTo": true
     },
     {
       "id": 4130,

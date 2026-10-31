@@ -363,6 +363,24 @@ function applySiblingOrderStateToTree(nodes: any[], orderMap?: SiblingOrderState
   walk(Array.isArray(nodes) ? nodes : [])
 }
 
+function syncTreeLayerOrder(nodes: any[]) {
+  const walk = (list: any[]) => {
+    const layerIds = list
+      .map((node: any) => node?.id)
+      .filter((id: any) => id !== undefined && id !== null && mapWork.getLayerById(id))
+    if (layerIds.length) {
+      mapWork.syncLayerZIndexByIds(layerIds)
+    }
+    list.forEach((node: any) => {
+      const children = Array.isArray(node?.children) ? node.children : []
+      if (children.length) {
+        walk(children)
+      }
+    })
+  }
+  walk(Array.isArray(nodes) ? nodes : [])
+}
+
 function isVirtualRootId(id: string) {
   return VIRTUAL_ROOT_IDS.has(id)
 }
@@ -528,6 +546,7 @@ function reorderLayerNodes(dragNode: any, dropNode: any, insertBefore: boolean) 
     child._index = idx
   })
   parent.children = children
+  mapWork.syncLayerZIndexByIds(nextKeys)
   return true
 }
 
@@ -960,6 +979,23 @@ function applyOpacityToLayers() {
       layer.opacity = opacity
     }
   })
+}
+
+function fillMissingCheckedLayerOpacity(availableIds: Set<string>) {
+  const next = { ...opacityValue.value }
+  checkedKeys.value.forEach((id) => {
+    if (!availableIds.has(normalizeKey(id))) {
+      return
+    }
+    if (Number.isFinite(Number(next[id]))) {
+      return
+    }
+    const layer = mapWork.getLayerById(id)
+    if (layer?.hasOpacity) {
+      next[id] = Number.isFinite(Number(layer.opacity)) ? Number(layer.opacity) : 1
+    }
+  })
+  opacityValue.value = next
 }
 
 function setLayerOption(layer: any, key: string, value: any) {
@@ -1438,6 +1474,7 @@ function initTree() {
   // 赋予树控件
   const wrappedTree = wrapTreeByOutcome(result.tree)
   applySiblingOrderStateToTree(wrappedTree)
+  syncTreeLayerOrder(wrappedTree)
   fullTree.value = wrappedTree
   treeData.value = wrappedTree
 
@@ -1475,6 +1512,7 @@ function initTree() {
     opacityValue.value = persisted.opacityValues
     applyOpacityToLayers()
   }
+  fillMissingCheckedLayerOpacity(new Set(Object.keys(opacityMap).map(normalizeKey)))
 
   if (persisted.rasterStyleValues && typeof persisted.rasterStyleValues === "object") {
     rasterStyleValue.value = persisted.rasterStyleValues
@@ -1544,6 +1582,9 @@ function processCheckedChange(keys: string[], e: any) {
     const show = keys.indexOf(e.node.key) !== -1
     // 使用不触发飞到的显隐控制
     mapWork.updateLayerShowOnly(layer, show)
+    if (show && layer.hasOpacity && !Number.isFinite(Number(opacityValue.value[e.node.key]))) {
+      opacityValue.value[e.node.key] = Number.isFinite(Number(layer.opacity)) ? Number(layer.opacity) : 1
+    }
 
     // 特殊处理同目录下的单选的互斥的节点，可在config对应图层节点中配置"radio":true即可
     if (layer.options?.radio && e.checked) {

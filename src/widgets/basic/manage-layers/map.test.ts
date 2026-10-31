@@ -4,7 +4,7 @@ vi.mock("mars3d", () => {
   return { Cesium: {} }
 })
 
-const { onMounted, removeLayerById, snapshotLayerZIndex, restoreLayerZIndex, exchangeLayer } = await import("./map")
+const { onMounted, removeLayerById, snapshotLayerZIndex, restoreLayerZIndex, exchangeLayer, syncLayerZIndexByIds } = await import("./map")
 
 describe("manage-layers map", () => {
   it("removeLayerById destroys layer", () => {
@@ -48,12 +48,33 @@ describe("manage-layers map", () => {
     const a = { id: "a", zIndex: 1 }
     const b = { id: "b", zIndex: 2 }
     const map: any = {
-      getLayerById: vi.fn((id: string) => (id === "a" ? a : id === "b" ? b : null))
+      getLayerById: vi.fn((id: string) => [a, b].find((layer) => layer.id === id) || null)
     }
     onMounted(map)
 
     expect(exchangeLayer("a", "b")).toBe(true)
     expect(a.zIndex).toBe(2)
     expect(b.zIndex).toBe(1)
+  })
+
+  it("syncs existing imagery zIndex to list order without adding or removing layers", () => {
+    const layers = [
+      { id: "gdp", zIndex: 2 },
+      { id: "population", zIndex: 8 }
+    ]
+    const map: any = {
+      getLayerById: vi.fn((id: string) => layers.find((layer) => layer.id === id) || null),
+      addLayer: vi.fn(),
+      removeLayer: vi.fn()
+    }
+    onMounted(map)
+
+    expect(syncLayerZIndexByIds(["gdp", "population"])).toBe(true)
+    expect(layers[0].zIndex).toBeGreaterThan(layers[1].zIndex)
+    expect(map.addLayer).not.toHaveBeenCalled()
+    expect(map.removeLayer).not.toHaveBeenCalled()
+
+    expect(syncLayerZIndexByIds(["population", "gdp"])).toBe(true)
+    expect(layers[1].zIndex).toBeGreaterThan(layers[0].zIndex)
   })
 })

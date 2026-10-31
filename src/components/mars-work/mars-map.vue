@@ -6,7 +6,10 @@
 <template>
   <div class="mars3d-host">
     <div :id="withKeyId" class="mars3d-container"></div>
-    <GdpDensityLegend v-if="gdpDensityLegendVisible" />
+    <div v-if="gdpDensityLegendVisible || facebookPopulationLegendVisible" class="population-density-legends">
+      <GdpDensityLegend v-if="gdpDensityLegendVisible" />
+      <FacebookPopulationLegend v-if="facebookPopulationLegendVisible" />
+    </div>
     <div v-if="statsVisible" ref="statsPanelEl" class="disaster-stats" :style="statsPanelStyle">
       <div class="stats-toolbar" @mousedown="(e) => startPanelDrag(e, 'stats')">
         <div class="stats-title">综合统计面板</div>
@@ -317,7 +320,9 @@ import {
 } from "@/utils/population-wm3d"
 import { getIdentifyFocusAction } from "@/utils/identify-focus"
 import { installGdpDensityIdentify } from "@/utils/gdp-density-identify"
+import { installFacebookPopulationIdentify } from "@/utils/facebook-population-identify"
 import GdpDensityLegend from "./GdpDensityLegend.vue"
+import FacebookPopulationLegend from "./FacebookPopulationLegend.vue"
 import { $alert, $message } from "@mars/components/mars-ui/index"
 import { logInfo } from "@mars/utils/mars-util"
 import { removeRetiredLayers } from "@/config/retired-layers"
@@ -391,7 +396,9 @@ const props = withDefaults(
 // 用于存放地球组件实例
 let map: mars3d.Map // 地图对象
 let cleanupGdpDensityIdentify: (() => void) | null = null
+let cleanupFacebookPopulationIdentify: (() => void) | null = null
 const gdpDensityLegendVisible = ref(false)
+const facebookPopulationLegendVisible = ref(false)
 let watermarkObserver: MutationObserver | null = null
 let watermarkStyleEl: HTMLStyleElement | null = null
 let stopLogoPrimitiveGuard: (() => void) | null = null
@@ -3497,6 +3504,16 @@ function onMapLoad() {
     },
     toLngLat: (cartesian) => mars3d.LngLatPoint.fromCartesian(cartesian)
   })
+  cleanupFacebookPopulationIdentify = installFacebookPopulationIdentify({
+    map,
+    clickEvent: mars3d.EventType.click,
+    showEvent: mars3d.EventType.show,
+    hideEvent: mars3d.EventType.hide,
+    onVisibilityChange: (visible) => {
+      facebookPopulationLegendVisible.value = visible
+    },
+    toLngLat: (cartesian) => mars3d.LngLatPoint.fromCartesian(cartesian)
+  })
 
   // 【测试】 用于 config.json中配置的图层，绑定额外方法和参数
   const tiles3dLayer = map.getLayerById(204012) // 上海市区
@@ -3980,6 +3997,8 @@ onUnmounted(() => {
   clearPopulationOnMap()
   cleanupGdpDensityIdentify?.()
   cleanupGdpDensityIdentify = null
+  cleanupFacebookPopulationIdentify?.()
+  cleanupFacebookPopulationIdentify = null
 
   // 性能优化：清理事件监听器，防止内存泄漏
   if (map?.graphicLayer) {
@@ -4021,6 +4040,31 @@ onUnmounted(() => {
 .mars3d-host {
   position: relative;
   height: 100%;
+}
+
+.population-density-legends {
+  position: absolute;
+  z-index: 998;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+
+  > .gdp-density-legend,
+  > .facebook-population-legend {
+    position: static;
+  }
+}
+
+@media (max-height: 620px), (max-width: 640px) {
+  .population-density-legends {
+    top: 8px;
+    right: 8px;
+    gap: 6px;
+  }
 }
 
 .disaster-stats {
