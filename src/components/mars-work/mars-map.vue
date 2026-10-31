@@ -312,6 +312,12 @@ import type { ContextMenuOptions } from "@mars/utils/contextmenu/types"
 import { computed, nextTick, onUnmounted, onMounted, reactive, ref, toRaw, watch } from "vue"
 import { buildStatsChartOption, getStatsDivisionLabel } from "@/utils/stats-chart-model"
 import {
+  GRID_DENSITY_SOURCES,
+  loadGridDensityStatistics,
+  type GridDensityDataset,
+  type GridDensityStatisticsResult
+} from "@/utils/grid-density-statistics"
+import {
   buildPopulationVisualCell,
   parsePopulationWm3d,
   POPULATION_COLUMNS_MAX_DISTANCE,
@@ -668,8 +674,8 @@ const statsUi = reactive<{
 })
 
 const statsCards = [
-  { key: "population", title: "人口分布统计", hasLevel: true },
-  { key: "economy", title: "经济分布统计", hasLevel: true },
+  { key: "population", title: "人口分布统计", hasLevel: false },
+  { key: "economy", title: "经济分布统计", hasLevel: false },
   { key: "housing", title: "房屋抗震等级分布", hasLevel: false },
   { key: "radiation", title: "热辐射时序变化", hasLevel: false },
   { key: "vegetation", title: "植被覆盖变化", hasLevel: false }
@@ -711,6 +717,10 @@ const chartInstances = new Map<string, echarts.ECharts>()
 let statsAutoTimer: number | null = null
 let statsThemeObserver: MutationObserver | null = null
 const statsDataByKey = new Map<string, Array<Record<string, any>>>()
+const gridStatsLoadedRing = new Map<string, string>()
+const gridStatsControllers = new Map<string, AbortController>()
+const gridStatsResults = new Map<string, GridDensityStatisticsResult>()
+let gridStatsOverlayPrimitive: any = null
 const statsUpdatedAtByKey = new Map<string, number>()
 const statsAdminLabelCache = new Map<string, string[]>()
 const statsAdminLabelPromiseCache = new Map<string, Promise<string[]>>()
@@ -1228,15 +1238,15 @@ function getThemeName(): string | undefined {
 }
 
 function getCardLabel(row: Record<string, any>) {
-  return String(row["区划"] ?? row["分类"] ?? row["月份"] ?? "未命名")
+  return String(row["区间"] ?? row["区划"] ?? row["分类"] ?? row["月份"] ?? "未命名")
 }
 
 function getCardValueByKey(key: StatsCardKey, row: Record<string, any>) {
   if (key === "population") {
-    return Math.max(0, Number(row["人口"] || 0))
+    return Math.max(0, Number(row["总量"] ?? row["人口"] ?? 0))
   }
   if (key === "economy") {
-    return Math.max(0, Number(row["经济"] || 0))
+    return Math.max(0, Number(row["总量"] ?? row["经济"] ?? 0))
   }
   if (key === "housing") {
     return Math.max(0, Number(row["高风险"] || 0) + Number(row["较高风险"] || 0))
@@ -1592,6 +1602,9 @@ function buildCardData(key: StatsCardKey): Array<Record<string, any>> {
   const bbox = getRingBbox(ring)
   const seed = hashSeed([key, statsUi.level[key] ?? 0, bbox?.join(",") || "none", Math.round(metrics.areaM2)])
   const rnd = mulberry32(seed)
+  if (key === "population" || key === "economy") {
+    return statsDataByKey.get(key) || []
+  }
   // #region debug-point D:build-card-input
   statsBlankChartDebug("D", "buildCardData input", {
     key,
@@ -1823,6 +1836,14 @@ function renderCard(key: StatsCardKey) {
       // #endregion
       return
     }
+    if (key === "population" || key === "economy") {
+      const ringKey = JSON.stringify(ring)
+      if (gridStatsLoadedRing.get(key) !== ringKey) {
+        loadRealGridStatsCard(key, ringKey)
+        chart.clear?.()
+        return
+      }
+    }
     const rows = buildCardData(key)
     statsDataByKey.set(key, rows)
     if (!rows.length) {
@@ -1885,6 +1906,7 @@ function closeStats() {
     statsOnMapUi[key as StatsCardKey] = false
   })
   clearPopulationOnMap()
+  clearGridStatsOnMap()
 }
 
 function closeIdentify() {
@@ -1905,6 +1927,7 @@ function clearWorkspaceLayers(_options?: { clearStorage?: boolean }) {
     statsOnMapUi[key as StatsCardKey] = false
   })
   clearPopulationOnMap()
+  clearGridStatsOnMap()
   if (drawingOverviewCamera && typeof map.setCameraView === "function") {
     try {
       map.setCameraView(drawingOverviewCamera, { duration: 0.8 })
@@ -2098,6 +2121,77 @@ async function renderPopulationOnMap(showToast = true) {
   }
 }
 
+function loadRealGridStatsCard(key: "population" | "economy", ringKey: string) {
+  gridStatsControllers.get(key)?.abort()
+  const controller = new AbortController()
+  gridStatsControllers.set(key, controller)
+  updateCardState(key, { loading: true, empty: false, error: null })
+  const dataset: GridDensityDataset = key === "population" ? "population" : "gdp"
+  loadGridDensityStatistics(dataset, activeRing.value, controller.signal)
+    .then((result) => {
+      if (controller.signal.aborted || JSON.stringify(activeRing.value) !== ringKey) { return }
+      const rows = result.rows as Array<Record<string, any>>
+      statsDataByKey.set(key, rows)
+      gridStatsResults.set(key, result)
+      gridStatsLoadedRing.set(key, ringKey)
+      if (key === "population") { metrics.population = result.total }
+      renderCard(key)
+      if (statsOnMapUi[key]) { renderGridStatsOnMap(key) }
+    })
+    .catch((error: any) => {
+      if (error?.name === "AbortError" || controller.signal.aborted) { return }
+      statsDataByKey.set(key, [])
+      gridStatsLoadedRing.delete(key)
+      chartInstances.get(key)?.clear?.()
+      updateCardState(key, { loading: false, empty: false, error: error?.message || "真实格网数据加载失败" })
+    })
+    .finally(() => {
+      if (gridStatsControllers.get(key) === controller) { gridStatsControllers.delete(key) }
+    })
+}
+
+function clearGridStatsOnMap() {
+  if (map && gridStatsOverlayPrimitive) {
+    try { map.scene.primitives.remove(gridStatsOverlayPrimitive) } catch {}
+  }
+  gridStatsOverlayPrimitive = null
+}
+
+function gridCellColor(dataset: GridDensityDataset, value: number) {
+  const bins = GRID_DENSITY_SOURCES[dataset].bins
+  const index = Math.max(0, bins.findIndex((bin) => value >= bin.min && value <= bin.max))
+  const ratio = bins.length <= 1 ? 0 : index / (bins.length - 1)
+  if (dataset === "population") {
+    return [Math.round(232 - 216 * ratio), Math.round(245 - 203 * ratio), Math.round(203 - 83 * ratio)]
+  }
+  return [Math.round(255 - 197 * ratio), Math.round(243 - 231 * ratio), Math.round(196 - 114 * ratio)]
+}
+
+function renderGridStatsOnMap(key: "population" | "economy") {
+  if (!map || !statsOnMapUi[key]) { return }
+  const result = gridStatsResults.get(key)
+  if (!result?.selectedCells.length) { return }
+  clearGridStatsOnMap()
+  const Cesium = (mars3d as any).Cesium
+  const dataset: GridDensityDataset = key === "population" ? "population" : "gdp"
+  const instances = result.selectedCells.map((cell) => {
+    const [red, green, blue] = gridCellColor(dataset, cell.value)
+    return new Cesium.GeometryInstance({
+      geometry: new Cesium.RectangleGeometry({
+        rectangle: Cesium.Rectangle.fromDegrees(cell.west, cell.south, cell.east, cell.north),
+        vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT
+      }),
+      attributes: { color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromBytes(red, green, blue, 215)) }
+    })
+  })
+  gridStatsOverlayPrimitive = map.scene.primitives.add(new Cesium.GroundPrimitive({
+    geometryInstances: instances,
+    appearance: new Cesium.PerInstanceColorAppearance({ flat: true, translucent: true }),
+    asynchronous: true
+  }))
+  map.scene.requestRender?.()
+}
+
 function schedulePopulationOnMapRefresh() {
   if (!statsOnMapUi.population) { return }
   if (populationRefreshTimer != null) { window.clearTimeout(populationRefreshTimer) }
@@ -2108,21 +2202,29 @@ function schedulePopulationOnMapRefresh() {
 }
 
 function toggleStatsOnMapUi(key: StatsCardKey) {
-  if (key !== "population") {
-    statsOnMapUi[key] = !statsOnMapUi[key]
-    return
-  }
-  if (statsOnMapUi.population) {
+  if (key === "population" || key === "economy") {
+    if (statsOnMapUi[key]) {
+      statsOnMapUi[key] = false
+      clearGridStatsOnMap()
+      return
+    }
+    if (activeRing.value.length < 3) {
+      $message("请先绘制面或矩形范围", "warning")
+      return
+    }
     statsOnMapUi.population = false
-    clearPopulationOnMap()
+    statsOnMapUi.economy = false
+    clearGridStatsOnMap()
+    statsOnMapUi[key] = true
+    const ringKey = JSON.stringify(activeRing.value)
+    if (gridStatsLoadedRing.get(key) === ringKey && gridStatsResults.has(key)) {
+      renderGridStatsOnMap(key)
+    } else {
+      loadRealGridStatsCard(key, ringKey)
+    }
     return
   }
-  if (activeRing.value.length < 3) {
-    $message("请先绘制面或矩形范围", "warning")
-    return
-  }
-  statsOnMapUi.population = true
-  renderPopulationOnMap()
+  statsOnMapUi[key] = !statsOnMapUi[key]
 }
 
 function toggleReorderMode() {
@@ -2475,6 +2577,13 @@ function openStatsPanel() {
 }
 
 function updateMetrics(ring: RingLonLat, source?: "selection" | "buffer" | "view") {
+  gridStatsControllers.forEach((controller) => controller.abort())
+  gridStatsControllers.clear()
+  gridStatsLoadedRing.clear()
+  gridStatsResults.clear()
+  clearGridStatsOnMap()
+  statsDataByKey.delete("population")
+  statsDataByKey.delete("economy")
   activeRing.value = ring
   schedulePopulationOnMapRefresh()
   statsRingMeta.source = source || (ring && ring.length >= 3 ? classifyRingSource(ring) : "none")
@@ -3944,6 +4053,10 @@ onMounted(() => {
 })
 // 组件卸载之前销毁mars3d实例
 onUnmounted(() => {
+  gridStatsControllers.forEach((controller) => controller.abort())
+  gridStatsControllers.clear()
+  gridStatsResults.clear()
+  clearGridStatsOnMap()
   window.removeEventListener("resize", handleViewportResize)
   clearLogoPrimitiveGuard()
   if (watermarkObserver) {

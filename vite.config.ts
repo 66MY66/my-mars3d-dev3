@@ -94,16 +94,22 @@ export default ({ mode }: ConfigEnv) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
         },
-        // TiTiler 代理配置 - 用于加载 STAC 影像 tiles
-        "/api/titiler": {
-          target: "http://192.168.10.15:5952",
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/titiler/, "")
-        },
+        // TiTiler COG 代理必须位于普通 TiTiler 代理之前，避免被其前缀匹配截获
         "/api/titiler-cog": {
           target: "http://192.168.10.15:5955",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/titiler-cog/, "")
+        },
+        "/api/rs-products": {
+          target: "http://192.168.10.15:9002",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/rs-products/, "")
+        },
+        // TiTiler 代理配置 - 仅匹配 /api/titiler 本身及其子路径
+        "^/api/titiler(?:/|$)": {
+          target: "http://192.168.10.15:5952",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/titiler(?=\/|$)/, "")
         }
       }
     },

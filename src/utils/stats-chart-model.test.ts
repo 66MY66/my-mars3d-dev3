@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest"
 import { buildStatsChartOption, getStatsDivisionLabel } from "./stats-chart-model"
 
 describe("statistics chart model", () => {
+  it("renders real population density bins as a total-population bar chart", () => {
+    const option: any = buildStatsChartOption("population", [{ 区间: "1–20", 格网数: 2, 面积: 3, 总量: 42 }])
+    expect(option.xAxis.data).toEqual(["1–20"])
+    expect(option.series[0].type).toBe("bar")
+    expect(option.series[0].data).toEqual([42])
+  })
+
+  it("renders real GDP density bins as a GDP-total bar chart", () => {
+    const option: any = buildStatsChartOption("economy", [{ 区间: "1–100", 格网数: 1, 面积: 2, 总量: 80 }])
+    expect(option.xAxis.data).toEqual(["1–100"])
+    expect(option.series[0].data).toEqual([80])
+  })
+
   it("renders population as a descending horizontal ranking", () => {
     const option: any = buildStatsChartOption("population", [
       { 区划: "乙区", 人口: 200, 人口密度: 80 },

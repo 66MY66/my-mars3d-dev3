@@ -18,4 +18,24 @@ describe("综合统计面板旧上图功能", () => {
     expect(source).not.toContain("renderOverlayForCard")
     expect(source).not.toContain("bindStatsOverlayCameraAdapter")
   })
+
+  it("connects population and economy buttons to the real grid overlay", () => {
+    const toggleStart = source.indexOf("function toggleStatsOnMapUi")
+    const toggleEnd = source.indexOf("function toggleReorderMode", toggleStart)
+    const toggleSource = source.slice(toggleStart, toggleEnd)
+
+    expect(toggleSource).toContain('key === "population" || key === "economy"')
+    expect(toggleSource).toContain("clearGridStatsOnMap()")
+    expect(toggleSource).toContain("renderGridStatsOnMap(key)")
+    expect(toggleSource).toContain("loadRealGridStatsCard(key, ringKey)")
+  })
+})
+
+describe("综合统计面板真实数据模式", () => {
+  it("不再包含临时演示数据入口", () => {
+    expect(source).not.toContain("STATS_DEMO_MODE")
+    expect(source).not.toContain("buildStatsDemoRows")
+    expect(source).not.toContain("演示数据")
+    expect(source).not.toContain("演示模式暂不支持上图展示")
+  })
 })

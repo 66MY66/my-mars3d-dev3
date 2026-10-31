@@ -30,6 +30,7 @@
     "echarts": "^5.6.0",
     "echarts-gl": "^2.0.9",
     "font-awesome": "^4.7.0",
+    "geotiff": "^3.0.5",
     "gifenc": "^1.0.3",
     "idb-keyval": "^6.2.2",
     "jspdf": "^4.2.1",

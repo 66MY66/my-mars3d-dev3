@@ -15,6 +15,9 @@ export function getStatsDivisionLabel(key: StatsChartKey) {
 }
 
 function buildPopulationOption(rows: StatsRow[]) {
+  if (rows.some((row) => row["区间"] != null)) {
+    return buildDensityHistogramOption(rows, "人口总量（人）", "#4c8dff")
+  }
   const sorted = [...rows].sort((a, b) => Number(b["人口"] || 0) - Number(a["人口"] || 0))
   return {
     animation: false,
@@ -57,6 +60,9 @@ function buildHousingOption(rows: StatsRow[]) {
 }
 
 function buildEconomyOption(rows: StatsRow[]) {
+  if (rows.some((row) => row["区间"] != null)) {
+    return buildDensityHistogramOption(rows, "GDP总量（万元）", "#fa8c16")
+  }
   return {
     animation: false,
     tooltip: { formatter: (item: any) => `${item?.name || "未命名"}<br/>经济量：${Number(item?.value || 0).toLocaleString()}` },
@@ -70,6 +76,24 @@ function buildEconomyOption(rows: StatsRow[]) {
       upperLabel: { show: false },
       data: rows.map((row) => ({ name: String(row["区划"] || "未命名"), value: Math.max(0, Number(row["经济"] || 0)) }))
     }]
+  }
+}
+
+function buildDensityHistogramOption(rows: StatsRow[], valueName: string, color: string) {
+  return {
+    animation: false,
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      formatter: (items: any[]) => {
+        const row = rows[Number(items?.[0]?.dataIndex || 0)] || {}
+        return `${row["区间"]}<br/>${valueName}：${Math.round(Number(row["总量"] || 0)).toLocaleString()}<br/>格网数：${Number(row["格网数"] || 0).toLocaleString()}<br/>面积：${Number(row["面积"] || 0).toFixed(2)} km²`
+      }
+    },
+    grid: { left: 72, right: 22, top: 18, bottom: 56 },
+    xAxis: { type: "category", data: rows.map((row) => row["区间"]), axisLabel: { rotate: 35 } },
+    yAxis: { type: "value", name: valueName },
+    series: [{ name: valueName, type: "bar", data: rows.map((row) => Number(row["总量"] || 0)), itemStyle: { color }, barMaxWidth: 28 }]
   }
 }
 
