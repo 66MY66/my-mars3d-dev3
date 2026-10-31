@@ -6,6 +6,7 @@
 <template>
   <div class="mars3d-host">
     <div :id="withKeyId" class="mars3d-container"></div>
+    <GdpDensityLegend v-if="gdpDensityLegendVisible" />
     <div v-if="statsVisible" ref="statsPanelEl" class="disaster-stats" :style="statsPanelStyle">
       <div class="stats-toolbar" @mousedown="(e) => startPanelDrag(e, 'stats')">
         <div class="stats-title">综合统计面板</div>
@@ -315,6 +316,8 @@ import {
   type PopulationWm3d
 } from "@/utils/population-wm3d"
 import { getIdentifyFocusAction } from "@/utils/identify-focus"
+import { installGdpDensityIdentify } from "@/utils/gdp-density-identify"
+import GdpDensityLegend from "./GdpDensityLegend.vue"
 import { $alert, $message } from "@mars/components/mars-ui/index"
 import { logInfo } from "@mars/utils/mars-util"
 import { removeRetiredLayers } from "@/config/retired-layers"
@@ -387,6 +390,8 @@ const props = withDefaults(
 
 // 用于存放地球组件实例
 let map: mars3d.Map // 地图对象
+let cleanupGdpDensityIdentify: (() => void) | null = null
+const gdpDensityLegendVisible = ref(false)
 let watermarkObserver: MutationObserver | null = null
 let watermarkStyleEl: HTMLStyleElement | null = null
 let stopLogoPrimitiveGuard: (() => void) | null = null
@@ -3482,6 +3487,16 @@ function onMapLoad() {
 
   // 添加图层变化监听，确保地图渲染正常
   installLayerChangeMonitor()
+  cleanupGdpDensityIdentify = installGdpDensityIdentify({
+    map,
+    clickEvent: mars3d.EventType.click,
+    showEvent: mars3d.EventType.show,
+    hideEvent: mars3d.EventType.hide,
+    onVisibilityChange: (visible) => {
+      gdpDensityLegendVisible.value = visible
+    },
+    toLngLat: (cartesian) => mars3d.LngLatPoint.fromCartesian(cartesian)
+  })
 
   // 【测试】 用于 config.json中配置的图层，绑定额外方法和参数
   const tiles3dLayer = map.getLayerById(204012) // 上海市区
@@ -3963,6 +3978,8 @@ onUnmounted(() => {
     populationCameraHandler = null
   }
   clearPopulationOnMap()
+  cleanupGdpDensityIdentify?.()
+  cleanupGdpDensityIdentify = null
 
   // 性能优化：清理事件监听器，防止内存泄漏
   if (map?.graphicLayer) {
