@@ -282,6 +282,13 @@ describe("manage-layers/index.vue", () => {
     vi.useRealTimers()
   })
 
+  it("excludes basemaps from the layer dialog tree", async () => {
+    mountManageLayers()
+    await flushUi()
+
+    expect(getLayrsTree).toHaveBeenCalledWith(expect.objectContaining({ basemaps: false }))
+  })
+
   it("opens layer properties from a plain tree node without parent helpers", async () => {
     const wrapper = mountManageLayers()
     await flushUi()

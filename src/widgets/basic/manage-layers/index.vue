@@ -190,6 +190,7 @@ import useLifecycle from "@mars/common/uses/use-lifecycle"
 import * as mapWork from "./map"
 import { useWidget } from "@mars/common/store/widget"
 import { logInfo } from "@mars/utils/mars-util"
+import { isRetiredLayerMenuEntry } from "@/config/retired-layers"
 import { $message } from "@mars/components/mars-ui/index"
 import { POPUP_PANEL_RESIZE_HANDLES } from "@mars/common/constants/popup-resize-handles"
 import { getCurrentDataset, onCurrentDatasetChange } from "@/shell/currentDataset"
@@ -1271,14 +1272,14 @@ function ensureNodeUnlocked(node: any, operation: string): boolean {
 function applyCheckedToLayers(checkedIds: string[]) {
   checkedIds.forEach((id) => {
     const layer = mapWork.getLayerById(id)
-    if (layer && !isBasemapLayer(layer)) {
+    if (layer && !isBasemapLayer(layer) && !isRetiredLayerMenuEntry(layer, mapWork.getLayerById)) {
       mapWork.updateLayerShowOnly(layer, true)
     }
   })
   // 关闭未勾选的图层（排除底图图层，底图由 manage-basemap 单独管理）
   const allLayers = mapWork.getAllLayers()
   allLayers.forEach((layer) => {
-    if (layer.id && layer.hasOpacity !== undefined && !checkedIds.includes(String(layer.id)) && !isBasemapLayer(layer)) {
+    if (layer.id && layer.hasOpacity !== undefined && !checkedIds.includes(String(layer.id)) && !isBasemapLayer(layer) && !isRetiredLayerMenuEntry(layer, mapWork.getLayerById)) {
       mapWork.updateLayerShowOnly(layer, false)
     }
   })
@@ -1424,13 +1425,13 @@ function initTree() {
   const nextBasemapNodeIdSet = new Set<string>()
 
   const result = mapWork.getLayrsTree({
-    basemaps: true, // 是否取config.json中的basempas
+    basemaps: false, // 底图由 manage-basemap 单独管理，不在图层弹窗展示
     filter: function (layer) {
       if (!layer.name) {
         logInfo("未命名图层不加入图层管理", layer)
         return false // 未命名图层不在管理器展示
       }
-      return true
+      return !isRetiredLayerMenuEntry(layer, mapWork.getLayerById)
     },
     forEach: function (item, layer) {
       item.key = String(item.id) // 树控件api需要的唯一标识

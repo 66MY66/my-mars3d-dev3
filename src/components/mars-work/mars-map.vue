@@ -331,7 +331,6 @@ import GdpDensityLegend from "./GdpDensityLegend.vue"
 import FacebookPopulationLegend from "./FacebookPopulationLegend.vue"
 import { $alert, $message } from "@mars/components/mars-ui/index"
 import { logInfo } from "@mars/utils/mars-util"
-import { removeRetiredLayers } from "@/config/retired-layers"
 import { normalizeRing, pointInRing } from "@/utils/region-hit"
 import {
   estimateMetrics,
@@ -3305,10 +3304,6 @@ const initMars3d = async () => {
   if (props.url) {
     // 存在url时才读取
     mapOptions = await mars3d.Util.fetchJson({ url: props.url })
-    if (mapOptions) {
-      mapOptions.layers = removeRetiredLayers(mapOptions.layers || [])
-      mapOptions.basemaps = removeRetiredLayers(mapOptions.basemaps || [])
-    }
   }
 
   if (props.options) {

@@ -7,11 +7,53 @@ export const RETIRED_LAYER_NAMES = new Set([
   "开放航拍影像", "OpenAerialMap", "Maxar 卫星影像", "Maxar 开放数据", "NOAA 应急影像", "NOAA 紧急响应数据"
 ])
 
-export function removeRetiredLayers<T extends Record<string, any>>(items: T[] = []): T[] {
-  return items.filter((item) => !RETIRED_LAYER_NAMES.has(String(item?.name || ""))).map((item) => {
-    if (!Array.isArray(item.layers)) {
-      return item
+export const RETIRED_LAYER_TREE_IDS = new Set([20, 52, 53, 54, 55, 99, 100, 110, 4110, 5030])
+
+export function isRetiredLayerMenuEntry(item: Record<string, any>, getById?: (id: string | number) => Record<string, any> | null | undefined): boolean {
+  let current: Record<string, any> | null | undefined = item
+  const visited = new Set<string>()
+  while (current) {
+    const id = String(current.id ?? "")
+    if (RETIRED_LAYER_TREE_IDS.has(Number(id)) || RETIRED_LAYER_NAMES.has(String(current.name || ""))) {
+      return true
     }
-    return { ...item, layers: removeRetiredLayers(item.layers) }
+    const pid = String(current.pid ?? current.options?.pid ?? "")
+    if (!pid || visited.has(pid)) {
+      return false
+    }
+    visited.add(pid)
+    current = getById?.(pid)
+  }
+  return false
+}
+
+export function removeRetiredLayers<T extends Record<string, any>>(items: T[] = []): T[] {
+  const retiredIds = new Set(Array.from(RETIRED_LAYER_TREE_IDS, String))
+  let changed = true
+  while (changed) {
+    changed = false
+    items.forEach((item) => {
+      const id = String(item?.id ?? "")
+      const pid = String(item?.pid ?? "")
+      if (id && !retiredIds.has(id) && (retiredIds.has(pid) || RETIRED_LAYER_NAMES.has(String(item?.name || "")))) {
+        retiredIds.add(id)
+        changed = true
+      }
+    })
+  }
+
+  return items.filter((item) => {
+    const id = String(item?.id ?? "")
+    const pid = String(item?.pid ?? "")
+    return !RETIRED_LAYER_NAMES.has(String(item?.name || "")) && !retiredIds.has(id) && !retiredIds.has(pid)
+  }).map((item) => {
+    const next: Record<string, any> = { ...item }
+    if (Array.isArray(item.layers)) {
+      next.layers = removeRetiredLayers(item.layers)
+    }
+    if (Array.isArray(item.children)) {
+      next.children = removeRetiredLayers(item.children)
+    }
+    return next as T
   })
 }

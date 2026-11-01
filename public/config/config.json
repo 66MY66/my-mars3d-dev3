@@ -113,104 +113,6 @@
     },
     {
       "pid": 10,
-      "name": "天地图影像",
-      "icon": "./img/thumbnail/basemap/tdt_img.png",
-      "type": "group",
-      "layers": [
-        {
-          "name": "底图",
-          "type": "xyz",
-          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
-        },
-        {
-          "name": "注记",
-          "type": "xyz",
-          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
-        }
-      ],
-      "show": false,
-      "comment": "天地图服务不可用，被华为云WAF拦截"
-    },
-    {
-      "pid": 10,
-      "name": "天地图矢量",
-      "icon": "./img/thumbnail/basemap/tdt_vec.png",
-      "type": "group",
-      "layers": [
-        {
-          "name": "底图",
-          "type": "xyz",
-          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
-        },
-        {
-          "name": "注记",
-          "type": "xyz",
-          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
-        }
-      ],
-      "show": false
-    },
-    {
-      "pid": 10,
-      "name": "天地图地形",
-      "icon": "./img/thumbnail/basemap/tdt_ter.png",
-      "type": "group",
-      "layers": [
-        {
-          "name": "底图",
-          "type": "xyz",
-          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=ter_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
-        },
-        {
-          "name": "注记",
-          "type": "xyz",
-          "url": "http://192.168.10.15:5954/tianditu/DataServer?T=cta_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
-        }
-      ],
-      "show": false
-    },
-    {
-      "pid": 10,
-      "name": "eoAPI地形底图",
-      "icon": "./img/thumbnail/basemap/terrain.png",
-      "type": "xyz",
-      "url": "/api/titiler/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=terrain&rescale=-500,8000",
-      "minimumLevel": 0,
-      "maximumLevel": 12,
-      "show": false
-    },
-    {
-      "pid": 10,
-      "name": "eoAPI灰度底图",
-      "icon": "./img/thumbnail/basemap/viridis.png",
-      "type": "xyz",
-      "url": "/api/titiler/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=viridis&rescale=-500,8000",
-      "minimumLevel": 0,
-      "maximumLevel": 12,
-      "show": false
-    },
-    {
-      "pid": 10,
-      "name": "eoAPI暗色底图",
-      "icon": "./img/thumbnail/basemap/bone.png",
-      "type": "xyz",
-      "url": "/api/titiler/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=bone&rescale=-500,8000",
-      "minimumLevel": 0,
-      "maximumLevel": 12,
-      "show": false
-    },
-    {
-      "pid": 10,
-      "name": "eoAPI热力底图",
-      "icon": "./img/thumbnail/basemap/plasma.png",
-      "type": "xyz",
-      "url": "/api/titiler/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=/data/dem/china/china_dem_full.vrt&colormap_name=plasma&rescale=-500,8000",
-      "minimumLevel": 0,
-      "maximumLevel": 12,
-      "show": false
-    },
-    {
-      "pid": 10,
       "name": "高德影像(本地)",
       "icon": "./img/thumbnail/basemap/gaode_img.png",
       "type": "group",
@@ -227,30 +129,6 @@
         }
       ],
       "show": true
-    },
-    {
-      "pid": 10,
-      "name": "高德矢量(本地)",
-      "icon": "./img/thumbnail/basemap/gaode_vec.png",
-      "type": "xyz",
-      "url": "https://webrd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}",
-      "show": false
-    },
-    {
-      "pid": 10,
-      "name": "GeoQ灰色底图(外网不可达)",
-      "icon": "./img/thumbnail/basemap/my_dark.png",
-      "type": "xyz",
-      "url": "https://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineCommunity/MapServer/tile/{z}/{y}/{x}",
-      "show": false
-    },
-    {
-      "pid": 10,
-      "name": "GeoQ彩色底图(外网不可达)",
-      "icon": "./img/thumbnail/basemap/my_blue.png",
-      "type": "xyz",
-      "url": "https://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineCommunityColor/MapServer/tile/{z}/{y}/{x}",
-      "show": false
     },
     {
       "pid": 10,
@@ -402,32 +280,6 @@
       "type": "xyz",
       "url": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       "enablePickFeatures": false,
-      "show": false
-    },
-    {
-      "pid": 11,
-      "name": "微软影像",
-      "icon": "./img/thumbnail/basemap/bing_img.png",
-      "type": "bing",
-      "layer": "Aerial",
-      "show": false
-    },
-    {
-      "pid": 11,
-      "name": "离线影像地图",
-      "icon": "./img/thumbnail/basemap/google_img.png",
-      "type": "xyz",
-      "url": "{mars3d_data}/tile/img/{z}/{x}/{y}.jpg",
-      "chinaCRS": "GCJ02",
-      "maximumLevel": 13,
-      "show": false
-    },
-    {
-      "pid": 11,
-      "name": "单张图片",
-      "icon": "./img/thumbnail/basemap/offline.png",
-      "type": "image",
-      "url": "https://data.mars3d.cn/img/map/world/world.jpg",
       "show": false
     },
     {
