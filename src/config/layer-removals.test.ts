@@ -12,7 +12,7 @@ const removedLayerNames = [
   "OpenAerialMap", "Maxar 卫星影像", "Maxar 开放数据", "NOAA 应急影像", "NOAA 紧急响应数据",
   "数据图层", "三维数据", "归一化差值植被指数", "NDVI变化率", "Sentinel-2 NDVI",
   "CMIP6 气候数据", "地表温度 (GISS-E2-1-G)", "动态数据", "栅格数据服务",
-  "矢量数据", "地形服务", "地震监测与评估"
+  "矢量数据", "地形服务"
 ]
 
 function collectNames(items: any[], names = new Set<string>()) {
@@ -35,7 +35,7 @@ describe("layer menu removals", () => {
 
   it("keeps unrelated shared layer entries", () => {
     const names = collectNames(removeRetiredLayers(config.layers || []))
-    expect(names.has("Facebook 人口密度")).toBe(true)
+    expect(names.has("全国人口格网（2020）")).toBe(true)
   })
 
   it("keeps retired-menu data sources available to non-menu features", () => {
@@ -46,7 +46,7 @@ describe("layer menu removals", () => {
   })
 
   it("removes the requested directory trees from the runtime map configuration", () => {
-    const removedTreeIds = new Set([100, 110, 51, 30, 52, 53, 5310, 5320, 54, 5410, 5420, 55, 5510, 5520, 50, 60, 80])
+    const removedTreeIds = new Set([110, 51, 30, 52, 53, 5310, 5320, 54, 5410, 5420, 55, 5510, 5520, 50, 60, 80])
     const filtered = removeRetiredLayers(config.layers || [])
     const leftovers = filtered.filter((item: any) => removedTreeIds.has(item?.id) || removedTreeIds.has(item?.pid))
     expect(leftovers).toEqual([])

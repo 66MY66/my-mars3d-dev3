@@ -32,7 +32,7 @@ describe("population density layers", () => {
         xmax: 136.8,
         ymax: 55
       },
-      show: false,
+      show: true,
       hasOpacity: true,
       flyTo: true,
       metadata: {
@@ -48,7 +48,7 @@ describe("population density layers", () => {
   })
 
   it("loads the Facebook population visual asset as the next positioned STAC tile layer", () => {
-    const layer = findLayer(config.layers || [], "Facebook 人口密度")
+    const layer = findLayer(config.layers || [], "全国人口格网（2020）")
 
     expect(layer).toMatchObject({
       id: 412002,
@@ -62,7 +62,7 @@ describe("population density layers", () => {
         xmax: 136.8,
         ymax: 55
       },
-      show: false,
+      show: true,
       hasOpacity: true,
       flyTo: true,
       metadata: {
@@ -80,7 +80,7 @@ describe("population density layers", () => {
   it("keeps GDP before Facebook in the configured imagery order", () => {
     const layers = config.layers || []
     const gdpIndex = layers.findIndex((item: any) => item?.name === "人口GDP分布密度")
-    const facebookIndex = layers.findIndex((item: any) => item?.name === "Facebook 人口密度")
+    const facebookIndex = layers.findIndex((item: any) => item?.name === "全国人口格网（2020）")
 
     expect(gdpIndex).toBeGreaterThanOrEqual(0)
     expect(facebookIndex).toBe(gdpIndex + 1)

@@ -179,7 +179,21 @@
             <template v-else-if="column.key === 'cloudCover'">
               {{ record.cloudCover }}%
             </template>
-            <template v-else-if="column.key === 'operation'">
+            <template v-else-if="column.key === 'catalogPath'">
+              <a-tooltip :title="record.catalogPath || '未编目'">
+                {{ record.catalogPath || "未编目" }}
+              </a-tooltip>
+            </template>
+            <template v-else-if="column.key === 'mapLayers'">
+              <a-tag v-if="Object.keys(record.mapLayers || {}).length" color="blue" size="small">
+                {{ Object.keys(record.mapLayers).length }} 个
+              </a-tag>
+              <span v-else>—</span>
+            </template>
+            <template v-else-if="column.key === 'downloads'">
+              {{ Object.keys(record.downloads || {}).length || "—" }}
+            </template>
+            <template v-if="column.key === 'operation'">
               <a @click="viewDetail(record)">详情</a>
               <a-divider type="vertical" />
               <a @click="previewData(record)">预览</a>
@@ -290,6 +304,7 @@ import {
 } from "@ant-design/icons-vue"
 import { filterMetadata, fromMetadata, toSharePayload } from "../api/adapters"
 import { downloadBlob, metadataApi, shareApi } from "../api/services"
+import { runSearchFlow } from "../api/search-flow"
 
 export default {
   name: "SatelliteDataQueryLayout",
@@ -327,9 +342,10 @@ export default {
       searchStatistics: {
         matchCount: 0,
         responseTime: 0,
-        accuracy: 98.5,
-        todayQueries: 156
+        accuracy: null,
+        todayQueries: 0
       },
+      lastStatistics: null,
 
       // 查询结果
       searchResults: [],
@@ -344,6 +360,9 @@ export default {
         { title: "获取时间", dataIndex: "acquisitionTime", key: "acquisitionTime", width: 160 },
         { title: "云量", dataIndex: "cloudCover", key: "cloudCover", width: 80 },
         { title: "区域", dataIndex: "region", key: "region", width: 120 },
+        { title: "目录路径", dataIndex: "catalogPath", key: "catalogPath", width: 200, ellipsis: true },
+        { title: "上图图层", key: "mapLayers", width: 100 },
+        { title: "下载", key: "downloads", width: 80 },
         { title: "操作", key: "operation", fixed: "right", width: 220 }
       ],
 
@@ -371,23 +390,38 @@ export default {
   methods: {
     async handleSearch() {
       this.loading = true
-      const startTime = Date.now()
       try {
-        const page = await metadataApi.list({ pageNo: 1, pageSize: 1000 })
-        this.searchResults = filterMetadata(page.records.map(fromMetadata), this.searchForm)
-        const endTime = Date.now()
-        const responseTime = ((endTime - startTime) / 1000).toFixed(2)
-
-        this.paginationConfig.total = this.searchResults.length
-        this.searchStatistics.matchCount = this.searchResults.length
-        this.searchStatistics.responseTime = responseTime
-
-        if (parseFloat(responseTime) <= 3) {
-          message.success(`查询完成！找到 ${this.searchResults.length} 条结果，耗时 ${responseTime}秒`)
-        } else {
-          message.warning(`查询完成！找到 ${this.searchResults.length} 条结果，耗时 ${responseTime}秒（超过3秒要求）`)
+        // 检索打后端 Windmill search_flow（bbox / 时间 / 仪器 / 关键字），统计用接口返回值
+        const conditions = {}
+        if (this.searchForm.satellite?.length) { conditions.satellite = this.searchForm.satellite[0] }
+        if (this.searchForm.sensor?.length) { conditions.instrument = this.searchForm.sensor[0] }
+        if (this.searchForm.dateRange?.length === 2) {
+          conditions.start = this.searchForm.dateRange[0]
+          conditions.end = this.searchForm.dateRange[1]
         }
+        if (this.searchForm.region?.trim()) { conditions.keyword = this.searchForm.region.trim() }
+        if (this.searchForm.resolutionMin != null) { conditions.gsd_min = Number(this.searchForm.resolutionMin) }
+        if (this.searchForm.resolutionMax != null) { conditions.gsd_max = Number(this.searchForm.resolutionMax) }
+        conditions.limit = 100
 
+        const flow = await runSearchFlow(conditions)
+        this.lastStatistics = flow.statistics
+        this.searchResults = (flow.results || []).map(fromSearchFlow)
+        this.paginationConfig.total = flow.statistics?.matched ?? this.searchResults.length
+        this.searchStatistics.matchCount = flow.statistics?.matched ?? 0
+        this.searchStatistics.responseTime = ((flow.statistics?.response_ms ?? 0) / 1000).toFixed(2)
+        this.searchStatistics.todayQueries = (this.searchStatistics.todayQueries || 0) + 1
+        // 准确率：within_5s 达标记为 100%，否则按响应比例折算（接口无 accuracy 字段）
+        this.searchStatistics.accuracy = flow.statistics?.within_5s
+          ? 100
+          : Math.round((Math.min(flow.statistics?.response_ms ?? 5000, 5000) / 5000) * 100)
+
+        const sec = this.searchStatistics.responseTime
+        if (flow.statistics?.within_5s) {
+          message.success(`查询完成！找到 ${this.searchStatistics.matchCount} 条结果，耗时 ${sec}秒`)
+        } else {
+          message.warning(`查询完成！找到 ${this.searchStatistics.matchCount} 条结果，耗时 ${sec}秒（超过5秒要求）`)
+        }
       } catch (error) {
         message.error(error instanceof Error ? error.message : "查询失败")
       } finally {

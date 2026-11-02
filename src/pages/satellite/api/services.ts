@@ -36,7 +36,7 @@ function pageOf(records: SatelliteRecord[], pageNo = 1, pageSize = 10): JeecgPag
 
 export const poolApi = {
   async list(params: Record<string, unknown> = {}): Promise<JeecgPage<SatelliteRecord>> {
-    const res = await eoapiGet<SatelliteRecord[]>("/datasets", { params: { limit: 500 } })
+    const res = await eoapiGet<SatelliteRecord[]>("/datasets", { params: { limit: 200 } })
     if (!res.success || !res.data) { throw new Error(res.message || "数据集列表获取失败") }
     const datasets = res.data as SatelliteRecord[]
     // 按第一个 tag 聚合成池；无 tag 的归"默认池"
@@ -62,8 +62,8 @@ export const poolApi = {
     return pageOf(pools, Number(params.pageNo) || 1, Number(params.pageSize) || 10)
   },
   async get(id: string): Promise<SatelliteRecord> {
-    const page = await poolApi.list({ pageNo: 1, pageSize: 500 })
-    const found = page.records.find((r) => r.id === id)
+    const page = await poolApi.list({ pageNo: 1, pageSize: 200 })
+    const found = page.records.find((r) => String(r.id) === String(id))
     if (!found) { throw new Error("资源池不存在") }
     return found
   },
@@ -120,7 +120,7 @@ export const metadataApi = {
 
 export const catalogApi = {
   async list(params: Record<string, unknown> = {}): Promise<JeecgPage<SatelliteRecord>> {
-    const res = await getCollectionsAll({ limit: 500 })
+    const res = await getCollectionsAll({ limit: 200 })
     if (!res.success || !res.data) { throw new Error(res.message || "目录获取失败") }
     const nodes: SatelliteRecord[] = (res.data as unknown as SatelliteRecord[]).map((c) => ({
       id: c.id,
@@ -168,7 +168,7 @@ export const queryTaskApi = {
 
 export const shareApi = {
   async list(params: Record<string, unknown> = {}): Promise<JeecgPage<SatelliteRecord>> {
-    const res = await eoapiGet<SatelliteRecord[]>("/datasets", { params: { limit: 500 } })
+    const res = await eoapiGet<SatelliteRecord[]>("/datasets", { params: { limit: 200 } })
     if (!res.success || !res.data) { throw new Error(res.message || "数据集列表获取失败") }
     const shares: SatelliteRecord[] = (res.data as unknown as SatelliteRecord[])
       .filter((d) => String(d.visibility || "") !== "")

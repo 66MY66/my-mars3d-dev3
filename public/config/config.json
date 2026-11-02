@@ -49,8 +49,8 @@
     }
   },
   "control": {
-    "toolbar":{
-      "position":"left-bottom"
+    "toolbar": {
+      "position": "left-bottom"
     },
     "homeButton": {
       "insertIndex": 0
@@ -301,6 +301,41 @@
       "type": "group"
     },
     {
+      "id": 101,
+      "pid": 100,
+      "name": "地震地质基础数据",
+      "type": "group"
+    },
+    {
+      "id": 101001,
+      "pid": 101,
+      "name": "中国活动断层线",
+      "type": "geojson",
+      "url": "http://192.168.10.15:9002/rs-products/spatial/china-faults/active_faults.geojson",
+      "symbol": {
+        "type": "polylineP",
+        "styleOptions": {
+          "color": "#ff5a36",
+          "width": 2,
+          "opacity": 1,
+          "clampToGround": true
+        }
+      },
+      "popup": "断层名称：{FN_Ch}<br/>英文名称：{FN_En}<br/>断层性质：{Fea_Ch}<br/>活动时代：{AGE}<br/>时代描述：{AGE_Des}<br/>数据出处：{RefE}",
+      "show": true,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC / GMT 中国地理数据集 v0.4.0",
+        "collection": "spatial-thematic",
+        "itemId": "SP-china-active-faults",
+        "geometryType": "LineString",
+        "featureCount": 10534,
+        "crs": "EPSG:4326",
+        "updatedAt": "2026-10-31T11:44:05Z"
+      }
+    },
+    {
       "id": 110,
       "name": "底图与辅助",
       "type": "group"
@@ -425,7 +460,7 @@
       "pid": 5310,
       "name": "中国省界",
       "type": "geojson",
-      "url": "{mars3d_data}/file/geojson/areas/100000_full.json",
+      "url": "http://192.168.10.15:9002/rs-products/spatial/china-admin/province_border.geojson",
       "symbol": {
         "type": "polylineP",
         "styleOptions": {
@@ -434,7 +469,7 @@
           "opacity": 0.8
         }
       },
-      "show": false,
+      "show": true,
       "flyTo": true
     },
     {
@@ -757,14 +792,14 @@
         "description": "China 2020 GDP density visual asset",
         "temporalRange": "2020"
       },
-      "show": false,
+      "show": true,
       "hasOpacity": true,
       "flyTo": true
     },
     {
       "id": 412002,
       "pid": 4120,
-      "name": "Facebook 人口密度",
+      "name": "全国人口格网（2020）",
       "type": "xyz",
       "url": "/api/titiler/collections/spatial-thematic/items/SP-china-pop2020/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual&resampling=nearest",
       "minimumLevel": 2,
@@ -780,7 +815,7 @@
         "description": "China 2020 Facebook population density visual asset",
         "temporalRange": "2020"
       },
-      "show": false,
+      "show": true,
       "hasOpacity": true,
       "flyTo": true
     },
@@ -1096,11 +1131,26 @@
           "type": "polylineP",
           "name": "热异常演化轨迹示例",
           "positions": [
-            [100.5, 25.0],
-            [101.0, 25.5],
-            [101.5, 26.0],
-            [102.0, 26.5],
-            [102.5, 27.0]
+            [
+              100.5,
+              25.0
+            ],
+            [
+              101.0,
+              25.5
+            ],
+            [
+              101.5,
+              26.0
+            ],
+            [
+              102.0,
+              26.5
+            ],
+            [
+              102.5,
+              27.0
+            ]
           ],
           "style": {
             "color": "#ff0000",
@@ -1124,6 +1174,36 @@
       },
       "show": false,
       "flyTo": false
+    },
+    {
+      "id": 7070,
+      "pid": 70,
+      "name": "辅助图层",
+      "type": "group"
+    },
+    {
+      "id": 707001,
+      "pid": 7070,
+      "name": "中国国界与省级行政区划界线",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/china-admin/province_border.geojson",
+      "symbol": {
+        "type": "polylineP",
+        "styleOptions": {
+          "color": "#ffd666",
+          "width": 2,
+          "opacity": 0.9
+        }
+      },
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-china-province-border",
+        "description": "中国国界、省级行政区划界线、十段线及南海诸岛",
+        "updatedAt": "2026-10-31T11:44:14Z"
+      }
     },
     {
       "id": 40,
@@ -1163,6 +1243,30 @@
       },
       "show": false,
       "flyTo": false
+    },
+    {
+      "id": 402001,
+      "pid": 4020,
+      "name": "Landsat地表温度（丽江—大理，2026-02—04）",
+      "type": "xyz",
+      "url": "/api/titiler/collections/spatial-thematic/items/SP-landsat-lst-20260216/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual&resampling=nearest",
+      "minimumLevel": 0,
+      "maximumLevel": 12,
+      "rectangle": {
+        "xmin": 100.726296,
+        "ymin": 25.388546,
+        "xmax": 103.209958,
+        "ymax": 27.872208
+      },
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-landsat-lst-20260216",
+        "description": "丽江—大理 Landsat 地表温度样例栅格",
+        "temporalRange": "2026-02-16/2026-04-15"
+      },
+      "show": true,
+      "flyTo": true
     },
     {
       "id": 5030,
@@ -2079,6 +2183,580 @@
       "type": "group"
     },
     {
+      "id": 8050,
+      "pid": 101,
+      "name": "2017年九寨沟7.0级地震烈度圈",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/jiuzhaigou-20170808/intensity_zones.geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "#ffd2da",
+          "opacity": 0.45,
+          "outline": true,
+          "outlineColor": "#a80000",
+          "outlineWidth": 2,
+          "clampToGround": true
+        },
+        "styleField": "intensity",
+        "styleFieldOptions": {
+          "6": {
+            "color": "#ffd2da"
+          },
+          "7": {
+            "color": "#ffbebe"
+          },
+          "8": {
+            "color": "#ff7f7f"
+          },
+          "9": {
+            "color": "#c82828"
+          }
+        }
+      },
+      "popup": "地震烈度：{intensity_label}度（{intensity}度）<br/>来源文件：{source_file}<br/>属性说明：{attribute_note}",
+      "rectangle": {
+        "xmin": 103.063897,
+        "ymin": 32.505733,
+        "xmax": 104.589473,
+        "ymax": 34.032076
+      },
+      "show": true,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-jiuzhaigou2017-intensity",
+        "eventTime": "2017-08-08T13:19:00Z",
+        "description": "随包评估矢量，仅用于历史案例展示，不替代正式地震烈度调查成果",
+        "updatedAt": "2026-10-31T11:43:57Z"
+      }
+    },
+    {
+      "id": 102,
+      "pid": 100,
+      "name": "基础地理数据",
+      "type": "group"
+    },
+    {
+      "id": 1020,
+      "pid": 102,
+      "name": "西南基础地理（1:25万）",
+      "type": "group"
+    },
+    {
+      "id": 1021,
+      "pid": 1020,
+      "name": "I48图幅（102°–108°E、32°–36°N）",
+      "type": "group"
+    },
+    {
+      "id": 1022,
+      "pid": 1020,
+      "name": "H48图幅（102°–108°E、28°–32°N）",
+      "type": "group"
+    },
+    {
+      "id": 102101,
+      "pid": 1021,
+      "name": "行政区面",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_BOUA.geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "#f2c94c",
+          "opacity": 0.12,
+          "outline": true,
+          "outlineColor": "#b8860b",
+          "outlineWidth": 1.5,
+          "clampToGround": true
+        }
+      },
+      "popup": "名称：{NAME}<br/>行政区代码：{PAC}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "BOUA"
+      }
+    },
+    {
+      "id": 102102,
+      "pid": 1021,
+      "name": "行政区界线",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_BOUL.geojson",
+      "symbol": {
+        "type": "polyline",
+        "styleOptions": {
+          "color": "#d64545",
+          "width": 2,
+          "clampToGround": true
+        }
+      },
+      "popup": "分类代码：{GB}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "BOUL"
+      }
+    },
+    {
+      "id": 102103,
+      "pid": 1021,
+      "name": "公路",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_LRDL.geojson",
+      "symbol": {
+        "type": "polyline",
+        "styleOptions": {
+          "color": "#f39c12",
+          "width": 2,
+          "clampToGround": true,
+          "distanceDisplayCondition": true,
+          "distanceDisplayCondition_near": 0,
+          "distanceDisplayCondition_far": 1200000
+        }
+      },
+      "popup": "名称：{NAME}<br/>路线编号：{RN}<br/>道路类型：{TYPE}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "LRDL"
+      }
+    },
+    {
+      "id": 102104,
+      "pid": 1021,
+      "name": "铁路",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_LRRL.geojson",
+      "symbol": {
+        "type": "polyline",
+        "styleOptions": {
+          "color": "#424242",
+          "width": 2.5,
+          "clampToGround": true
+        }
+      },
+      "popup": "名称：{NAME}<br/>路线编号：{RN}<br/>铁路类型：{TYPE}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "LRRL"
+      }
+    },
+    {
+      "id": 102105,
+      "pid": 1021,
+      "name": "水系面",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_HYDA.geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "#4aa3df",
+          "opacity": 0.45,
+          "outline": true,
+          "outlineColor": "#2471a3",
+          "outlineWidth": 1,
+          "clampToGround": true
+        }
+      },
+      "popup": "名称：{NAME}<br/>水系代码：{HYDC}<br/>周期：{PERIOD}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "HYDA"
+      }
+    },
+    {
+      "id": 102106,
+      "pid": 1021,
+      "name": "水系线",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_HYDL.geojson",
+      "symbol": {
+        "type": "polyline",
+        "styleOptions": {
+          "color": "#3498db",
+          "width": 1.5,
+          "clampToGround": true,
+          "distanceDisplayCondition": true,
+          "distanceDisplayCondition_near": 0,
+          "distanceDisplayCondition_far": 1200000
+        }
+      },
+      "popup": "名称：{NAME}<br/>水系代码：{HYDC}<br/>周期：{PERIOD}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "HYDL"
+      }
+    },
+    {
+      "id": 102107,
+      "pid": 1021,
+      "name": "居民地面",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_RESA.geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "#c8a27c",
+          "opacity": 0.5,
+          "outline": true,
+          "outlineColor": "#8d6e63",
+          "outlineWidth": 1,
+          "clampToGround": true
+        }
+      },
+      "popup": "分类代码：{GB}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "RESA"
+      }
+    },
+    {
+      "id": 102108,
+      "pid": 1021,
+      "name": "居民地点",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_RESP.geojson",
+      "symbol": {
+        "type": "point",
+        "styleOptions": {
+          "color": "#e74c3c",
+          "pixelSize": 6,
+          "outline": true,
+          "outlineColor": "#ffffff",
+          "outlineWidth": 1,
+          "clampToGround": true
+        }
+      },
+      "popup": "分类代码：{GB}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "RESP"
+      }
+    },
+    {
+      "id": 102109,
+      "pid": 1021,
+      "name": "居民地注记",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/I48_build_AGNP.geojson",
+      "symbol": {
+        "type": "label",
+        "styleOptions": {
+          "text": "{NAME}",
+          "font_size": 16,
+          "color": "#ffffff",
+          "outline": true,
+          "outlineColor": "#333333",
+          "outlineWidth": 2,
+          "clampToGround": true,
+          "distanceDisplayCondition": true,
+          "distanceDisplayCondition_near": 0,
+          "distanceDisplayCondition_far": 500000
+        }
+      },
+      "popup": "名称：{NAME}<br/>行政区名称：{XZNAME}<br/>分类：{CLASS}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "I48",
+        "featureCode": "AGNP"
+      }
+    },
+    {
+      "id": 102201,
+      "pid": 1022,
+      "name": "行政区面",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_BOUA.geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "#f2c94c",
+          "opacity": 0.12,
+          "outline": true,
+          "outlineColor": "#b8860b",
+          "outlineWidth": 1.5,
+          "clampToGround": true
+        }
+      },
+      "popup": "名称：{NAME}<br/>行政区代码：{PAC}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "BOUA"
+      }
+    },
+    {
+      "id": 102202,
+      "pid": 1022,
+      "name": "行政区界线",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_BOUL.geojson",
+      "symbol": {
+        "type": "polyline",
+        "styleOptions": {
+          "color": "#d64545",
+          "width": 2,
+          "clampToGround": true
+        }
+      },
+      "popup": "分类代码：{GB}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "BOUL"
+      }
+    },
+    {
+      "id": 102203,
+      "pid": 1022,
+      "name": "公路",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_LRDL.geojson",
+      "symbol": {
+        "type": "polyline",
+        "styleOptions": {
+          "color": "#f39c12",
+          "width": 2,
+          "clampToGround": true,
+          "distanceDisplayCondition": true,
+          "distanceDisplayCondition_near": 0,
+          "distanceDisplayCondition_far": 1200000
+        }
+      },
+      "popup": "名称：{NAME}<br/>路线编号：{RN}<br/>道路类型：{TYPE}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "LRDL"
+      }
+    },
+    {
+      "id": 102204,
+      "pid": 1022,
+      "name": "铁路",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_LRRL.geojson",
+      "symbol": {
+        "type": "polyline",
+        "styleOptions": {
+          "color": "#424242",
+          "width": 2.5,
+          "clampToGround": true
+        }
+      },
+      "popup": "名称：{NAME}<br/>路线编号：{RN}<br/>铁路类型：{TYPE}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "LRRL"
+      }
+    },
+    {
+      "id": 102205,
+      "pid": 1022,
+      "name": "水系面",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_HYDA.geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "#4aa3df",
+          "opacity": 0.45,
+          "outline": true,
+          "outlineColor": "#2471a3",
+          "outlineWidth": 1,
+          "clampToGround": true
+        }
+      },
+      "popup": "名称：{NAME}<br/>水系代码：{HYDC}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "HYDA"
+      }
+    },
+    {
+      "id": 102206,
+      "pid": 1022,
+      "name": "水系线",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_HYDL.geojson",
+      "symbol": {
+        "type": "polyline",
+        "styleOptions": {
+          "color": "#3498db",
+          "width": 1.5,
+          "clampToGround": true,
+          "distanceDisplayCondition": true,
+          "distanceDisplayCondition_near": 0,
+          "distanceDisplayCondition_far": 1200000
+        }
+      },
+      "popup": "名称：{NAME}<br/>水系代码：{HYDC}<br/>周期：{PERIOD}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "HYDL"
+      }
+    },
+    {
+      "id": 102207,
+      "pid": 1022,
+      "name": "居民地面",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_RESA.geojson",
+      "symbol": {
+        "type": "polygon",
+        "styleOptions": {
+          "color": "#c8a27c",
+          "opacity": 0.5,
+          "outline": true,
+          "outlineColor": "#8d6e63",
+          "outlineWidth": 1,
+          "clampToGround": true
+        }
+      },
+      "popup": "分类代码：{GB}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "RESA"
+      }
+    },
+    {
+      "id": 102208,
+      "pid": 1022,
+      "name": "居民地点",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_RESP.geojson",
+      "symbol": {
+        "type": "point",
+        "styleOptions": {
+          "color": "#e74c3c",
+          "pixelSize": 6,
+          "outline": true,
+          "outlineColor": "#ffffff",
+          "outlineWidth": 1,
+          "clampToGround": true
+        }
+      },
+      "popup": "分类代码：{GB}<br/>角度：{ANGLE}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "RESP"
+      }
+    },
+    {
+      "id": 102209,
+      "pid": 1022,
+      "name": "居民地注记",
+      "type": "geojson",
+      "url": "/api/rs-products/rs-products/spatial/basegeo-sw-250k/H48_build_AGNP.geojson",
+      "symbol": {
+        "type": "label",
+        "styleOptions": {
+          "text": "{NAME}",
+          "font_size": 16,
+          "color": "#ffffff",
+          "outline": true,
+          "outlineColor": "#333333",
+          "outlineWidth": 2,
+          "clampToGround": true,
+          "distanceDisplayCondition": true,
+          "distanceDisplayCondition_near": 0,
+          "distanceDisplayCondition_far": 500000
+        }
+      },
+      "popup": "名称：{NAME}<br/>行政区名称：{XZNAME}<br/>分类：{CLASS}",
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "itemId": "SP-swchina-basegeo-250k",
+        "sheet": "H48",
+        "featureCode": "AGNP"
+      }
+    },
+    {
       "id": 8010,
       "pid": 80,
       "name": "地震异常区域",
@@ -2164,32 +2842,64 @@
       "earthquake_lab_demo": {
         "title": "地震科学实验场示范数据集",
         "description": "包含遥感影像、矢量数据、分析报告的综合示范数据集，展示平台数据管理能力",
-        "keywords": ["地震", "示范", "遥感", "矢量"]
+        "keywords": [
+          "地震",
+          "示范",
+          "遥感",
+          "矢量"
+        ]
       },
       "MAXAR_afghanistan_earthquake22": {
         "title": "阿富汗地震",
         "description": "2022年6月22日阿富汗发生5.9级地震，Maxar开放数据集提供灾后高清卫星影像",
-        "keywords": ["地震", "阿富汗", "Maxar", "光学影像", "灾后评估"]
+        "keywords": [
+          "地震",
+          "阿富汗",
+          "Maxar",
+          "光学影像",
+          "灾后评估"
+        ]
       },
       "MAXAR_BayofBengal_Cyclone_Mocha_May_23": {
         "title": "孟加拉湾莫卡飓风 2023",
         "description": "2023年5月孟加拉湾五级飓风莫卡登陆，Maxar开放数据集提供灾前灾后对比影像",
-        "keywords": ["飓风", "孟加拉湾", "莫卡", "Maxar", "灾害"]
+        "keywords": [
+          "飓风",
+          "孟加拉湾",
+          "莫卡",
+          "Maxar",
+          "灾害"
+        ]
       },
       "MAXAR_cyclone_emnati22": {
         "title": "埃马纳蒂飓风",
         "description": "热带风暴埃马纳蒂登陆造成的灾害影像数据",
-        "keywords": ["飓风", "埃马纳蒂", "Maxar", "热带风暴"]
+        "keywords": [
+          "飓风",
+          "埃马纳蒂",
+          "Maxar",
+          "热带风暴"
+        ]
       },
       "MAXAR_Emilia_Romagna_Italy_flooding_may23": {
         "title": "意大利艾米利亚-罗马涅洪涝 2023",
         "description": "2023年5月意大利艾米利亚-罗马涅地区严重洪涝灾害影像",
-        "keywords": ["洪涝", "意大利", "艾米利亚-罗马涅", "Maxar"]
+        "keywords": [
+          "洪涝",
+          "意大利",
+          "艾米利亚-罗马涅",
+          "Maxar"
+        ]
       },
       "MAXAR_Gambia_flooding_8_11_2022": {
         "title": "冈比亚洪涝 2022",
         "description": "2022年8-11月冈比亚创纪录洪涝灾害影像",
-        "keywords": ["洪涝", "冈比亚", "Maxar", "灾害"]
+        "keywords": [
+          "洪涝",
+          "冈比亚",
+          "Maxar",
+          "灾害"
+        ]
       }
     },
     "summaryKeyLabels": {

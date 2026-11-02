@@ -125,3 +125,23 @@ export function toSharePayload(record: SatelliteRecord): SatelliteRecord {
     authTarget: joinList(record.authTarget)
   }
 }
+
+/** Windmill search_flow 结果 → 页面元数据记录 */
+export function fromSearchFlow(item: Record<string, any>): SatelliteRecord {
+  return {
+    ...item,
+    id: item.item_id,
+    metadataId: item.item_id,
+    satellite: item.satellite || item.platform || "未知",
+    sensor: (item.instruments && item.instruments[0]) || "未知",
+    resolution: item.gsd ?? "—",
+    dataType: item.collection_id,
+    acquisitionTime: item.datetime,
+    cloudCover: "—",
+    region: item.catalog_path || (item.bbox ? item.bbox.join(", ") : "—"),
+    catalogPath: item.catalog_path,
+    mapLayers: item.map_layers || {},
+    downloads: item.downloads || {},
+    stacUrl: item.stac_url
+  }
+}

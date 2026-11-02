@@ -63,24 +63,10 @@
     "action": { "type": "widget.toggle", "widget": "result-playback" }
   },
   {
-    "id": "hazard-identification",
-    "label": "隐患识别展示",
-    "icon": "Alarm",
-    "group": "风险监测",
-    "action": { "type": "widget.toggle", "widget": "hazard-identification" }
-  },
-  {
     "id": "alert-confirm",
     "label": "告警确认",
     "icon": "Alarm",
     "group": "风险监测",
     "action": { "type": "widget.toggle", "widget": "alert-confirm" }
-  },
-  {
-    "id": "knowledge-graph",
-    "label": "知识图谱",
-    "icon": "BookOpen",
-    "group": "灾害评估",
-    "action": { "type": "widget.toggle", "widget": "knowledge-graph" }
   }
 ]

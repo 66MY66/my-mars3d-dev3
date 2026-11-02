@@ -7,7 +7,7 @@ export const RETIRED_LAYER_NAMES = new Set([
   "开放航拍影像", "OpenAerialMap", "Maxar 卫星影像", "Maxar 开放数据", "NOAA 应急影像", "NOAA 紧急响应数据"
 ])
 
-export const RETIRED_LAYER_TREE_IDS = new Set([20, 52, 53, 54, 55, 99, 100, 110, 4110, 5030])
+export const RETIRED_LAYER_TREE_IDS = new Set([20, 50, 52, 53, 54, 55, 60, 80, 99, 110, 4110, 5030])
 
 export function isRetiredLayerMenuEntry(item: Record<string, any>, getById?: (id: string | number) => Record<string, any> | null | undefined): boolean {
   let current: Record<string, any> | null | undefined = item
