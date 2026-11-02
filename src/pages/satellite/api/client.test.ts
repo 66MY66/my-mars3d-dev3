@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest"
-import { unwrapJeecgPage, unwrapJeecgResult } from "./client"
+import { toJeecgPage } from "./client"
 
-describe("JEECG response helpers", () => {
-  it("unwraps list pagination", () => {
-    expect(unwrapJeecgPage({ success: true, result: { records: [{ id: "1" }], total: 1, current: 1, size: 10 } })).toEqual({
+describe("eoAPI pagination adapter", () => {
+  it("converts offset/limit to jeecg-style page", () => {
+    expect(toJeecgPage([{ id: "1" }], 0, 10, 1)).toEqual({
       records: [{ id: "1" }], total: 1, current: 1, size: 10
     })
   })
 
-  it("throws the backend message instead of pretending success", () => {
-    expect(() => unwrapJeecgResult({ success: false, message: "保存失败", result: null })).toThrow("保存失败")
+  it("computes current page from offset", () => {
+    expect(toJeecgPage([{ id: "2" }], 20, 10).current).toBe(3)
   })
 
   it("normalizes an empty page", () => {
-    expect(unwrapJeecgPage({ success: true, result: null })).toEqual({ records: [], total: 0, current: 1, size: 10 })
+    expect(toJeecgPage([], 0, 10)).toEqual({ records: [], total: 0, current: 1, size: 10 })
   })
 })
