@@ -302,7 +302,7 @@ import {
   CalendarOutlined,
   EnvironmentOutlined
 } from "@ant-design/icons-vue"
-import { filterMetadata, fromMetadata, toSharePayload } from "../api/adapters"
+import { filterMetadata, fromMetadata, fromSearchFlow, toSharePayload } from "../api/adapters"
 import { downloadBlob, metadataApi, shareApi } from "../api/services"
 import { runSearchFlow } from "../api/search-flow"
 

@@ -18,7 +18,7 @@ function findLayer(items: any[], name: string): any | undefined {
 
 describe("population density layers", () => {
   it("loads the GDP visual asset as a positioned STAC tile layer", () => {
-    const layer = findLayer(config.layers || [], "人口GDP分布密度")
+    const layer = findLayer(config.layers || [], "全国GDP格网（2020）")
 
     expect(layer).toMatchObject({
       id: 412001,
@@ -67,7 +67,7 @@ describe("population density layers", () => {
       flyTo: true,
       metadata: {
         source: "eoAPI STAC",
-        description: "China 2020 Facebook population density visual asset",
+        description: "China 2020 population grid visual asset",
         temporalRange: "2020"
       }
     })
@@ -79,7 +79,7 @@ describe("population density layers", () => {
 
   it("keeps GDP before Facebook in the configured imagery order", () => {
     const layers = config.layers || []
-    const gdpIndex = layers.findIndex((item: any) => item?.name === "人口GDP分布密度")
+    const gdpIndex = layers.findIndex((item: any) => item?.name === "全国GDP格网（2020）")
     const facebookIndex = layers.findIndex((item: any) => item?.name === "全国人口格网（2020）")
 
     expect(gdpIndex).toBeGreaterThanOrEqual(0)

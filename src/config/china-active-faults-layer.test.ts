@@ -16,7 +16,7 @@ describe("China active faults layer", () => {
       pid: 101,
       type: "geojson",
       url: "http://192.168.10.15:9002/rs-products/spatial/china-faults/active_faults.geojson",
-      show: true,
+      show: false,
       flyTo: true,
       symbol: {
         type: "polylineP",

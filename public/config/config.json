@@ -322,7 +322,7 @@
         }
       },
       "popup": "断层名称：{FN_Ch}<br/>英文名称：{FN_En}<br/>断层性质：{Fea_Ch}<br/>活动时代：{AGE}<br/>时代描述：{AGE_Des}<br/>数据出处：{RefE}",
-      "show": true,
+      "show": false,
       "flyTo": true,
       "hasOpacity": true,
       "metadata": {
@@ -469,7 +469,7 @@
           "opacity": 0.8
         }
       },
-      "show": true,
+      "show": false,
       "flyTo": true
     },
     {
@@ -739,7 +739,7 @@
     },
     {
       "id": 41,
-      "name": "eoAPI 数据集",
+      "name": "基础",
       "type": "group"
     },
     {
@@ -776,7 +776,7 @@
     {
       "id": 412001,
       "pid": 4120,
-      "name": "人口GDP分布密度",
+      "name": "全国GDP格网（2020）",
       "type": "xyz",
       "url": "/api/titiler/collections/spatial-thematic/items/SP-china-gdp2020/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual&resampling=nearest",
       "minimumLevel": 2,
@@ -812,7 +812,7 @@
       },
       "metadata": {
         "source": "eoAPI STAC",
-        "description": "China 2020 Facebook population density visual asset",
+        "description": "China 2020 population grid visual asset",
         "temporalRange": "2020"
       },
       "show": true,

@@ -2,10 +2,10 @@
   <aside
     class="facebook-population-legend"
     data-testid="facebook-population-legend"
-    aria-label="Facebook人口密度图例，单位人每平方公里"
+    aria-label="全国人口格网图例，单位人每平方公里"
   >
     <header class="facebook-population-legend__header">
-      <strong>Facebook 人口密度</strong>
+      <strong>全国人口格网（2020）</strong>
       <span>人/平方公里</span>
     </header>
     <div class="facebook-population-legend__scale">
