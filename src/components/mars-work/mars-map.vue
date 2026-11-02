@@ -329,6 +329,7 @@ import { installGdpDensityIdentify } from "@/utils/gdp-density-identify"
 import { installFacebookPopulationIdentify } from "@/utils/facebook-population-identify"
 import GdpDensityLegend from "./GdpDensityLegend.vue"
 import FacebookPopulationLegend from "./FacebookPopulationLegend.vue"
+import { activateDefaultBasemap } from "./default-basemap"
 import { $alert, $message } from "@mars/components/mars-ui/index"
 import { logInfo } from "@mars/utils/mars-util"
 import { normalizeRing, pointInRing } from "@/utils/region-hit"
@@ -811,8 +812,6 @@ let disasterStatsHandlers: {
 } | null = null
 let thermalAnomalyHandler: ((e: any) => void) | null = null
 
-const basemapStorageKey = "mars3d_basemap_state_v1"
-
 // #region debug-point stats-blank-chart:reporter
 function statsBlankChartDebug(hypothesisId: string, msg: string, data?: Record<string, any>) {
   fetch("http://127.0.0.1:7777/event", {
@@ -876,39 +875,6 @@ function loadPrefs() {
     if (data?.panelPos?.identify) {
       Object.assign(identifyPanelPos, data.panelPos.identify)
     }
-  } catch {}
-}
-
-function restoreBasemapFromStorage() {
-  if (!map) {
-    return
-  }
-  let id = ""
-  try {
-    const raw = localStorage.getItem(basemapStorageKey)
-    if (raw) {
-      const v = JSON.parse(raw)
-      id = String(v?.id || "").trim()
-    }
-  } catch {}
-  if (!id) {
-    return
-  }
-  try {
-    const basemaps = map.getBasemaps(true) || []
-    const exists = basemaps.some((b: any) => b && String(b.id) === id)
-    if (!exists) {
-      return
-    }
-    const active = basemaps.find((b: any) => b && b.isAdded && b.show)
-    if (active && String(active.id) === id) {
-      return
-    }
-    const mapAny: any = map as any
-    mapAny._lastUserBasemapId = id
-    mapAny._lastUserBasemapChangeAt = Date.now()
-    map.basemap = id
-    map.scene?.requestRender?.()
   } catch {}
 }
 
@@ -3336,7 +3302,11 @@ const initMars3d = async () => {
     startNoWatermarkGuard(containerEl, map)
   } catch {
   }
-  restoreBasemapFromStorage()
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      activateDefaultBasemap(map)
+    })
+  })
 
   // 针对不同终端的优化配置
   if (mars3d.Util.isPCBroswer()) {
