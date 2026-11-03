@@ -49,6 +49,7 @@ import TopStatusBar from "@/shell/components/TopStatusBar.vue"
 import TopNotificationsMenu from "@/shell/components/TopNotificationsMenu.vue"
 import { getStoredSidebarCollapsed, setStoredSidebarCollapsed } from "@/shell/sidebar"
 import { initTheme } from "@/shell/theme"
+import { registerShellCommands, registerMars3dCommands } from "@/shell/commandHandlers"
 import { useWidget } from "@mars/common/store/widget"
 import logoUrl from "@/assets/logo.png?url"
 
@@ -100,6 +101,8 @@ function onResize() {
 }
 
 onMounted(() => {
+  registerShellCommands()
+  registerMars3dCommands()
   initTheme()
   window.addEventListener("sidebarToggle", onSidebarToggle as EventListener)
   window.addEventListener("resize", onResize)

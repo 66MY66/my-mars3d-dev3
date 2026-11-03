@@ -114,4 +114,31 @@ describe("Sidebar a11y", () => {
 
     expect(button.classes()).not.toContain("active")
   })
+
+  it("does not render the removed disaster assessment knowledge graph entry", () => {
+    const wrapper = mount(Sidebar, {
+      props: { collapsed: false },
+      global: {
+        stubs: {
+          "a-tooltip": { template: "<span><slot /></span>" }
+        }
+      }
+    })
+
+    expect(wrapper.text()).not.toContain("灾害评估")
+    expect(wrapper.text()).not.toContain("知识图谱")
+  })
+
+  it("does not render the removed hazard identification entry", () => {
+    const wrapper = mount(Sidebar, {
+      props: { collapsed: false },
+      global: {
+        stubs: {
+          "a-tooltip": { template: "<span><slot /></span>" }
+        }
+      }
+    })
+
+    expect(wrapper.text()).not.toContain("隐患识别展示")
+  })
 })
