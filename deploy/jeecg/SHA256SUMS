@@ -1,0 +1,7 @@
+2c903050660f5aaafb05a03286cc2ef000d6991f3c107887f846d2884daf928f  jeecg-system-start-3.5.3.jar
+c9ba65b3f75b585764296e73894ad996234e5eb901cae55942bf252a0e7b7ad4  ../mysql/init/00-jeecgboot-mysql-5.7.sql
+
+JAR source: P:/VS code/idex/bohr_brain/bohr_brain/jeecg-module-system/jeecg-system-start/target/jeecg-system-start-3.5.3.jar
+Schema source: https://github.com/jeecgboot/JeecgBoot/blob/v3.5.3/db/jeecgboot-mysql-5.7.sql
+Downloaded from the official Gitee mirror because raw.githubusercontent.com was unreachable:
+https://gitee.com/jeecg/JeecgBoot/raw/v3.5.3/db/jeecgboot-mysql-5.7.sql

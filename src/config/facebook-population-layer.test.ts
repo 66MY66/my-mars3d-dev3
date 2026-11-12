@@ -37,6 +37,8 @@ describe("population density layers", () => {
       flyTo: true,
       metadata: {
         source: "eoAPI STAC",
+        detailProfile: "china-socioeconomic-grid",
+        itemId: "SP-china-gdp2020",
         description: "China 2020 GDP density visual asset",
         temporalRange: "2020"
       }
@@ -67,6 +69,8 @@ describe("population density layers", () => {
       flyTo: true,
       metadata: {
         source: "eoAPI STAC",
+        detailProfile: "china-socioeconomic-grid",
+        itemId: "SP-china-pop2020",
         description: "China 2020 population grid visual asset",
         temporalRange: "2020"
       }

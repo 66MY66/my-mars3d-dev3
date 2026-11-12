@@ -244,7 +244,7 @@ import {
   syncMetricsFromServer,
   toggleDatasetFavorite
 } from "../services/dataset-metrics"
-import { getOrCreateBboxCover, getPersistedDatasetCover, setPersistedDatasetCover } from "../services/cover-cache"
+import { getOrCreateBboxCover, getPersistedDatasetCover, setPersistedDatasetCover, fetchServerCover, getServerCover, putServerCover } from "../services/cover-cache"
 import { eoApiConfig } from "../services/eoapi-config"
 import { onDatasetSync } from "../services/dataset-sync"
 import { highlightText } from "../utils/highlight"
@@ -259,7 +259,54 @@ const emit = defineEmits<{
   select: [collection: StacCollection]
   create: []
   "layout-change": [compact: boolean]
+  "panel-visibility-change": [visible: boolean]
 }>()
+
+// 面板折叠/关闭时暂停 autoSync 轮询与 reload,避免后台白跑请求和渲染
+let panelVisible = true
+
+function setPanelVisible(visible: boolean) {
+  if (panelVisible === visible) {
+    return
+  }
+  panelVisible = visible
+  emit("panel-visibility-change", visible)
+  if (visible) {
+    resumeAutoSync()
+  } else {
+    pauseAutoSync()
+  }
+}
+
+function pauseAutoSync() {
+  if (autoSyncTimer !== null) {
+    window.clearInterval(autoSyncTimer)
+    autoSyncTimer = null
+  }
+  if (reloadTimer !== null) {
+    window.clearTimeout(reloadTimer)
+    reloadTimer = null
+  }
+}
+
+function resumeAutoSync() {
+  if (eoApiConfig.autoSync && autoSyncTimer === null) {
+    autoSyncTimer = window.setInterval(() => {
+      syncMetricsFromServer()
+        .then(() => {
+          metricsRefreshKey.value += 1
+        })
+        .catch(() => {})
+      scheduleReload()
+    }, 15000)
+  }
+}
+
+defineExpose({
+  reload: () => loadCollections(),
+  toggleLayout,
+  setPanelVisible
+})
 
 // 状态变量
 const loading = ref(false)
@@ -359,6 +406,9 @@ function reportCoverDebugOnce(datasetId: string, type: string, message: string, 
 // #endregion debug-point dataset-cover-stac-load
 
 function scheduleReload(includeMetrics = false) {
+  if (!panelVisible) {
+    return
+  }
   if (reloadTimer !== null) {
     window.clearTimeout(reloadTimer)
   }
@@ -541,9 +591,13 @@ async function backfillMissingCovers() {
       if (!c || getCoverUrl(c)) {
         continue
       }
-      // A large uploaded cover is stored in IndexedDB while localStorage only
-      // contains a marker. Re-check the persistent store before generating a
-      // fallback so the fallback never overwrites a just-uploaded cover.
+      // 封面优先级：后端共享 > 客户端 IndexedDB 持久化 > 服务端 titiler 真影像 > 本地画天地图
+      const server = await getServerCover(c.id)
+      if (server) {
+        const summaries = { ...((c.summaries as any) || {}), coverUrl: server }
+        collections.value.splice(i, 1, { ...c, summaries })
+        continue
+      }
       const persisted = await getPersistedDatasetCover(c.id)
       if (persisted) {
         const summaries = { ...((c.summaries as any) || {}), coverUrl: persisted }
@@ -552,6 +606,16 @@ async function backfillMissingCovers() {
       }
       const bbox = c.extent?.spatial?.bbox?.[0]
       if (!bbox || bbox.length < 4) {
+        continue
+      }
+      // 优先服务端真影像封面（titiler 渲染第一个 item 的 visual 资产），失败再客户端画天地图
+      const serverCover = await fetchServerCover(c.id)
+      if (serverCover) {
+        const summaries = { ...((c.summaries as any) || {}), coverUrl: serverCover }
+        collections.value.splice(i, 1, { ...c, summaries })
+        setPersistedDatasetCover(c.id, serverCover).catch(() => {})
+        // 首个生成者上传到后端，后续浏览器直接共享
+        putServerCover(c.id, serverCover).catch(() => {})
         continue
       }
       const dataUrl = await getOrCreateBboxCover({
@@ -566,6 +630,8 @@ async function backfillMissingCovers() {
       const updated = { ...c, summaries }
       collections.value.splice(i, 1, updated)
       setPersistedDatasetCover(c.id, dataUrl).catch(() => {})
+      // 天地图生成的封面同样上报后端共享
+      putServerCover(c.id, dataUrl).catch(() => {})
       if (isLocalDataset(c)) {
         persistLocalCover(c.id, dataUrl)
       }
@@ -976,14 +1042,20 @@ async function restorePreviewMapState(snapshot: CoverPreviewMapSnapshot) {
   if (!map) {
     return
   }
-  await restoreWorkspace(map, snapshot.manifest, {
-    strategy: "replace",
-    restoreView: false,
-    restoreLayers: true,
-    restoreDrawFeatures: true,
-    clearExistingDrawFeatures: true,
-    flyDuration: 0
-  })
+  // 预览期间叠加的图层/绘制均带 cover_preview_ 前缀，关闭时按前缀定点清除即可；
+  // 不再走 strategy:"replace" 全图重建（会导致业务图层全部重载、瓦片重新请求）
+  try {
+    const previewLayers = map.getLayers({ basemaps: false }).filter(
+      (layer: any) => String(layer?.id || "").startsWith("cover_preview_")
+    )
+    previewLayers.forEach((layer: any) => {
+      try {
+        map.removeLayer(layer, true)
+      } catch {
+      }
+    })
+  } catch {
+  }
   if (snapshot.camera?.destination) {
     map.camera?.setView?.({
       destination: snapshot.camera.destination,
@@ -1254,11 +1326,6 @@ function toggleLayout() {
   emit("layout-change", hideCoverLayout.value)
 }
 
-defineExpose({
-  reload: () => loadCollections(),
-  toggleLayout
-})
-
 onMounted(async () => {
   try {
     i18nConfig.value = await ensureEoapiI18nConfig()
@@ -1270,18 +1337,12 @@ onMounted(async () => {
     metricsRefreshKey.value += 1
   })
   disposeDatasetSync = onDatasetSync(() => {
-    scheduleReload()
-  })
-  if (eoApiConfig.autoSync) {
-    autoSyncTimer = window.setInterval(() => {
-      syncMetricsFromServer()
-        .then(() => {
-          metricsRefreshKey.value += 1
-        })
-        .catch(() => {})
+    // 面板隐藏时不调度 reload,恢复可见时由 resumeAutoSync 统一刷新
+    if (panelVisible) {
       scheduleReload()
-    }, 15000)
-  }
+    }
+  })
+  resumeAutoSync()
 })
 
 onUnmounted(() => {

@@ -289,6 +289,7 @@ export interface ThematicTemplate {
   description?: string
   category?: string
   previewImage?: string
+  inputContracts?: string[]
   parameters: ThematicTemplateParameter[]
   createdAt: number
   updatedAt?: number

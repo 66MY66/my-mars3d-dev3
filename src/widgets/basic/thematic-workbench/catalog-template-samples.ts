@@ -1,6 +1,7 @@
 import { readTemplateDocument, TEMPLATE_CONTRACTS, type TemplateDocument } from "./template-renderer"
 import { coordEach, featureCollection } from "@turf/turf"
 import type { GeoBounds } from "./earthquake-analysis"
+import { isAssessmentKind } from "./assessment-products"
 
 export const CATALOG_SAMPLE_BOUNDS = { west: 104.8, south: 28.2, east: 106.6, north: 29.7 }
 function validBounds(bounds: GeoBounds) {
@@ -37,7 +38,9 @@ export function fitTemplateSampleToBounds(sample: TemplateDocument, bounds: GeoB
   return readTemplateDocument(copy)
 }
 export function templateSampleUrl(kind: string) {
+  if (isAssessmentKind(kind)) { throw new Error("业务评估产品不提供合成样例，请读取后端成果") }
   if (!TEMPLATE_CONTRACTS[kind]) { throw new Error("未知模板") }
+  if (TEMPLATE_CONTRACTS[kind].analysisOnly) { throw new Error("业务分析工具不提供合成模板样例，请使用真实图层") }
   return `${import.meta.env.BASE_URL}data/dbt116-test/templates/${kind}.geojson`
 }
 const samples = new Map<string, Promise<TemplateDocument>>()

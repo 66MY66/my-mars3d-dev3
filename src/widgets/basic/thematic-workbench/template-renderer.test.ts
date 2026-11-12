@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { featureCollection, lineString, multiPolygon, point, polygon } from "@turf/turf"
 import { readTemplateDocument, renderTemplateDocument, rgbGridDocument, TEMPLATE_CONTRACTS, type TemplateDocument } from "./template-renderer"
+import { isAssessmentKind } from "./assessment-products"
 
 const bounds = { west: 103, east: 105, south: 25, north: 27 }
 const metadata = {
@@ -53,6 +54,8 @@ quality_flag: "good",
       los_mm: (i - 1) * 35,
 coherence: 0.8,
 intensity: i + 6,
+pga_ms2: [0.6, 1.2, 2.7][i],
+pgv_ms: [0.06, 0.12, 0.25][i],
 population: 100 * (i + 1),
 before: 10,
 after: i * 10,
@@ -88,8 +91,19 @@ metadata
     expect(JSON.stringify(input)).toBe(original)
     if (result.heat) { expect(result.heat.every(p => Number.isFinite(p.lng) && Number.isFinite(p.lat))).toBe(true) }
   })
-  it("covers all 22 catalog contracts", () => { expect(Object.keys(TEMPLATE_CONTRACTS)).toHaveLength(22) })
-  for (const kind of Object.keys(TEMPLATE_CONTRACTS).filter(kind => kind !== "contour")) {
+  it("keeps business analysis contracts separate from product identities", () => { expect(Object.keys(TEMPLATE_CONTRACTS)).toHaveLength(30); expect(TEMPLATE_CONTRACTS["proportional-symbol"].name).toBe("比例符号"); expect(TEMPLATE_CONTRACTS["instrumental-intensity"].name).toBe("仪器烈度初判") })
+  it("reuses the observed PGA/PGV initial assessment and rejects conflicting or absent measurements", () => {
+    const input = fixture("instrumental-intensity")
+    const result = renderTemplateDocument("instrumental-intensity", input, bounds)
+    expect(result.rows.map(row => row.value)).toEqual([6, 7, 8])
+    expect(result.note).toContain("初判")
+    expect(result.note).toContain("剔除 0")
+    input.features.forEach(feature => { feature.properties.pgv_ms = 2 })
+    expect(() => renderTemplateDocument("instrumental-intensity", input, bounds)).toThrow("无同级匹配")
+    input.features.forEach(feature => { delete feature.properties.pga_ms2 })
+    expect(() => renderTemplateDocument("instrumental-intensity", input, bounds)).toThrow("无有效初判点")
+  })
+  for (const kind of Object.keys(TEMPLATE_CONTRACTS).filter(kind => kind !== "contour" && !isAssessmentKind(kind))) {
     it(`renders actual ${kind} input without mutating its source`, () => {
       const input = fixture(kind); const original = JSON.stringify(input)
       const result = renderTemplateDocument(kind, input, bounds, { field: kind === "unique-value" ? "category" : "value" })

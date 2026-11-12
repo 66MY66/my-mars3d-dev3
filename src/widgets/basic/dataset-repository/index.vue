@@ -36,22 +36,26 @@
     </template>
 
     <div :class="['dataset-repo-panel', { 'dataset-repo-panel--inactive': layerVersionOverlayActive }]">
-      <DatasetEntry
-        v-if="viewMode === 'list'"
-        ref="entryRef"
-        @select="handleSelect"
-        @create="openCreate"
-        @layout-change="handleLayoutChange"
-      />
+      <!-- 列表常驻保活: 关闭/折叠不重挂,配合面板可见性暂停 autoSync 轮询 -->
+      <KeepAlive>
+        <DatasetEntry
+          v-if="viewMode === 'list'"
+          ref="entryRef"
+          @select="handleSelect"
+          @create="openCreate"
+          @layout-change="handleLayoutChange"
+          @panel-visibility-change="(v: boolean) => { if (v) { entryRef?.reload?.() } }"
+        />
 
-      <DatasetDetail
-        v-else
-        :collection-id="selectedCollectionId"
-        @back="backToList"
-        @layerVersionOpenChange="handleLayerVersionOpenChange"
-        @navigate="handleNavigate"
-        @openInMap="noop"
-      />
+        <DatasetDetail
+          v-else
+          :collection-id="selectedCollectionId"
+          @back="backToList"
+          @layerVersionOpenChange="handleLayerVersionOpenChange"
+          @navigate="handleNavigate"
+          @openInMap="noop"
+        />
+      </KeepAlive>
     </div>
   </mars-dialog>
 
@@ -105,7 +109,6 @@ function onFold(folded: boolean) {
 const viewMode = ref<"list" | "detail">("list")
 const selectedCollectionId = ref("")
 const layerVersionOverlayActive = ref(false)
-
 function restoreDetailIfNeeded() {
   const fromProp = String(props.restoreCollectionId || "").trim()
   const fromWidget = String((currentWidget as any)?.data?.props?.restoreCollectionId || "").trim()

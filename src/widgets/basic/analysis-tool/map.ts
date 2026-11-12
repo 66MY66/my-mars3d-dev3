@@ -372,13 +372,13 @@ function renderFeatureCollection(fc: any, toolType: string) {
       if (toolType === "buffer") {
         const opacity = Number(props.opacity ?? 0.7)
         if (props.level === "core") {
-          style = { color: "#d50000", opacity: Math.min(0.6, opacity), outline: true, outlineColor: "#d50000", outlineWidth: 2 }
+          style = { color: "#e53935", opacity: Math.min(0.38, opacity), outline: true, outlineColor: "#e53935", outlineWidth: 2 }
         } else if (props.level === "transition") {
-          style = { color: "#ff6d00", opacity: Math.min(0.4, opacity), outline: true, outlineColor: "#ff6d00", outlineWidth: 2 }
+          style = { color: "#fb8c00", opacity: Math.min(0.3, opacity), outline: true, outlineColor: "#fb8c00", outlineWidth: 2 }
         } else if (props.level === "edge") {
-          style = { color: "#ffea00", opacity: Math.min(0.28, opacity), outline: true, outlineColor: "#ffea00", outlineWidth: 2 }
+          style = { color: "#f9c74f", opacity: Math.min(0.23, opacity), outline: true, outlineColor: "#d8a91d", outlineWidth: 2 }
         } else {
-          style = { color: "#d50000", opacity: Math.min(0.35, opacity), outline: true, outlineColor: "#d50000", outlineWidth: 2 }
+          style = { color: "#e53935", opacity: Math.min(0.35, opacity), outline: true, outlineColor: "#e53935", outlineWidth: 2 }
         }
       }
       if (toolType === "neighbor") {

@@ -1,0 +1,112 @@
+:root {
+  --thematic-ink: #17233d;
+  --thematic-muted: #53647a;
+  --thematic-surface: #ffffff;
+  --thematic-subtle: #f1f5fa;
+  --thematic-control: #ffffff;
+  --thematic-line: #8293aa;
+  --thematic-accent: #0865ad;
+  --thematic-warning: #805000;
+  --thematic-warning-bg: #fff4db;
+  --thematic-danger: #b42318;
+  --thematic-success: #146b52;
+  --thematic-success-bg: #e8f5ee;
+  --thematic-disabled-bg: #e7edf4;
+  --thematic-disabled-ink: #53647a;
+  --thematic-scheme: light;
+  --thematic-primary: #1267c7;
+  --thematic-primary-hover: #0c56aa;
+  --thematic-primary-active: #09458b;
+}
+
+:root[data-theme="dark"],
+.thematic-workbench-panel.is-chart-docked {
+  --thematic-ink: #edf5fa;
+  --thematic-muted: #b7c9da;
+  --thematic-surface: #23344f;
+  --thematic-subtle: #1d2e40;
+  --thematic-control: #203348;
+  --thematic-line: #71869d;
+  --thematic-accent: #82d9f5;
+  --thematic-warning: #ffd08a;
+  --thematic-warning-bg: #303e4b;
+  --thematic-danger: #ffc1b8;
+  --thematic-success: #75dcc3;
+  --thematic-success-bg: #1c4145;
+  --thematic-disabled-bg: #334659;
+  --thematic-disabled-ink: #c5d4e4;
+  --thematic-scheme: dark;
+}
+
+.thematic-workbench-panel .mars-button:not(.ant-btn-link):not(.ant-btn-text),
+.thematic-workbench-panel .ant-btn-primary,
+.thematic-display-drawer .ant-btn-primary,
+:root[data-theme] .task-popover:has(.thematic-create-form) .ant-btn-primary {
+  color: #ffffff !important;
+  background: var(--thematic-primary) !important;
+  border-color: var(--thematic-primary) !important;
+}
+
+.thematic-workbench-panel .mars-button:not(.ant-btn-link):not(.ant-btn-text):not(:disabled):hover,
+.thematic-workbench-panel .ant-btn-primary:not(:disabled):hover,
+.thematic-display-drawer .ant-btn-primary:not(:disabled):hover,
+:root[data-theme] .task-popover:has(.thematic-create-form) .ant-btn-primary:not(:disabled):hover {
+  color: #ffffff !important;
+  background: var(--thematic-primary-hover) !important;
+  border-color: var(--thematic-primary-hover) !important;
+}
+
+.thematic-workbench-panel .mars-button:not(.ant-btn-link):not(.ant-btn-text):not(:disabled):active,
+.thematic-workbench-panel .ant-btn-primary:not(:disabled):active,
+.thematic-display-drawer .ant-btn-primary:not(:disabled):active,
+:root[data-theme] .task-popover:has(.thematic-create-form) .ant-btn-primary:not(:disabled):active {
+  color: #ffffff !important;
+  background: var(--thematic-primary-active) !important;
+  border-color: var(--thematic-primary-active) !important;
+}
+
+.thematic-workbench-panel .mars-button:not(.ant-btn-link):not(.ant-btn-text):disabled,
+.thematic-workbench-panel .ant-btn:disabled,
+.thematic-display-drawer .ant-btn:disabled {
+  opacity: 1;
+  color: var(--thematic-disabled-ink) !important;
+  background: var(--thematic-disabled-bg) !important;
+  border-color: var(--thematic-line) !important;
+}
+
+.thematic-workbench-panel .mars-button > span,
+.thematic-workbench-panel .ant-btn-primary > span,
+.thematic-display-drawer .ant-btn-primary > span {
+  color: inherit;
+}
+
+:root[data-theme] .thematic-workbench-panel .ant-input::placeholder,
+:root[data-theme] .thematic-workbench-panel input::placeholder,
+:root[data-theme] .thematic-workbench-panel textarea::placeholder,
+:root[data-theme] .thematic-workbench-panel .ant-select-selection-placeholder,
+:root[data-theme] .task-popover:has(.thematic-create-form) .ant-input::placeholder,
+:root[data-theme] .task-popover:has(.thematic-create-form) .ant-select-selection-placeholder {
+  color: var(--thematic-muted) !important;
+  opacity: 1;
+}
+
+:root[data-theme] .thematic-workbench-panel .ant-select-disabled .ant-select-selector,
+:root[data-theme] .thematic-workbench-panel .ant-input:disabled,
+:root[data-theme] .thematic-workbench-panel input:disabled,
+:root[data-theme] .thematic-workbench-panel textarea:disabled {
+  color: var(--thematic-disabled-ink) !important;
+  -webkit-text-fill-color: var(--thematic-disabled-ink);
+  background: var(--thematic-disabled-bg) !important;
+  opacity: 1;
+}
+
+:root[data-theme] .thematic-workbench-panel .ant-select-disabled .ant-select-selection-item,
+:root[data-theme] .thematic-workbench-panel .ant-select-disabled .ant-select-selection-placeholder {
+  color: var(--thematic-disabled-ink) !important;
+  opacity: 1;
+}
+
+.thematic-workbench-panel .ant-form-item-explain-error,
+.thematic-create-form .ant-form-item-explain-error {
+  color: var(--thematic-danger) !important;
+}

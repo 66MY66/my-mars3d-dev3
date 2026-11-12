@@ -117,6 +117,14 @@
             </div>
 
             <div v-if="!statsUi.collapsed[c.key]" class="card-body">
+              <div v-if="c.key === 'population'" class="population-view-switch">
+                <a-radio-group v-model:value="populationChartMode" size="small" optionType="button" buttonStyle="solid" @change="handlePopulationChartModeChange">
+                  <a-radio-button value="density">密度分布</a-radio-button>
+                  <a-radio-button value="profile">纬向剖面</a-radio-button>
+                </a-radio-group>
+                <span v-if="populationChartMode === 'profile'" class="population-profile-caption">当前纬度 {{ populationProfileLatitudeText }}</span>
+              </div>
+
               <div v-if="c.hasLevel" class="card-level">
                 <a-radio-group v-model:value="statsUi.level[c.key]" size="small" optionType="button" buttonStyle="solid">
                   <a-radio-button v-for="(lv, idx) in statsLevels" :key="lv" :value="idx">{{ lv }}</a-radio-button>
@@ -128,14 +136,31 @@
                 :class="{
                   'is-loading': getCardState(c.key).loading,
                   'is-empty': getCardState(c.key).empty,
-                  'is-error': !!getCardState(c.key).error
+                  'is-error': !!getCardState(c.key).error,
+                  'population-profile': c.key === 'population' && populationChartMode === 'profile'
                 }"
                 @wheel.prevent="adjustCardLevel(c.key, $event)"
               >
-                <div v-if="getCardState(c.key).loading" class="card-status">加载中...</div>
-                <div v-else-if="getCardState(c.key).error" class="card-status error">{{ getCardState(c.key).error }}</div>
-                <div v-else-if="getCardState(c.key).empty" class="card-status">暂无数据</div>
-                <div v-else :ref="(el) => setChartEl(c.key, el as any)" class="chart"></div>
+                <div v-if="c.key === 'population' && populationChartMode === 'profile'" class="population-latitude-control">
+                  <span>{{ populationLatitudeBounds.max.toFixed(3) }}°N</span>
+                  <input
+                    v-model.number="populationLatitude"
+                    class="population-latitude-slider"
+                    type="range"
+                    :min="populationLatitudeBounds.min"
+                    :max="populationLatitudeBounds.max"
+                    :step="populationGridStep"
+                    aria-label="选择人口剖面纬度"
+                    @input="handlePopulationLatitudeInput"
+                  />
+                  <span>{{ populationLatitudeBounds.min.toFixed(3) }}°N</span>
+                </div>
+                <StatsChartFrame
+                  :loading="getCardState(c.key).loading"
+                  :error="getCardState(c.key).error"
+                  :empty="getCardState(c.key).empty"
+                  :chart-ref="(el) => setChartEl(c.key, el as HTMLElement | null)"
+                />
               </div>
 
               <div class="card-actions">
@@ -310,7 +335,8 @@ import { getContextMenu as getNewContextMenu } from "@mars/utils/contextmenu/con
 import type { ContextMenuOptions } from "@mars/utils/contextmenu/types"
 
 import { computed, nextTick, onUnmounted, onMounted, reactive, ref, toRaw, watch } from "vue"
-import { buildStatsChartOption, getStatsDivisionLabel } from "@/utils/stats-chart-model"
+import { buildPopulationLatitudeProfileOption, buildStatsChartOption, getStatsDivisionLabel } from "@/utils/stats-chart-model"
+import { buildPopulationLatitudeProfile } from "@/utils/population-latitude-profile"
 import {
   GRID_DENSITY_SOURCES,
   loadGridDensityStatistics,
@@ -329,6 +355,7 @@ import { installGdpDensityIdentify } from "@/utils/gdp-density-identify"
 import { installFacebookPopulationIdentify } from "@/utils/facebook-population-identify"
 import GdpDensityLegend from "./GdpDensityLegend.vue"
 import FacebookPopulationLegend from "./FacebookPopulationLegend.vue"
+import StatsChartFrame from "./StatsChartFrame.vue"
 import { activateDefaultBasemap } from "./default-basemap"
 import { $alert, $message } from "@mars/components/mars-ui/index"
 import { logInfo } from "@mars/utils/mars-util"
@@ -359,6 +386,7 @@ import {
 
 import { useWidget } from "@mars/common/store/widget"
 import { hasPermission } from "@/shell/permission"
+import { resetInitialBusinessLayerState, resetInitialMapLayerVisibility } from "@/config/retired-layers"
 import { installMarsLogoPrimitiveGuard, MARS3D_BRANDING_SELECTOR, sweepMarsLogoPrimitives } from "./branding"
 import * as echarts from "echarts"
 import * as XLSX from "xlsx"
@@ -747,6 +775,23 @@ const identifyPanelPos = reactive<{ left: number | null; top: number | null; wid
   height: 620
 })
 const activeRing = ref<RingLonLat>([])
+const populationGridStep = 0.005
+const populationChartMode = ref<"density" | "profile">("density")
+const populationLatitude = ref(0)
+const populationProfileRevision = ref(0)
+const populationLatitudeBounds = computed(() => {
+  const latitudes = activeRing.value.map((point) => Number(point?.[1])).filter(Number.isFinite)
+  if (!latitudes.length) { return { min: 0, max: 0 } }
+  return { min: Math.min(...latitudes), max: Math.max(...latitudes) }
+})
+const populationProfile = computed(() => {
+  const cells = populationProfileRevision.value >= 0 ? gridStatsResults.get("population")?.selectedCells || [] : []
+  return buildPopulationLatitudeProfile(cells, populationLatitude.value)
+})
+const populationProfileLatitudeText = computed(() => {
+  const latitude = populationProfile.value.latitude ?? populationLatitude.value
+  return Number.isFinite(latitude) ? `${latitude.toFixed(3)}°N` : "—"
+})
 const metrics = reactive<DisasterMetrics>({ areaM2: 0, perimeterM: 0, population: 0, lossYuan: 0 })
 const unitPrefs = reactive<UnitPrefs>({ area: "km2", distance: "km", population: "wan", money: "wan" })
 const model = reactive<DisasterModel>({ populationDensityPerKm2: 1000, lossPerPersonYuan: 5000 })
@@ -1819,7 +1864,14 @@ function renderCard(key: StatsCardKey) {
       // #endregion
       return
     }
-    const option = buildStatsChartOption(key, rows)
+    if (key === "population" && populationChartMode.value === "profile" && !populationProfile.value.points.some(Boolean)) {
+      chart.clear?.()
+      updateCardState(key, { loading: false, empty: true, error: null })
+      return
+    }
+    const option = key === "population" && populationChartMode.value === "profile"
+      ? buildPopulationLatitudeProfileOption(populationProfile.value.latitude, populationProfile.value.points)
+      : buildStatsChartOption(key, rows)
     // #region debug-point C:set-option-before
     statsBlankChartDebug("C", "renderCard before setOption", {
       key,
@@ -1872,6 +1924,17 @@ function closeStats() {
   })
   clearPopulationOnMap()
   clearGridStatsOnMap()
+}
+
+async function handlePopulationChartModeChange() {
+  await nextTick()
+  if (statsVisible.value) { renderCard("population") }
+}
+
+function handlePopulationLatitudeInput() {
+  if (statsVisible.value && populationChartMode.value === "profile") {
+    renderCard("population")
+  }
 }
 
 function closeIdentify() {
@@ -2099,6 +2162,7 @@ function loadRealGridStatsCard(key: "population" | "economy", ringKey: string) {
       statsDataByKey.set(key, rows)
       gridStatsResults.set(key, result)
       gridStatsLoadedRing.set(key, ringKey)
+      if (key === "population") { populationProfileRevision.value++ }
       if (key === "population") { metrics.population = result.total }
       renderCard(key)
       if (statsOnMapUi[key]) { renderGridStatsOnMap(key) }
@@ -2550,6 +2614,9 @@ function updateMetrics(ring: RingLonLat, source?: "selection" | "buffer" | "view
   statsDataByKey.delete("population")
   statsDataByKey.delete("economy")
   activeRing.value = ring
+  const bounds = populationLatitudeBounds.value
+  populationLatitude.value = Number(((bounds.min + bounds.max) / 2).toFixed(6))
+  populationProfileRevision.value++
   schedulePopulationOnMapRefresh()
   statsRingMeta.source = source || (ring && ring.length >= 3 ? classifyRingSource(ring) : "none")
   const next = estimateMetrics(ring, model)
@@ -3290,6 +3357,8 @@ const initMars3d = async () => {
 
   logInfo("地图构造参数", mapOptions)
 
+  resetInitialBusinessLayerState(mapOptions || {}, typeof localStorage === "undefined" ? null : localStorage)
+
   const bingKey = import.meta.env.VITE_BING_KEY || import.meta.env.VITE_BING_MAPS_KEY
   if (bingKey && (mars3d.Cesium as any)?.BingMapsApi) {
     ;(mars3d.Cesium as any).BingMapsApi.defaultKey = bingKey
@@ -3297,6 +3366,7 @@ const initMars3d = async () => {
 
   mars3dVersionMatched = isMars3dExactVersion("3.10.12")
   map = new mars3d.Map(withKeyId.value, mapOptions)
+  resetInitialMapLayerVisibility(map)
   try {
     const containerEl = document.getElementById(withKeyId.value)
     startNoWatermarkGuard(containerEl, map)
@@ -3554,6 +3624,7 @@ const initMars3d = async () => {
 
 // map构造完成后的一些处理，可以按需注释和选用
 function onMapLoad() {
+  resetInitialMapLayerVisibility(map)
   // Mars3D地图内部使用，如右键菜单弹窗
   // @ts-ignore
   window.globalAlert = $alert
@@ -4396,6 +4467,18 @@ onUnmounted(() => {
   justify-content: flex-start;
 }
 
+.population-view-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.population-profile-caption {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .chart-wrap {
   border: 1px solid var(--overlay-border);
   min-height: 220px;
@@ -4408,6 +4491,36 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.chart-wrap.population-profile,
+.chart-wrap.population-profile.is-loading,
+.chart-wrap.population-profile.is-empty,
+.chart-wrap.population-profile.is-error {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.population-latitude-control {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: 5px;
+  padding: 8px 4px;
+  border-right: 1px solid var(--overlay-border);
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.population-latitude-slider {
+  width: 18px;
+  height: 164px;
+  margin: 0;
+  direction: rtl;
+  writing-mode: vertical-lr;
+  accent-color: #4c8dff;
+  cursor: pointer;
 }
 
 .card-status {

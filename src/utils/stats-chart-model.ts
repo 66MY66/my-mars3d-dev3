@@ -1,3 +1,5 @@
+import type { PopulationProfilePoint } from "./population-latitude-profile"
+
 export type StatsChartKey = "population" | "economy" | "housing" | "radiation" | "vegetation"
 
 type StatsRow = Record<string, any>
@@ -94,6 +96,49 @@ function buildDensityHistogramOption(rows: StatsRow[], valueName: string, color:
     xAxis: { type: "category", data: rows.map((row) => row["区间"]), axisLabel: { rotate: 35 } },
     yAxis: { type: "value", name: valueName },
     series: [{ name: valueName, type: "bar", data: rows.map((row) => Number(row["总量"] || 0)), itemStyle: { color }, barMaxWidth: 28 }]
+  }
+}
+
+export function buildPopulationLatitudeProfileOption(latitude: number | null, points: Array<PopulationProfilePoint | null>) {
+  return {
+    animation: false,
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "cross" },
+      formatter: (items: any[]) => {
+        const value = items?.[0]?.value
+        if (!Array.isArray(value) || value[0] == null) { return "" }
+        return `经度：${Number(value[0]).toFixed(3)}°E<br/>纬度：${Number(latitude ?? 0).toFixed(3)}°N<br/>人口密度：${Number(value[1] || 0).toLocaleString()} 人/km²<br/>格网人口：${Math.round(Number(value[2] || 0)).toLocaleString()} 人`
+      }
+    },
+    grid: { left: 76, right: 24, top: 22, bottom: 62 },
+    xAxis: {
+      type: "value",
+      name: "经度",
+      nameLocation: "middle",
+      nameGap: 42,
+      axisLabel: { formatter: (value: number) => `${Number(value).toFixed(2)}°E` }
+    },
+    yAxis: {
+      type: "value",
+      name: "人口密度（人/km²）",
+      nameGap: 54,
+      nameLocation: "middle"
+    },
+    dataZoom: [
+      { type: "inside", xAxisIndex: 0 },
+      { type: "slider", xAxisIndex: 0, height: 16, bottom: 8 }
+    ],
+    series: [{
+      name: "人口密度",
+      type: "line",
+      showSymbol: points.length <= 120,
+      symbolSize: 5,
+      connectNulls: false,
+      lineStyle: { width: 2, color: "#4c8dff" },
+      areaStyle: { color: "rgba(76,141,255,0.14)" },
+      data: points.map((point) => point ? [point.longitude, point.density, point.population] : [null, null, null])
+    }]
   }
 }
 

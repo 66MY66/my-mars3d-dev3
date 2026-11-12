@@ -211,7 +211,7 @@ export function analyzeEarthquakeDataset(dataset: EarthquakeDataset, operation: 
   }
   if (!points.length) {
     const reasons: Record<EarthquakeOperation, string> = {
-      thermal: "请检查亮温、基准期、样本数和质量标记",
+      thermal: "请检查地表温度、时间基准期、样本数和质量标记，不能直接代入亮温",
       deformation: "请检查 LOS 形变、相干性和阈值",
       risk: "请检查危险性、暴露和脆弱性指数",
       intensity: "PGA/PGV 无同级匹配，请核查观测或模型"
@@ -226,8 +226,8 @@ export function analyzeEarthquakeDataset(dataset: EarthquakeDataset, operation: 
     return {
       ...common,
       unit: "Z",
-      method: "亮温时序基准标准化",
-      caution: "热异常不等于地震前兆；仅保留质量合格且基准样本数≥10的观测点。",
+      method: "地表温度时间基线标准化",
+      caution: "热异常不等于地震前兆；样本数≥10是本方法的筛选条件，不是行业规范规定值；仅保留质量合格观测点。",
       metrics: [
         { label: "有效点", value: String(points.length) },
         { label: "最高 Z", value: Math.max(...values).toFixed(2) },

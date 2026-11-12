@@ -133,7 +133,22 @@
         </div>
       </div>
 
-      <div v-if="vectorStyleAvailable" class="style-section">
+      <div v-if="vectorLineStyleAvailable" class="style-section">
+        <div class="style-row">
+          <span class="style-label">线颜色</span>
+          <mars-color-picker v-model:value="vectorStyleEditor.fillColor" />
+        </div>
+        <div class="style-row">
+          <span class="style-label">线透明度</span>
+          <mars-slider v-model:value="vectorStyleEditor.fillOpacity" :min="0" :max="1" :step="0.01" />
+        </div>
+        <div class="style-row">
+          <span class="style-label">线宽</span>
+          <mars-slider v-model:value="vectorStyleEditor.lineWidth" :min="0.5" :max="10" :step="0.5" />
+        </div>
+      </div>
+
+      <div v-else-if="vectorFillStyleAvailable" class="style-section">
         <div class="style-row">
           <span class="style-label">填充色</span>
           <mars-color-picker v-model:value="vectorStyleEditor.fillColor" />
@@ -158,15 +173,28 @@
     </div>
 
     <div class="layer-props-table">
-      <div v-for="field in metaFields" :key="field.key" class="prop-row">
-        <span class="prop-label">{{ field.label }}：</span>
-        <span class="prop-value">{{ currentLayerProps[field.key] || '--' }}</span>
-      </div>
-      <!-- 额外显示未定义的属性 -->
-      <div class="prop-divider">其他参数</div>
-      <div class="raw-json">
-        {{ JSON.stringify(currentLayerProps, null, 2) }}
-      </div>
+      <template v-if="structuredMetadataSections.length">
+        <div v-for="section in structuredMetadataSections" :key="section.title" class="metadata-section">
+          <div class="prop-divider">{{ section.title }}</div>
+          <div v-for="field in section.fields" :key="field.label" class="prop-row">
+            <span class="prop-label">{{ field.label }}：</span>
+            <span class="prop-value">{{ field.value }}</span>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <div v-for="field in metaFields" :key="field.key" class="prop-row">
+          <span class="prop-label">{{ field.label }}：</span>
+          <span class="prop-value">{{ currentLayerProps[field.key] || '--' }}</span>
+        </div>
+      </template>
+      <template v-if="!structuredMetadataSections.length">
+        <!-- 额外显示未定义的属性 -->
+        <div class="prop-divider">其他参数</div>
+        <div class="raw-json">
+          {{ JSON.stringify(currentLayerProps, null, 2) }}
+        </div>
+      </template>
     </div>
   </mars-dialog>
   <mars-task-modal v-model:open="renameDialogOpen" title="重命名" @ok="confirmRename" @cancel="cancelRename">
@@ -200,6 +228,7 @@ import { onDatasetSync } from "../dataset-repository/services/dataset-sync"
 import { MAX_LAYERS } from "../dataset-repository/services/layer-constraints"
 import { applyDefaultRasterStyleOptions, isImageryRasterSourceType } from "../dataset-repository/services/layer-style-defaults"
 import { removePersistedSession } from "../current-task/map"
+import { buildProfiledLayerPropertySections } from "./layer-property-details"
 
 const { activate, disable, updateWidget, currentWidget } = useWidget()
 useLifecycle(mapWork)
@@ -676,7 +705,11 @@ const defaultExpandedKeys = ref<string[]>([])
 const prevExpandedKeys = ref<string[] | null>(null)
 const opacityValue = ref<Record<string, number>>({})
 const rasterStyleValue = ref<Record<string, { brightness?: number; contrast?: number; gamma?: number; saturation?: number; hue?: number }>>({})
-const vectorStyleValue = ref<Record<string, { fillColor?: string; fillOpacity?: number; outlineColor?: string; outlineWidth?: number }>>({})
+type VectorGeometryKind = "point" | "line" | "polygon" | "unknown"
+type VectorStyleState = { fillColor?: string; fillOpacity?: number; outlineColor?: string; outlineWidth?: number; lineWidth?: number }
+
+const vectorStyleValue = ref<Record<string, VectorStyleState>>({})
+const initialVectorStyleValue: Record<string, VectorStyleState> = {}
 const currentLayerCount = ref(0)
 let basemapNodeIdSet = new Set<string>()
 const currentDatasetId = ref(String(getCurrentDataset()?.datasetId || ""))
@@ -767,12 +800,59 @@ const rasterStyleEditor = ref<{ brightness: number; contrast: number; gamma: num
   saturation: 1,
   hue: 0
 })
-const vectorStyleEditor = ref<{ fillColor: string; fillOpacity: number; outlineColor: string; outlineWidth: number }>({
+const vectorStyleEditor = ref<{ fillColor: string; fillOpacity: number; outlineColor: string; outlineWidth: number; lineWidth: number }>({
   fillColor: "#5cadff",
   fillOpacity: 0.25,
   outlineColor: "#5cadff",
-  outlineWidth: 2
+  outlineWidth: 2,
+  lineWidth: 2
 })
+
+function geometryKindFromType(value: any): VectorGeometryKind {
+  const type = String(value || "").toLowerCase()
+  if (!type) {
+    return "unknown"
+  }
+  if (type.includes("line") || type.includes("polyline") || type.includes("curve")) {
+    return "line"
+  }
+  if (type.includes("point") || type.includes("billboard") || type.includes("label")) {
+    return "point"
+  }
+  if (type.includes("polygon") || type.includes("rectangle") || type.includes("circle") || type.includes("ellipse")) {
+    return "polygon"
+  }
+  return "unknown"
+}
+
+function getLayerGeometryKind(layer: any): VectorGeometryKind {
+  if (!layer) {
+    return "unknown"
+  }
+  const symbolType = layer?.options?.symbol?.type
+  const symbolKind = geometryKindFromType(symbolType)
+  if (symbolKind !== "unknown") {
+    return symbolKind
+  }
+  const metadataTypes = layer?.options?.metadata?.geometryTypes || layer?.options?.metadata?.geometryType
+  const metadataKind = geometryKindFromType(Array.isArray(metadataTypes) ? metadataTypes.join(" ") : metadataTypes)
+  if (metadataKind !== "unknown") {
+    return metadataKind
+  }
+  try {
+    const graphics = layer?.getGraphics?.()
+    if (Array.isArray(graphics)) {
+      for (const graphic of graphics) {
+        const kind = geometryKindFromType(graphic?.type || graphic?.geometry?.type)
+        if (kind !== "unknown") {
+          return kind
+        }
+      }
+    }
+  } catch {
+  }
+  return "unknown"
+}
 
 const rasterStyleAvailable = computed(() => {
   const layer = inspectedLayerId.value ? mapWork.getLayerById(inspectedLayerId.value) : null
@@ -791,6 +871,14 @@ const vectorStyleAvailable = computed(() => {
   const type = String(layer?.type || layer?.options?.type || "")
   return type === "geojson" || type === "vector" || (layer?.options?.symbol && typeof layer?.options?.symbol === "object")
 })
+
+const vectorGeometryKind = computed(() => {
+  const layer = inspectedLayerId.value ? mapWork.getLayerById(inspectedLayerId.value) : null
+  return getLayerGeometryKind(layer)
+})
+
+const vectorLineStyleAvailable = computed(() => vectorStyleAvailable.value && vectorGeometryKind.value === "line")
+const vectorFillStyleAvailable = computed(() => vectorStyleAvailable.value && vectorGeometryKind.value !== "line")
 
 watch(
   () => showLayerProps.value,
@@ -831,12 +919,7 @@ watch(
   { deep: true }
 )
 
-watch(
-  vectorStyleEditor,
-  debounce(() => {
-    if (syncingStyleEditor) {
-      return
-    }
+const commitVectorStyleEditor = debounce(() => {
     const id = String(inspectedLayerId.value || "")
     if (!id) {
       return
@@ -848,15 +931,38 @@ watch(
     if (!(layer?.options?.symbol && typeof layer.options.symbol === "object")) {
       return
     }
-    vectorStyleValue.value[id] = {
+    const geometryKind = getLayerGeometryKind(layer)
+    const styleOptions = layer?.options?.symbol?.styleOptions || {}
+    const currentFill = parseColorToHexAndAlpha(styleOptions.color)
+    const currentLineWidth = Number(styleOptions.width ?? 2)
+    const nextStyle: VectorStyleState = {
       fillColor: vectorStyleEditor.value.fillColor,
-      fillOpacity: vectorStyleEditor.value.fillOpacity,
       outlineColor: vectorStyleEditor.value.outlineColor,
-      outlineWidth: vectorStyleEditor.value.outlineWidth
+      outlineWidth: vectorStyleEditor.value.outlineWidth,
+      lineWidth: vectorStyleEditor.value.lineWidth
     }
-    applyVectorStyleToLayers()
-  }, 120),
-  { deep: true }
+    if (geometryKind === "line") {
+      const opacity = Math.max(0, Math.min(1, Number(vectorStyleEditor.value.fillOpacity)))
+      opacityValue.value[id] = Number.isFinite(opacity) ? opacity : 1
+      layer.opacity = opacityValue.value[id]
+    } else {
+      nextStyle.fillOpacity = vectorStyleEditor.value.fillOpacity
+    }
+    vectorStyleValue.value[id] = nextStyle
+    const lineStyleChanged = geometryKind !== "line" || currentFill?.hex !== nextStyle.fillColor || currentLineWidth !== nextStyle.lineWidth
+    if (lineStyleChanged) {
+      applyVectorStyleToLayers(id)
+    }
+  }, 120)
+
+watch(
+  vectorStyleEditor,
+  () => {
+    if (!syncingStyleEditor) {
+      commitVectorStyleEditor()
+    }
+  },
+  { deep: true, flush: "sync" }
 )
 
 const renameDialogOpen = ref(false)
@@ -884,6 +990,25 @@ const metaFields = [
   { label: "坐标系", key: "crs" },
   { label: "备注说明", key: "remark" }
 ]
+
+const structuredMetadataSections = computed(() => {
+  const sections = currentLayerProps.value?.detailSections
+  if (!Array.isArray(sections)) {
+    return buildProfiledLayerPropertySections(currentLayerProps.value)
+  }
+
+  return sections
+    .map((section: any) => ({
+      title: String(section?.title || "").trim(),
+      fields: (Array.isArray(section?.fields) ? section.fields : [])
+        .map((field: any) => ({
+          label: String(field?.label || "").trim(),
+          value: field?.value ?? currentLayerProps.value?.[field?.key]
+        }))
+        .filter((field: any) => field.label && field.value !== undefined && field.value !== null && field.value !== "")
+    }))
+    .filter((section: any) => section.title && section.fields.length)
+})
 
 let lastWidget: any
 
@@ -1066,8 +1191,54 @@ function toRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${a})`
 }
 
-function applyVectorStyleToLayers() {
+function captureInitialVectorStyle(layer: any) {
+  const id = String(layer?.id || "")
+  if (!id || initialVectorStyleValue[id] || getLayerGeometryKind(layer) !== "line") {
+    return
+  }
+  const styleOptions = layer?.options?.symbol?.styleOptions || {}
+  const fill = parseColorToHexAndAlpha(styleOptions.color)
+  initialVectorStyleValue[id] = {
+    fillColor: fill?.hex || "#5cadff",
+    lineWidth: Number.isFinite(Number(styleOptions.width)) ? Number(styleOptions.width) : 2
+  }
+}
+
+function normalizeLineIntrinsicOpacity(layer: any, updateLoadedGraphics = false) {
+  if (getLayerGeometryKind(layer) !== "line") {
+    return
+  }
+  const symbol = layer?.options?.symbol
+  const styleOptions = symbol?.styleOptions || {}
+  const fill = parseColorToHexAndAlpha(styleOptions.color)
+  const color = toRgba(fill?.hex || "#5cadff", 1)
+  try {
+    layer.options.symbol = {
+      ...symbol,
+      styleOptions: {
+        ...styleOptions,
+        color,
+        opacity: 1
+      }
+    }
+  } catch {
+  }
+  if (!updateLoadedGraphics) {
+    return
+  }
+  try {
+    layer?.eachGraphic?.((graphic: any) => {
+      graphic?.setStyle?.({ color, opacity: 1 })
+    })
+  } catch {
+  }
+}
+
+function applyVectorStyleToLayers(targetId?: string) {
   Object.entries(vectorStyleValue.value).forEach(([id, style]) => {
+    if (targetId && id !== targetId) {
+      return
+    }
     const layer = mapWork.getLayerById(id)
     if (!layer) {
       return
@@ -1080,25 +1251,68 @@ function applyVectorStyleToLayers() {
     const fillColor = style?.fillColor
     const outlineColor = style?.outlineColor
     const outlineWidth = style?.outlineWidth
+    const lineWidth = style?.lineWidth
+    const geometryKind = getLayerGeometryKind(layer)
+    let colorOpacity = 1
+    if (geometryKind !== "line") {
+      colorOpacity = typeof fillOpacity === "number" ? fillOpacity : 0.25
+    }
+    const color = fillColor
+      ? toRgba(fillColor, colorOpacity)
+      : (symbol as any)?.styleOptions?.color
+    const nextStyleOptions = geometryKind === "line"
+      ? {
+          ...(symbol as any)?.styleOptions,
+          color,
+          opacity: 1,
+          width: typeof lineWidth === "number" ? lineWidth : (symbol as any)?.styleOptions?.width
+        }
+      : {
+          ...(symbol as any)?.styleOptions,
+          color,
+          opacity: typeof fillOpacity === "number" ? fillOpacity : (symbol as any)?.styleOptions?.opacity,
+          outline: true,
+          outlineColor: outlineColor || (symbol as any)?.styleOptions?.outlineColor,
+          outlineWidth: typeof outlineWidth === "number" ? outlineWidth : (symbol as any)?.styleOptions?.outlineWidth
+        }
     const nextSymbol = {
       ...symbol,
-      styleOptions: {
-        ...(symbol as any)?.styleOptions,
-        color: fillColor ? toRgba(fillColor, typeof fillOpacity === "number" ? fillOpacity : 0.25) : (symbol as any)?.styleOptions?.color,
-        outlineColor: outlineColor || (symbol as any)?.styleOptions?.outlineColor,
-        outlineWidth: typeof outlineWidth === "number" ? outlineWidth : (symbol as any)?.styleOptions?.outlineWidth
-      }
+      styleOptions: nextStyleOptions
     }
     try {
       layer.options.symbol = nextSymbol
     } catch {
     }
-    try {
-      layer?.reload?.()
-    } catch {
+    const applyGraphicStyle = (graphic: any) => {
+      if (!graphic) {
+        return
+      }
+      const graphicKind = geometryKindFromType(graphic?.type || graphic?.geometry?.type)
+      const effectiveKind = graphicKind === "unknown" ? geometryKind : graphicKind
+      const nextGraphicStyle = effectiveKind === "line"
+        ? {
+            color,
+            opacity: 1,
+            width: typeof lineWidth === "number" ? lineWidth : nextStyleOptions.width
+          }
+        : {
+            color,
+            opacity: typeof fillOpacity === "number" ? fillOpacity : undefined,
+            outline: true,
+            outlineColor: outlineColor || nextStyleOptions.outlineColor,
+            outlineWidth: typeof outlineWidth === "number" ? outlineWidth : nextStyleOptions.outlineWidth
+          }
+      try {
+        graphic?.setStyle?.(nextGraphicStyle)
+      } catch {
+      }
+      try {
+        graphic?.eachGraphic?.(applyGraphicStyle)
+      } catch {
+      }
     }
     try {
-      layer?.refresh?.()
+      layer?.eachGraphic?.(applyGraphicStyle)
     } catch {
     }
   })
@@ -1155,18 +1369,24 @@ function syncEditorsFromLayer(layer: any) {
       hue: Number.isFinite(hue) ? hue : 0
     }
 
+    captureInitialVectorStyle(layer)
     const savedVector = vectorStyleValue.value[id]
     const symbol = layer?.options?.symbol && typeof layer.options.symbol === "object" ? layer.options.symbol : null
     const styleOptions = symbol ? (symbol as any)?.styleOptions || {} : {}
     const fill = parseColorToHexAndAlpha(savedVector?.fillColor || styleOptions.color) || { hex: "#5cadff", alpha: 0.25 }
     const outline = parseColorToHexAndAlpha(savedVector?.outlineColor || styleOptions.outlineColor) || { hex: "#5cadff", alpha: 1 }
     const outlineWidth = savedVector?.outlineWidth ?? Number(styleOptions.outlineWidth ?? 2)
-    const fillOpacity = savedVector?.fillOpacity ?? fill.alpha
+    const lineWidth = savedVector?.lineWidth ?? Number(styleOptions.width ?? 2)
+    const geometryKind = getLayerGeometryKind(layer)
+    const fillOpacity = geometryKind === "line"
+      ? (opacityValue.value[id] ?? (Number.isFinite(Number(layer?.opacity)) ? Number(layer.opacity) : 1))
+      : (savedVector?.fillOpacity ?? (typeof styleOptions.opacity === "number" ? styleOptions.opacity : fill.alpha))
     vectorStyleEditor.value = {
       fillColor: fill.hex,
       fillOpacity: Number.isFinite(fillOpacity) ? Math.max(0, Math.min(1, Number(fillOpacity))) : 0.25,
       outlineColor: outline.hex,
-      outlineWidth: Number.isFinite(outlineWidth) ? outlineWidth : 2
+      outlineWidth: Number.isFinite(outlineWidth) ? outlineWidth : 2,
+      lineWidth: Number.isFinite(lineWidth) ? lineWidth : 2
     }
   } finally {
     syncingStyleEditor = false
@@ -1201,7 +1421,16 @@ function resetLayerStyle() {
     setLayerOption(layer, "hue", applied.hue)
   }
 
-  if (layer?.options?.symbol && typeof layer.options.symbol === "object") {
+  const geometryKind = getLayerGeometryKind(layer)
+  if (geometryKind === "line") {
+    captureInitialVectorStyle(layer)
+    vectorStyleValue.value[id] = {
+      ...(initialVectorStyleValue[id] || { fillColor: "#5cadff", lineWidth: 2 })
+    }
+    opacityValue.value[id] = 1
+    layer.opacity = 1
+    applyVectorStyleToLayers(id)
+  } else if (layer?.options?.symbol && typeof layer.options.symbol === "object") {
     const symbol = layer.options.symbol
     const nextSymbol = {
       ...symbol,
@@ -1222,7 +1451,9 @@ function resetLayerStyle() {
   syncEditorsFromLayer(layer)
   savePersistedState()
   applyRasterStyleToLayers()
-  applyVectorStyleToLayers()
+  if (geometryKind !== "line") {
+    applyVectorStyleToLayers(id)
+  }
   $message("已恢复默认样式", "success")
 }
 
@@ -1418,7 +1649,6 @@ watch(
 
 // 初始化树构件
 function initTree() {
-  const showIds = [] // 是显示状态的图层id集合
   const openIds = [] // 展开的树节点id集合（如果不想展开，对应图层配置open:false）
   const opacityMap: Record<string, number> = {} // 性能优化：批量收集透明度数据
   const basemapTreeIdSet = new Set<any>()
@@ -1439,6 +1669,8 @@ function initTree() {
 
       item.hasZIndex = layer.hasZIndex // 当前vue绑定使用的属性
       item.hasOpacity = layer.hasOpacity
+      captureInitialVectorStyle(layer)
+      normalizeLineIntrinsicOpacity(layer)
 
       const rawId = item.id
       const rawPid = item.pid
@@ -1456,10 +1688,6 @@ function initTree() {
       // 性能优化：先收集到临时对象，避免多次触发 Vue 响应式更新
       opacityMap[String(item.id)] = layer.opacity ?? 1
 
-      // 只有非底图图层才加入 showIds（底图不参与勾选状态管理）
-      if (item.show && !isBasemap) {
-        showIds.push(String(item.id))
-      }
       if (item.group && item.open !== false) {
         openIds.push(String(item.id))
       }
@@ -1481,14 +1709,15 @@ function initTree() {
 
   // 尝试恢复持久化状态
   const persisted = loadPersistedState()
-  if (persisted.checkedKeys && persisted.checkedKeys.length > 0) {
+  if (Array.isArray(persisted.checkedKeys)) {
     // 有持久化数据，恢复状态
     checkedKeys.value = persisted.checkedKeys
     // 应用显隐状态到图层
     applyCheckedToLayers(persisted.checkedKeys)
   } else {
     // 无持久化数据，使用默认状态
-    checkedKeys.value = showIds
+    checkedKeys.value = []
+    applyCheckedToLayers([])
   }
 
   if (persisted.expandedKeys) {
@@ -1510,7 +1739,9 @@ function initTree() {
 
   // 应用透明度状态
   if (persisted.opacityValues) {
-    opacityValue.value = persisted.opacityValues
+    if (Object.keys(persisted.opacityValues).length > 0) {
+      opacityValue.value = persisted.opacityValues
+    }
     applyOpacityToLayers()
   }
   fillMissingCheckedLayerOpacity(new Set(Object.keys(opacityMap).map(normalizeKey)))
@@ -1637,7 +1868,14 @@ function processCheckedChange(keys: string[], e: any) {
 const opcityChange = (node: any, value: string | number) => {
   const layer = mapWork.getLayerById(node.id)
   if (layer) {
-    layer.opacity = value
+    const opacity = Math.max(0, Math.min(1, Number(value)))
+    const id = String(node.id || "")
+    const nextOpacity = Number.isFinite(opacity) ? opacity : 1
+    layer.opacity = nextOpacity
+    opacityValue.value[id] = nextOpacity
+    if (id === String(inspectedLayerId.value || "") && getLayerGeometryKind(layer) === "line") {
+      vectorStyleEditor.value.fillOpacity = nextOpacity
+    }
   }
 }
 

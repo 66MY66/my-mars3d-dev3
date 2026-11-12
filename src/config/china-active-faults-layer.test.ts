@@ -29,10 +29,13 @@ describe("China active faults layer", () => {
   })
 
   it("keeps the retired seismic demo branches hidden", () => {
-    const visibleNames = new Set(removeRetiredLayers(config.layers || []).map((item: any) => item?.name))
+    const visibleLayers = removeRetiredLayers(config.layers || [])
+    const visibleNames = new Set(visibleLayers.map((item: any) => item?.name))
+    const visibleIds = new Set(visibleLayers.map((item: any) => item?.id))
 
     expect(visibleNames.has("地震中短期宏观异常检测")).toBe(false)
     expect(visibleNames.has("地震区域风险监测")).toBe(false)
-    expect(visibleNames.has("地震灾害评估")).toBe(false)
+    expect(visibleIds.has(80)).toBe(false)
+    expect(visibleIds.has(103)).toBe(true)
   })
 })

@@ -20,10 +20,10 @@ describe("Jiuzhaigou 2017 intensity-zone layer", () => {
         type: "polygon",
         styleField: "intensity",
         styleFieldOptions: {
-          "6": { color: "#ffd2da" },
-          "7": { color: "#ffbebe" },
-          "8": { color: "#ff7f7f" },
-          "9": { color: "#c82828" }
+          6: { color: "#ffd2da" },
+          7: { color: "#ffbebe" },
+          8: { color: "#ff7f7f" },
+          9: { color: "#c82828" }
         }
       },
       show: true,

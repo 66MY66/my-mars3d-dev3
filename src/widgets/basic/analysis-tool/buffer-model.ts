@@ -9,6 +9,64 @@ export type BufferModelInput = {
   enabledRingIndexes: number[]
 }
 
+export type BufferRangeRow = {
+  sourceIndex: number
+  start: number
+  end: number
+  label: string
+}
+
+export type BufferInputState = {
+  valid: boolean
+  message: string
+  selectedDistances: number[]
+  ranges: BufferRangeRow[]
+}
+
+function formatInputDistance(value: number): string {
+  return Number(Number(value).toFixed(3)).toLocaleString()
+}
+
+export function getBufferInputState(input: BufferModelInput): BufferInputState {
+  if (input.mode === "single") {
+    const distance = Number(input.distance)
+    if (!Number.isFinite(distance) || distance <= 0) {
+      return { valid: false, message: "环半径必须大于 0", selectedDistances: [], ranges: [] }
+    }
+    const label = `0–${formatInputDistance(distance)} ${input.unit}`
+    return {
+      valid: true,
+      message: `将生成 ${label} 的单环缓冲区`,
+      selectedDistances: [distance],
+      ranges: [{ sourceIndex: 0, start: 0, end: distance, label }]
+    }
+  }
+
+  const selectedDistances = input.enabledRingIndexes.map((index) => Number(input.ringDistances[index]))
+  if (selectedDistances.length === 0) {
+    return { valid: false, message: "请至少启用一个多环距离", selectedDistances, ranges: [] }
+  }
+  if (selectedDistances.some((distance) => !Number.isFinite(distance) || distance <= 0)) {
+    return { valid: false, message: "已启用的多环距离必须大于 0", selectedDistances, ranges: [] }
+  }
+  if (new Set(selectedDistances).size !== selectedDistances.length) {
+    return { valid: false, message: "已启用的多环距离不能重复", selectedDistances, ranges: [] }
+  }
+  if (selectedDistances.some((distance, index) => index > 0 && distance <= selectedDistances[index - 1])) {
+    return { valid: false, message: "多环距离需要由近到远递增", selectedDistances, ranges: [] }
+  }
+  const ranges = selectedDistances.map((distance, index) => {
+    const start = index === 0 ? 0 : selectedDistances[index - 1]
+    return { sourceIndex: input.enabledRingIndexes[index], start, end: distance, label: `${formatInputDistance(start)}–${formatInputDistance(distance)} ${input.unit}` }
+  })
+  return {
+    valid: true,
+    message: `将生成 ${ranges.length} 个互不重叠的距离环带`,
+    selectedDistances,
+    ranges
+  }
+}
+
 export function convertDistanceValue(value: number, from: BufferDistanceUnit, to: BufferDistanceUnit): number {
   const distance = Number(value)
   if (!Number.isFinite(distance) || from === to) {

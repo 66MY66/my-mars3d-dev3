@@ -5,7 +5,7 @@ export type QualityMode = "auto" | Quality
 export type EffectKind = "columns" | "heat" | "trajectory" | "scan" | "extrusion"
 export type DisplayPoint = { lon: number; lat: number; value: number; color: string; label: string; band: string; time?: number; track?: string }
 export type DisplayPolygon = { rings: number[][][]; value: number; color: string; label: string; band: string; category?: string }
-export type LegendEntry = { label: string; color: string }
+export type LegendEntry = { label: string; color: string; radius?: number; shape?: "point" | "line" | "area"; value?: number }
 export type EffectSettings = {
   enabled: boolean; quality: QualityMode; effects: EffectKind[]; opacity: number
   lighting: boolean; shadows: boolean; blend: "overlay" | "replace"

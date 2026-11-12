@@ -16,6 +16,7 @@ import {
   getPolygonVertices,
   getCircleExtremes
 } from "./context-detector"
+import { startDrawShapeSession } from "./draw-shape-session"
 
 const Cesium = mars3d.Cesium
 const { downloadFile } = mars3d.Util
@@ -656,6 +657,11 @@ ${vertices.map((v) => `  ${v.lng.toFixed(6)}, ${v.lat.toFixed(6)}`).join("\n")}`
     })
   }
 
+  /** 绘制形：两次单击成线，再从线上拉出一侧或两侧的点 */
+  const handleDrawShape = () => {
+    startDrawShapeSession(map, onToast)
+  }
+
   /** 绘制矩形 */
   const handleDrawRectangle = () => {
     map.graphicLayer.startDraw({
@@ -874,6 +880,15 @@ ${vertices.map((v) => `  ${v.lng.toFixed(6)}, ${v.lat.toFixed(6)}`).join("\n")}`
 
   /** 编辑 */
   const handleEdit = (e: any) => {
+    const baseline = e.graphic?.attr?.drawShapeBaseline
+    if (baseline?.a && baseline?.b) {
+      startDrawShapeSession(map, onToast, {
+        graphic: e.graphic,
+        baseline: [baseline.a, baseline.b],
+        pulls: Array.isArray(e.graphic.attr?.drawShapePulls) ? e.graphic.attr.drawShapePulls : []
+      })
+      return
+    }
     if (e.graphic?.editing) {
       e.graphic.stopEditing()
     } else {
@@ -1456,6 +1471,7 @@ ${vertices.map((v) => `  ${v.lng.toFixed(6)}, ${v.lat.toFixed(6)}`).join("\n")}`
         { text: "绘制线", callback: handleDrawLine },
         { text: "绘制面", callback: handleDrawPolygon },
         { text: "绘制矩形", callback: handleDrawRectangle },
+        { text: "绘制形", callback: handleDrawShape },
         { text: "添加文字注记", callback: handleAddLabel }
       ]
     },

@@ -1,5 +1,4 @@
 import * as mars3d from "mars3d"
-const Cesium = mars3d.Cesium
 
 /**
  * 进入时创建对象，离开时销毁对象

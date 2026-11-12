@@ -1,10 +1,27 @@
-import { distance, point, pointOnFeature } from "@turf/turf"
+import { pointOnFeature } from "@turf/turf"
 import type { Feature, Position } from "geojson"
 import { compositionSymbolImage } from "./composition-symbols"
 import { dbtSymbolDefinitions, type DbtSymbolKind } from "./dbt116-symbols"
-import { dbtTitle, dbtFeatureSymbol, dbtScopedLayers, inspectDbtDocument, intensityLabel, intensityThreshold, standardBounds, type DbtBounds, type DbtDocument, type DbtLayer, type DbtTemplateId } from "./dbt116-standard"
+import { dbtTitle, dbtFeatureSymbol, dbtScopedLayers, inspectDbtDocument, intensityLabel, intensityThreshold, standardBounds, dbtDrawingBounds, type DbtBounds, type DbtDocument, type DbtLayer, type DbtTemplateId } from "./dbt116-standard"
 import { dbtMapCode, dbtStatistics, fitDbtBounds, intensityBands } from "./dbt-cartography-rules"
-import { drawDbtDraft, type DbtMapPreview } from "./dbt-draft-preview"
+import { layerEventParameters } from "./backend-event-parameters"
+import { drawDbtDraft, type DbtMapPreview, type DbtCatalogPlate } from "./dbt-draft-preview"
+import { styleSocioeconomicLayer } from "./socioeconomic-style"
+import { populationColor, populationDensity, populationLegend } from "./population-grid"
+import { layoutDbtInformation } from "./dbt-information-layout"
+import { annotationIssueSummary } from "./cartography-release-checks"
+import { layerCoverageGaps, needsCoverageCheck } from "./cartography-coverage"
+import { referenceMapFrame } from "./cartography-map-frame"
+import { drawCartographyText, measureCartographyText } from "./cartography-text"
+import { remoteReferenceStyle } from "./remote-reference-style"
+import { cartographyScale } from "./cartography-scale"
+import { referenceGridStyle } from "./source-reference-grid"
+import { sortedCartographyLayers } from "./cartography-layer-order"
+import { cartographyLabel, placeCartographyLabels, type LabelCandidate } from "./cartography-labels"
+import { vectorPaint, strokeCartographyLine, type VectorPaint } from "./cartography-vector-style"
+import { uniqueLegendRows } from "./cartography-legend"
+import { replayExpression, type ExpressionPresentation } from "./expression-presentation"
+import { layerStyleDocument } from "./layer-style-options"
 
 export const DBT_PAGE = { width: 1680, height: 1188, millimeters: [420, 297] as const, map: { x: 88, y: 196, w: 1076, h: 802 } }
 const symbols = new Map<DbtSymbolKind, Promise<HTMLImageElement>>()
@@ -21,7 +38,8 @@ function symbolImage(kind: DbtSymbolKind) {
 export function fittedDbtBounds(bounds: DbtBounds): DbtBounds {
   return fitDbtBounds(bounds)
 }
-export async function renderDbtMap(canvas: HTMLCanvasElement, doc: DbtDocument | null, id: DbtTemplateId, options: { dpi?: number; draft?: boolean; layoutOnly?: boolean; mapPreview?: DbtMapPreview | null } = {}) {
+export async function renderDbtMap(canvas: HTMLCanvasElement, doc: DbtDocument | null, id: DbtTemplateId, options: { dpi?: number; draft?: boolean; layoutOnly?: boolean; mapPreview?: DbtMapPreview | null; catalogPlate?: DbtCatalogPlate; onProgress?: (stage: string) => void } = {}) {
+  options.onProgress?.("正在准备地图版面")
   const dpi = options.dpi || 0
   canvas.width = dpi ? Math.round(420 / 25.4 * dpi) : DBT_PAGE.width
   canvas.height = dpi ? Math.round(297 / 25.4 * dpi) : DBT_PAGE.height
@@ -29,37 +47,49 @@ export async function renderDbtMap(canvas: HTMLCanvasElement, doc: DbtDocument |
   ctx.scale(canvas.width / DBT_PAGE.width, canvas.height / DBT_PAGE.height)
   ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, DBT_PAGE.width, DBT_PAGE.height)
   const issues: string[] = []
-  const text = (value: string, x: number, y: number, w: number, h: number, size = 22, bold = false, center = false, halo = false) => {
-    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip()
-    ctx.font = `${bold ? "bold " : ""}${size}px "Microsoft YaHei", sans-serif`; ctx.fillStyle = "#171717"; ctx.textBaseline = "top"; ctx.textAlign = center ? "center" : "left"
-    let row = ""; let line = 0
-    const emit = () => {
-      if ((line + 1) * size * 1.5 > h) { issues.push(`文字超出版面：${value.slice(0, 30)}`); return }
-      if (halo) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.strokeText(row, center ? x + w / 2 : x, y + line * size * 1.5) }
-      ctx.fillText(row, center ? x + w / 2 : x, y + line * size * 1.5); line++
-    }
-    for (const character of value) {
-      if (character === "\n") { emit(); row = ""; continue }
-      if (row && ctx.measureText(row + character).width > w) { emit(); row = "" }
-      row += character
-    }
-    if (row) { emit() }; ctx.restore()
+  const text = (value: string, x: number, y: number, w: number, h: number, size = 22, bold = false, center = false, halo = false, ink?: string) => {
+    const layout = measureCartographyText(ctx, value, w, h, size, bold, Math.min(size, Math.max(12, Math.floor(size * 0.75))))
+    if (!layout.fits) { throw new Error(`文字内容超出版面，请调整图幅或文字长度：${value.slice(0, 40)}`) }
+    drawCartographyText(ctx, layout, x, y, w, h, bold, center, halo, ink)
   }
-  const bounds = doc && standardBounds(doc, id)
+  const normativeBounds = doc && standardBounds(doc, id)
+  const bounds = doc && (options.draft === false ? normativeBounds : dbtDrawingBounds(doc, id))
+  const dataExtent = !!bounds && !normativeBounds && doc?.usage !== "reference"
   if (!bounds || options.layoutOnly) {
-    await drawDbtDraft(ctx, doc, id, options.mapPreview)
+    await drawDbtDraft(ctx, doc, id, options.mapPreview, options.catalogPlate)
     return { bounds: null, issues: ["当前为底图草稿；正式出图仍需有效震情、快速评估烈度面及规范制图范围"], statistics: [], bands: [], legendCount: 0, legendY: 895, width: canvas.width, height: canvas.height }
   }
-  const map = DBT_PAGE.map
+  const map = doc?.usage === "reference" ? referenceMapFrame(bounds, DBT_PAGE.map, "top") : DBT_PAGE.map
+  if (map.w < 260 || map.h < 220) { throw new Error("当前选区长宽比无法在 A3 图件区清晰排布，请调整范围或分幅；未拉伸地图") }
   const project = (p: Position) => [map.x + (p[0] - bounds.west) / (bounds.east - bounds.west) * map.w, map.y + (bounds.north - p[1]) / (bounds.north - bounds.south) * map.h]
-  text(doc ? dbtTitle(doc, id) : "[发震日期] [震中地名] [震级]级地震专题图", 60, 38, 1560, 110, 36, true, true)
+  const title = dataExtent && !doc?.event.time ? "人口栅格数据预览 · 正式震情与规范范围待补齐" : dbtTitle(doc!, id)
+  text(title, 60, 38, 1560, 110, 36, true, true)
   ctx.fillStyle = "#f7f9f9"; ctx.fillRect(map.x, map.y, map.w, map.h)
   const used = new Set<DbtSymbolKind>()
-  if (doc) { used.add("dbt-current-epicenter") }
-  const visible = doc ? dbtScopedLayers(doc, id) : []
+  const missingTile = document.createElement("canvas"); missingTile.width = 8; missingTile.height = 8
+  const missingContext = missingTile.getContext("2d")!; missingContext.fillStyle = "#d9dee5"; missingContext.fillRect(0, 0, 8, 8)
+  missingContext.strokeStyle = "#8b969d"; missingContext.lineWidth = 1; missingContext.beginPath(); missingContext.moveTo(0, 8); missingContext.lineTo(8, 0); missingContext.stroke()
+  const missingPattern = ctx.createPattern(missingTile, "repeat")!
+  const validEvent = !!doc?.event.time && !!doc.event.place && doc.event.magnitude > 0
+  const hasEpicenter = validEvent && doc!.event.longitude >= bounds.west && doc!.event.longitude <= bounds.east && doc!.event.latitude >= bounds.south && doc!.event.latitude <= bounds.north
+  if (validEvent && !hasEpicenter) { issues.push("真实震中位于当前参考选区外，未在图廓外绘制震中；请核对事件与制图范围") }
+  if (hasEpicenter) { used.add("dbt-current-epicenter") }
+  const visible = doc
+? dbtScopedLayers(doc, id).map(layer => {
+    const expression = layer.onlineSource?.rendering?.parameters?.expression as ExpressionPresentation | undefined
+    if (expression) {
+      const scene = replayExpression(layerStyleDocument(layer), bounds, expression)
+      return { ...layer, data: { type: "FeatureCollection" as const, features: scene.features }, legend: scene.legend }
+    }
+    if (layer.sourceGrid) { return { ...layer, legend: referenceGridStyle(layer.sourceGrid).legend } }
+    return layer.grid ? { ...layer, legend: populationLegend() } : styleSocioeconomicLayer(layer)
+  })
+: []
   visible.forEach(layer => layer.data.features.forEach(feature => { const symbol = dbtFeatureSymbol(layer, feature); if (symbol) { used.add(symbol) } }))
   const images = new Map<DbtSymbolKind, HTMLImageElement>()
+  options.onProgress?.("正在载入图例符号")
   for (const kind of used) { images.set(kind, await symbolImage(kind)) }
+  options.onProgress?.("正在绘制专题图层")
   const drawSymbol = (kind: DbtSymbolKind, x: number, y: number, size = 24) => {
     const image = images.get(kind)
     if (image) { const ratio = Math.min(size / image.naturalWidth, size / image.naturalHeight); const width = image.naturalWidth * ratio; const height = image.naturalHeight * ratio; ctx.drawImage(image, x - width / 2, y - height / 2, width, height) }
@@ -72,6 +102,7 @@ export async function renderDbtMap(canvas: HTMLCanvasElement, doc: DbtDocument |
   const segmentKey = (a: Position, b: Position) => [a.slice(0, 2).map(v => v.toFixed(9)).join(","), b.slice(0, 2).map(v => v.toFixed(9)).join(",")].sort().join(";")
   const boundaryWinners = new Map<string, number>()
   const boundaryPaths = (feature: Feature): Position[][] => {
+    if (Array.isArray(feature.properties?.cartographyOutline)) { return feature.properties.cartographyOutline }
     const g = feature.geometry
     if (g.type === "LineString") { return [g.coordinates] }
     if (g.type === "MultiLineString" || g.type === "Polygon") { return g.coordinates }
@@ -84,98 +115,117 @@ export async function renderDbtMap(canvas: HTMLCanvasElement, doc: DbtDocument |
     }
   }
   const drawnBoundaries = new Set<string>()
-  const lineStyle = (symbol?: DbtSymbolKind) => {
-    ctx.setLineDash([]); ctx.lineWidth = 1.4; ctx.strokeStyle = "#454545"
-    if (symbol === "dbt-fault" || symbol === "dbt-isoseismal" || symbol === "dbt-pga") { ctx.strokeStyle = "#ee1c25"; ctx.lineWidth = 2.5 }
-    if (["dbt-river", "dbt-lake", "dbt-reservoir"].includes(symbol || "")) { ctx.strokeStyle = "#2193ce"; ctx.lineWidth = 2 }
-    if (symbol === "dbt-rescue-area") { ctx.strokeStyle = "#c2175b"; ctx.lineWidth = 2 }
-    const dashes: Partial<Record<DbtSymbolKind, number[]>> = { "dbt-national-boundary": [12, 3, 2, 3], "dbt-province-boundary": [18, 4, 2, 4, 2, 4], "dbt-city-boundary": [18, 6, 18, 6, 2, 6], "dbt-county-boundary": [14, 4, 2, 4], "dbt-town-boundary": [10, 3, 2, 3, 2, 3], "dbt-town-road": [6, 3], "dbt-village-road": [3, 3] }
-    ctx.setLineDash(dashes[symbol!] || [])
-  }
-  const strokeLine = (kind?: DbtSymbolKind) => {
-    if (kind && ["dbt-railway", "dbt-expressway", "dbt-national-road", "dbt-province-road"].includes(kind)) {
-      ctx.lineWidth = kind === "dbt-expressway" ? 5 : 4; ctx.stroke()
-      ctx.lineWidth = 2; ctx.strokeStyle = kind === "dbt-expressway" ? "#979da0" : "#fff"
-      if (kind === "dbt-railway") { ctx.setLineDash([12, 12]) }; ctx.stroke()
-    } else { ctx.stroke() }
-  }
-  const occupied: Array<{ x: number; y: number; w: number; h: number }> = [{ x: map.x + 20, y: map.y + 15, w: 65, h: 100 }]
-  if (doc) { const [x, y] = project([doc.event.longitude, doc.event.latitude]); occupied.push({ x: x - 20, y: y - 30, w: 322, h: 74 }) }
+  const labelQueue = new Map<string, LabelCandidate & { size: number; bold: boolean; opacity: number; color?: string }>()
+  const featureKeys = new WeakMap<Feature, string>()
+  visible.forEach(layer => layer.data.features.forEach((feature, index) => featureKeys.set(feature, `${layer.id}:${feature.id ?? index}`)))
+  const symbolObstacles: Array<{ x: number; y: number; w: number; h: number; symbol: boolean }> = []
   const label = (layer: DbtLayer, feature: Feature, anchor: Position) => {
-    let value = String(feature.properties?.label || "")
-    if (layer.role === "intensity") { value = intensityLabel(Number(feature.properties?.intensity)) }
-    if (layer.role === "pga") { value = `${feature.properties?.pga ?? "?"} gₙ · ${feature.properties?.designIntensity ?? "?"}度` }
-    if (layer.role === "distance" && feature.geometry.type === "LineString") { const coordinates = feature.geometry.coordinates; value = `${value} ${distance(point(coordinates[0]), point(coordinates[coordinates.length - 1])).toFixed(1)} km` }
-    if (["history", "aftershock"].includes(layer.role)) { value = `${feature.properties?.occurredAt || ""} ${feature.properties?.magnitude || "?"}级 ${value}` }
-    if (!value) { return }
+    const entry = cartographyLabel(layer, feature, anchor, `${featureKeys.get(feature) || layer.id}:${anchor.slice(0, 2).join(",")}`, doc?.event)
+    if (!entry) { return }
     const [x, y] = project(anchor)
-    const kind = dbtFeatureSymbol(layer, feature)
-    const sizes: Partial<Record<DbtSymbolKind, number>> = { "dbt-capital": 25, "dbt-province-seat": 23, "dbt-city-seat": 21, "dbt-county-seat": 19, "dbt-town-seat": 17, "dbt-village": 15 }
-    const size = sizes[kind!] || 18
-    if (x < map.x || x > map.x + map.w || y < map.y || y > map.y + map.h) { return }
-    ctx.font = `${layer.role === "intensity" ? "bold " : ""}${size}px "Microsoft YaHei", sans-serif`
-    const w = Math.min(220, ctx.measureText(value).width + 8); const h = Math.ceil(ctx.measureText(value).width / w) * size * 1.5
-    const positions = [[15, -12], [15, 14], [-w - 15, -12], [-w - 15, 14], [-w / 2, -h - 16], [-w / 2, 25]]
-    for (const radius of [45, 75, 105]) { positions.push([-w / 2, -h - radius], [-w / 2, radius], [radius, -h / 2], [-w - radius, -h / 2], [radius, -h - radius], [-w - radius, radius]) }
-    const candidate = positions.map(([dx, dy]) => ({ x: x + dx, y: y + dy, w, h })).find(rect => rect.x >= map.x + 3 && rect.y >= map.y + 3 && rect.x + w <= map.x + map.w - 3 && rect.y + h <= map.y + map.h - 3 && !occupied.some(other => rect.x < other.x + other.w + 4 && rect.x + w + 4 > other.x && rect.y < other.y + other.h + 4 && rect.y + h + 4 > other.y))
-    if (!candidate) { issues.push(`注记拥挤需调整数据密度或分幅：${value}`); return }
-    occupied.push(candidate)
-    const edgeX = Math.max(candidate.x, Math.min(x, candidate.x + w)); const edgeY = Math.max(candidate.y, Math.min(y, candidate.y + h))
-    if (Math.hypot(x - edgeX, y - edgeY) > 30) { ctx.save(); ctx.setLineDash([]); ctx.strokeStyle = "#65716c"; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(edgeX, edgeY); ctx.stroke(); ctx.restore() }
-    text(value, candidate.x, candidate.y, w, h + 1, size, layer.role === "intensity", false, true)
+    ctx.font = `${entry.bold ? "bold " : ""}${entry.size}px "Microsoft YaHei", sans-serif`
+    const w = Math.min(layer.role === "event" ? 280 : 220, ctx.measureText(entry.text).width + 12)
+    const layout = measureCartographyText(ctx, entry.text, w, map.h - 6, entry.size, entry.bold)
+    labelQueue.set(entry.id, { ...entry, x, y, w, h: layout.height, opacity: layer.opacity ?? 1 })
   }
   const drawFeature = (layer: DbtLayer, feature: Feature) => {
+    if (layer.onlineSource?.rendering?.parameters?.expression) {
+      const p = feature.properties!; const geometry = feature.geometry
+      ctx.save(); ctx.globalAlpha *= p.opacity ?? 0.84; ctx.fillStyle = p.color; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 0.7; ctx.setLineDash([])
+      if (geometry.type === "Point" && p.pixelSize > 0) { const [x, y] = project(geometry.coordinates); ctx.beginPath(); ctx.arc(x, y, p.pixelSize / 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke() }
+      if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") { for (const rings of geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates) { ctx.beginPath(); rings.forEach(ring => path(ring, true)); ctx.fill("evenodd"); ctx.stroke() } }
+      if (geometry.type === "LineString" || geometry.type === "MultiLineString") { ctx.strokeStyle = p.color; ctx.lineWidth = p.width || 2; for (const line of geometry.type === "LineString" ? [geometry.coordinates] : geometry.coordinates) { ctx.beginPath(); path(line); ctx.stroke() } }
+      ctx.restore(); return
+    }
     const geometry = feature.geometry; const kind = dbtFeatureSymbol(layer, feature)
-    ctx.save(); lineStyle(kind)
+    const paint: VectorPaint = { ...vectorPaint(kind, feature.properties?.cartographyFallback || layer.role) }
+    const reference = remoteReferenceStyle(layer.onlineSource)
+    if (reference) { paint.color = reference.outlineColor } else if (!kind && !feature.properties?.cartographySchema && /^#[\da-f]{6}$/i.test(feature.properties?.color || layer.color || "")) { paint.color = feature.properties?.color || layer.color! }
+    ctx.save(); ctx.setLineDash([]); ctx.strokeStyle = paint.color; ctx.lineWidth = paint.width
     if (layer.role === "boundary") {
       const rank = boundaryOrder.indexOf(kind || "")
       for (const line of boundaryPaths(feature)) {
+        let run: Position[] = []
+        const flush = () => { if (run.length > 1) { ctx.beginPath(); path(run); strokeCartographyLine(ctx, paint) }; run = [] }
         for (let i = 1; i < line.length; i++) {
           const key = segmentKey(line[i - 1], line[i])
-          if (drawnBoundaries.has(key) || boundaryWinners.get(key) !== (rank < 0 ? 99 : rank)) { continue }
-          drawnBoundaries.add(key); ctx.beginPath(); path([line[i - 1], line[i]]); ctx.stroke()
+          if (drawnBoundaries.has(key) || boundaryWinners.get(key) !== (rank < 0 ? 99 : rank)) { flush(); continue }
+          drawnBoundaries.add(key)
+          if (!run.length) { run.push(line[i - 1]) }; run.push(line[i])
         }
+        flush()
       }
       label(layer, feature, pointOnFeature(feature).geometry.coordinates); ctx.restore(); return
     }
-    const rawColor = feature.properties?.color || layer.color
+    const rawColor = reference?.color || feature.properties?.color || layer.color
     const defaultColor = layer.role === "water" ? "#c5e9f4" : "#dce6e8"
     const color = /^#[\da-f]{6}$/i.test(rawColor || "") ? rawColor : defaultColor
     if (geometry.type === "Point" || geometry.type === "MultiPoint") {
       const positions = geometry.type === "Point" ? [geometry.coordinates] : geometry.coordinates
-      for (const p of positions) { const [x, y] = project(p); if (kind) { drawSymbol(kind, x, y, ["history", "aftershock"].includes(layer.role) ? Math.max(12, Math.min(38, Number(feature.properties?.magnitude) * 5)) : 24) }; label(layer, feature, p) }
+      for (const p of positions) {
+        const [x, y] = project(p)
+        const radius = Math.max(12, Number(feature.properties?.thematicRadius) || 0)
+        if (kind || ["population", "economy"].includes(layer.role)) { symbolObstacles.push({ x: x - radius, y: y - radius, w: radius * 2, h: radius * 2, symbol: true }) }
+        if (kind) { drawSymbol(kind, x, y, ["history", "aftershock"].includes(layer.role) ? Math.max(12, Math.min(38, Number(feature.properties?.magnitude) * 5)) : 24) } else if (["population", "economy"].includes(layer.role)) { ctx.beginPath(); ctx.arc(x, y, feature.properties?.thematicNoData ? 4 : feature.properties!.thematicRadius, 0, Math.PI * 2); ctx.fillStyle = feature.properties?.thematicNoData ? missingPattern : color; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2; ctx.stroke() }
+        label(layer, feature, p)
+      }
     } else if (geometry.type === "LineString" || geometry.type === "MultiLineString") {
       const lines = geometry.type === "LineString" ? [geometry.coordinates] : geometry.coordinates
       for (const line of lines) {
         ctx.beginPath(); path(line)
-        strokeLine(kind)
+        strokeCartographyLine(ctx, paint, line.map(project))
         label(layer, feature, line[Math.floor(line.length / 2)])
       }
     } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
       const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates
+      const proportional = ["population", "economy"].includes(layer.role) && feature.properties?.thematicMode === "total"
       for (const polygon of polygons) {
         ctx.beginPath(); polygon.forEach(ring => path(ring, true))
         // Administrative areas and parameter envelopes are line layers, not opaque background fills.
-        if (!["intensity", "boundary", "pga", "rescue-area"].includes(layer.role)) { ctx.fillStyle = color; ctx.fill("evenodd") }
-        ctx.stroke()
+        const backgroundPresentation = (layer.data as any)?.metadata?.backendResultPresentation
+        const referenceOutline = ["thermal-background", "insar-background"].includes(backgroundPresentation?.kind) && backgroundPresentation.display === "grid" && layer.onlineSource?.rendering?.parameters?.resultDisplay === "grid"
+        if (feature.properties?.thematicNoData) { ctx.fillStyle = missingPattern; ctx.fill("evenodd") } else if (!referenceOutline && !proportional && !["intensity", "boundary", "pga", "rescue-area"].includes(layer.role)) { ctx.fillStyle = color; ctx.fill("evenodd") }
+        if (["population", "economy"].includes(layer.role)) { ctx.strokeStyle = proportional ? "#a1adb1" : "rgba(255,255,255,0.45)"; ctx.lineWidth = 0.5 }
+        if (Array.isArray(feature.properties?.cartographyOutline)) {
+          ctx.beginPath(); feature.properties.cartographyOutline.forEach((line: Position[]) => path(line)); strokeCartographyLine(ctx, paint)
+        } else { strokeCartographyLine(ctx, paint) }
         if (kind === "dbt-rescue-area") {
           ctx.save(); ctx.clip("evenodd"); ctx.strokeStyle = "#ee1c25"; ctx.lineWidth = 1
           for (let x = map.x - map.h; x < map.x + map.w; x += 12) { ctx.beginPath(); ctx.moveTo(x, map.y + map.h); ctx.lineTo(x + map.h, map.y); ctx.stroke() }; ctx.restore()
         }
-        label(layer, feature, layer.role === "intensity" ? polygon[0][Math.floor(polygon[0].length / 2)] : pointOnFeature({ ...feature, geometry: { type: "Polygon", coordinates: polygon } }).geometry.coordinates)
+        if (!proportional) { label(layer, feature, layer.role === "intensity" ? polygon[0][Math.floor(polygon[0].length / 2)] : pointOnFeature({ ...feature, geometry: { type: "Polygon", coordinates: polygon } }).geometry.coordinates) }
+      }
+      if (proportional && !feature.properties?.thematicNoData) {
+        const anchor = pointOnFeature(feature).geometry.coordinates; const [x, y] = project(anchor)
+        ctx.beginPath(); ctx.arc(x, y, feature.properties!.thematicRadius, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2; ctx.stroke()
+        label(layer, feature, anchor)
       }
     }
     ctx.restore()
   }
   ctx.save(); ctx.beginPath(); ctx.rect(map.x, map.y, map.w, map.h); ctx.clip()
-  const ranks: Record<string, number> = { dem: -5, imagery: -4, water: -3, boundary: -2, transport: -1, settlement: 1, fault: 5, intensity: 6 }
-  const layers = [...visible].sort((a, b) => (ranks[a.role] || 0) - (ranks[b.role] || 0))
+  const layers = sortedCartographyLayers(visible, id)
   for (const layer of layers) {
+    ctx.save(); ctx.globalAlpha *= layer.opacity ?? 1
+    if (layer.grid || layer.sourceGrid) {
+      const grid = (layer.grid || layer.sourceGrid)!
+      const rawStyle = layer.sourceGrid && referenceGridStyle(layer.sourceGrid)
+      const raster = document.createElement("canvas"); raster.width = grid.width; raster.height = grid.height
+      const buffer = raster.getContext("2d")!.createImageData(grid.width, grid.height)
+      for (let i = 0; i < grid.values.length; i++) {
+        const color = rawStyle ? rawStyle.color(grid.values[i]) : populationColor(populationDensity(layer.grid!, i))
+        const offset = i * 4
+        buffer.data[offset] = parseInt(color.slice(1, 3), 16); buffer.data[offset + 1] = parseInt(color.slice(3, 5), 16); buffer.data[offset + 2] = parseInt(color.slice(5, 7), 16); buffer.data[offset + 3] = 255
+      }
+      raster.getContext("2d")!.putImageData(buffer, 0, 0)
+      const [left, top] = project([grid.bounds.west, grid.bounds.north]); const [right, bottom] = project([grid.bounds.east, grid.bounds.south])
+      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(raster, left, top, right - left, bottom - top); ctx.restore()
+    }
     if (layer.raster) {
       const image = await new Promise<HTMLImageElement>((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error(`${layer.name} 栅格无法解码`)); img.src = layer.raster!.image })
       if (image.naturalWidth * image.naturalHeight > 40_000_000) { throw new Error(`${layer.name} 栅格超过 4000 万像素限制`) }
       const r = layer.raster.bounds; const [left, top] = project([r.west, r.north]); const [right, bottom] = project([r.east, r.south])
-      ctx.drawImage(image, left, top, right - left, bottom - top)
+      ctx.save(); if (id === "T30102000" && layer.role === "dem") { ctx.globalAlpha *= 0.2 }; ctx.drawImage(image, left, top, right - left, bottom - top); ctx.restore()
       if (dpi && (image.naturalWidth / (right - left) * 101.6 < dpi - 1 || image.naturalHeight / (bottom - top) * 101.6 < dpi - 1)) { issues.push(`${layer.name} 原始栅格在当前幅面不足 ${dpi} DPI，放大输出不能增加原始精度`) }
     }
     if (doc?.region.zone === "R3" && layer.role === "intensity") {
@@ -190,7 +240,30 @@ export async function renderDbtMap(canvas: HTMLCanvasElement, doc: DbtDocument |
       const originals = doc.layers.find(item => item.id === layer.id)?.data.features || []
       originals.filter(f => Number(f.properties?.intensity) >= intensityThreshold(doc, id)).forEach(f => drawFeature(layer, f))
       ctx.restore()
-    } else { layer.data.features.forEach(feature => drawFeature(layer, feature)) }
+    } else {
+      const features = [...layer.data.features]
+      if (["population", "economy"].includes(layer.role)) { features.sort((a, b) => (Number(b.properties?.thematicRadius) || 0) - (Number(a.properties?.thematicRadius) || 0)) }
+      features.forEach(feature => drawFeature(layer, feature))
+    }
+    ctx.restore()
+  }
+  const coverageObstacles: Array<{ x: number; y: number; w: number; h: number }> = []
+  const partialBase = doc?.reference && visible.find(layer => layer.onlineSource && needsCoverageCheck(layer) && ["boundary", "settlement", "water", "transport", "dem"].includes(layer.role) && layerCoverageGaps(layer, doc.reference!.bounds).length)
+  if (partialBase && doc?.reference) {
+    const gaps = layerCoverageGaps(partialBase, doc.reference.bounds)
+    ctx.save(); ctx.beginPath(); ctx.rect(map.x, map.y, map.w, map.h); ctx.clip()
+    for (const gap of gaps) {
+      const [x, y] = project([gap.west, gap.north]); const [right, bottom] = project([gap.east, gap.south])
+      coverageObstacles.push({ x, y, w: right - x, h: bottom - y })
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, right - x, bottom - y); ctx.clip()
+      ctx.fillStyle = "rgba(244,236,226,0.6)"; ctx.fillRect(x, y, right - x, bottom - y)
+      ctx.strokeStyle = "#bb9d7b"; ctx.lineWidth = 0.8; ctx.setLineDash([])
+      for (let at = x - (bottom - y); at < right; at += 24) { ctx.beginPath(); ctx.moveTo(at, bottom); ctx.lineTo(at + bottom - y, y); ctx.stroke() }
+      if (right - x > 240 && bottom - y > 70) { text("基础地理未覆盖 · 需补齐图幅", x + 8, y + (bottom - y) / 2 - 24, right - x - 16, 48, 22, true, true, true) }
+      ctx.restore()
+    }
+    ctx.restore()
+    if (gaps.length) { issues.push("基础地理数据未覆盖全部框选范围；斜线区为未交付区域，不代表不存在地物，需补齐图幅后正式出图") }
   }
   ctx.restore()
   const tick = (v: number) => `${v.toFixed(2)}°`
@@ -207,63 +280,119 @@ export async function renderDbtMap(canvas: HTMLCanvasElement, doc: DbtDocument |
   }
   ctx.strokeStyle = "#222"; ctx.lineWidth = 1.5; ctx.setLineDash([]); ctx.strokeRect(map.x, map.y, map.w, map.h); ctx.strokeRect(map.x - 32, map.y - 32, map.w + 64, map.h + 64)
   // The epicenter stays above the thematic layers and graticule (4.3).
-  if (doc) { const [x, y] = project([doc.event.longitude, doc.event.latitude]); drawSymbol("dbt-current-epicenter", x, y, 34); text(`${doc.event.place} ${doc.event.magnitude}级`, Math.max(map.x, Math.min(x + 22, map.x + map.w - 290)), Math.max(map.y, y - 28), 280, 70, 24, true, false, true) }
+  if (hasEpicenter) {
+    const anchor = [doc!.event.longitude, doc!.event.latitude]; const [x, y] = project(anchor)
+    drawSymbol("dbt-current-epicenter", x, y, 34)
+    const eventLabel = layerEventParameters(doc!.layers)?.name || `${doc!.event.place} ${doc!.event.magnitudeType}${doc!.event.magnitude}`
+    label({ id: "event-label", role: "event", data: { type: "FeatureCollection", features: [] } } as unknown as DbtLayer, { type: "Feature", geometry: { type: "Point", coordinates: anchor }, properties: { label: eventLabel } }, anchor)
+  }
+  const annotationLayout = placeCartographyLabels([...labelQueue.values()], { x: map.x, y: map.y, w: map.w, h: map.h }, [{ x: map.x + 20, y: map.y + 15, w: 65, h: 100 }, ...symbolObstacles, ...coverageObstacles])
+  ctx.save(); ctx.beginPath(); ctx.rect(map.x, map.y, map.w, map.h); ctx.clip()
+  for (const placement of annotationLayout.placed) {
+    const entry = labelQueue.get(placement.id)!; const box = placement.box
+    ctx.save(); ctx.globalAlpha = entry.opacity
+    if (placement.leader) { const [x, y, endX, endY] = placement.leader; ctx.setLineDash([]); ctx.strokeStyle = "#65716c"; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(endX, endY); ctx.stroke() }
+    text(entry.text, box.x, box.y, box.w, box.h, entry.size, entry.bold, false, true, entry.color); ctx.restore()
+  }
+  ctx.restore()
+  issues.push(...annotationIssueSummary(annotationLayout.skipped))
   // N is tied to the geographic-coordinate map, never to the underlying 3D camera.
   text("N", map.x + 25, map.y + 20, 44, 40, 26, true, true, true)
   ctx.beginPath(); ctx.moveTo(map.x + 47, map.y + 58); ctx.lineTo(map.x + 34, map.y + 105); ctx.lineTo(map.x + 47, map.y + 91); ctx.lineTo(map.x + 60, map.y + 105); ctx.closePath(); ctx.fillStyle = "#222"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.stroke()
-  text("内容说明", 1230, 181, 388, 45, 27, true)
-  const statistics = doc ? dbtStatistics(doc, id, visible) : []
-  const bands = id === "T30201000" ? intensityBands(visible) : []
+  options.onProgress?.("正在核对图例与统计")
+  const statistics = doc ? dbtStatistics(doc, id, visible, bounds) : []
+  const onlineAssessmentReference = doc?.usage === "reference" && visible.some(layer => layer.role === "intensity" && layer.onlineSource)
+  const bands = id === "T30201000" && !onlineAssessmentReference ? intensityBands(visible) : []
   const numeric = (value: number | null) => value === null ? "待核实" : Number(value.toFixed(1)).toLocaleString("zh-CN")
-  text(doc?.description || "[当前类别的内容说明]", 1230, 239, 388, statistics.length ? 165 : 360, 20)
-  let statY = 411
-  for (const stat of statistics.slice(0, 6)) { text(`${stat.label}：${numeric(stat.value)} ${stat.unit}`, 1230, statY, 388, 28, 17); statY += 27 }
-  if (statistics.length > 6) { issues.push("统计项目超过说明区容量，请分幅或精简至 6 项") }
-  if (bands.length) {
-    text("烈度 / 面积(km²) / 人口(人) / 密度(人/km²)", 1230, statY, 388, 24, 14, true); statY += 23
-    bands.forEach(band => { text(`${intensityLabel(band.intensity)}  ${numeric(band.areaKm2)} / ${numeric(band.population)} / ${numeric(band.population === null || !band.areaKm2 ? null : band.population / band.areaKm2)}`, 1230, statY, 388, 24, 14); statY += 22 })
-  }
-  const legendY = Math.max(654, statY + 15)
-  text("图例", 1230, legendY, 388, 40, 25, true)
-  type Entry = { kind?: DbtSymbolKind; color?: string; label: string; order: number }
+  type Entry = { kind?: DbtSymbolKind; color?: string; label: string; radius?: number; noData?: boolean; order: number; group?: string; shape?: string; styleKey?: string }
   const entries: Entry[] = [...used].map(kind => {
     const definition = dbtSymbolDefinitions[kind]
     return { kind, label: definition.shortLabel, order: ["point", "line", "area"].indexOf(definition.geometry) * 100 + (definition.family === "earthquake" ? 0 : 40) + Object.keys(dbtSymbolDefinitions).indexOf(kind) }
   })
   for (const layer of visible) {
-    const custom = layer.legend || (layer.data.features.some(f => /Polygon$/.test(f.geometry.type)) && !layer.data.features.some(f => dbtFeatureSymbol(layer, f)) ? [...new Map(layer.data.features.map(f => [f.properties?.color || layer.color || "#dce6e8", { label: String(f.properties?.label || layer.name), color: f.properties?.color || layer.color || "#dce6e8" }])).values()] : [])
-    for (const item of custom) { entries.push({ color: item.color, label: item.label, order: layer.raster ? 400 : 230 }) }
+    const reference = remoteReferenceStyle(layer.onlineSource)
+    let custom: Entry[] = []
+    if (reference) {
+      custom = [{ label: reference.label, color: reference.color, order: 0 }]
+    } else if (layer.legend) {
+      custom = layer.legend as unknown as Entry[]
+    } else if (layer.data.features.some(f => /Polygon$/.test(f.geometry.type)) && !layer.data.features.some(f => dbtFeatureSymbol(layer, f))) {
+      custom = [...new Map(layer.data.features.map(f => [String(f.properties?.color || layer.color || "#dce6e8"), { label: String(f.properties?.label || layer.name), color: String(f.properties?.color || layer.color || "#dce6e8"), order: 0 }])).values()] as Entry[]
+    }
+    let group: string | undefined
+    if (id === "T30102000" && ["population", "economy"].includes(layer.role)) {
+      group = `${layer.name} · ${layer.data.features[0]?.properties?.thematicMetric || "专题指标"}`
+      if (layer.sourceGrid) { group = "原始数值 · 分位数分级" } else if (layer.grid) { group = "人口密度（人/km²）" }
+    }
+    let order = 230
+    if (layer.raster || layer.grid || layer.sourceGrid) { order = layer.role === "dem" ? 400 : 350 }
+    for (const item of custom) {
+      if ("kind" in item && item.kind && used.has(item.kind as DbtSymbolKind)) { continue }
+      entries.push({ color: item.color, label: item.label, radius: "radius" in item ? item.radius as number : undefined, noData: "noData" in item ? item.noData as boolean : undefined, shape: "shape" in item ? item.shape as string : undefined, styleKey: "styleKey" in item ? item.styleKey as string : undefined, order, group })
+    }
     if (layer.role === "distance" && layer.data.features.length) { entries.push({ color: "#454545", label: "震中距连线", order: 105 }) }
-    if (layer.raster && !custom.length) { issues.push(`${layer.name} 栅格缺少图例`) }
+    if (layer.raster && layer.raster.rendering !== "imagery" && !custom.length) { issues.push(`${layer.name} 栅格缺少图例`) }
   }
-  entries.sort((a, b) => a.order - b.order)
-  const rows = Math.max(1, Math.floor((1028 - legendY - 45) / 28))
-  if (entries.length > rows * 2) { issues.push(`图例超过 ${rows * 2} 项，请分幅或精简专题要素`) }
-  entries.slice(0, rows * 2).forEach((entry, i) => {
-    const column = entries.length > rows ? Math.floor(i / rows) : 0
-    const x = 1230 + column * 195; const y = legendY + 45 + i % rows * 28
-    if (entry.kind && dbtSymbolDefinitions[entry.kind].geometry === "line") { ctx.save(); lineStyle(entry.kind); ctx.beginPath(); ctx.moveTo(x + 1, y + 11); ctx.lineTo(x + 25, y + 11); strokeLine(entry.kind); ctx.restore() } else if (entry.kind) { drawSymbol(entry.kind, x + 13, y + 11, 23) } else { ctx.fillStyle = entry.color!; ctx.fillRect(x + 1, y + 4, 24, 14); ctx.strokeStyle = "#68757b"; ctx.lineWidth = 0.6; ctx.strokeRect(x + 1, y + 4, 24, 14) }
-    text(entry.label, x + 32, y, entries.length > rows ? 158 : 345, 25, 15)
-  })
-  const km = distance(point([bounds.west, (bounds.north + bounds.south) / 2]), point([bounds.east, (bounds.north + bounds.south) / 2]))
-  const stepKm = Math.floor(km * 240 / map.w / 2 / 5) * 5
-  if (stepKm >= 5) {
-    const width = stepKm * 2 / km * map.w; const x = 90; const y = 1090
+  const statRows = statistics.map(stat => `${stat.label}：${numeric(stat.value)} ${stat.unit}`)
+  if (bands.length) {
+    statRows.push("烈度 / 面积(km²) / 人口(人) / 密度(人/km²)")
+    for (const band of bands) { statRows.push(`${intensityLabel(band.intensity)}  ${numeric(band.areaKm2)} / ${numeric(band.population)} / ${numeric(band.population === null || !band.areaKm2 ? null : band.population / band.areaKm2)}`) }
+  }
+  const measure = (value: string, width: number, size: number) => measureCartographyText(ctx, value, width, Infinity, size).height
+  const completeLegend = uniqueLegendRows(entries)
+  const information = layoutDbtInformation(doc?.description || "[当前类别的内容说明]", statRows, completeLegend, (value, width, height, size, bold) => measureCartographyText(ctx, value, width, height, size, bold))
+  const { legend, legendY } = information
+  text("内容说明", 1230, 181, 388, 45, 27, true)
+  drawCartographyText(ctx, information.description.layout, 1230, information.description.y, 388, information.description.layout.height)
+  for (const row of information.rows) { drawCartographyText(ctx, row.layout, 1230, row.y, 388, row.layout.height) }
+  text("图例", 1230, legendY, 388, 44, 25, true)
+  for (const heading of legend.headings) { text(heading.label, heading.x ?? 1230, heading.y, heading.width ?? 388, heading.height, legend.headingSize, true) }
+  for (const { entry, x, y, width, height } of legend.rows) {
+    const center = y + height / 2
+    const labelWidth = width
+    const labelHeight = measure(entry.label, labelWidth, legend.fontSize)
+    const labelY = y + Math.max(0, (height - labelHeight) / 2)
+    if (entry.radius !== undefined) { ctx.beginPath(); ctx.arc(x + 30, center, entry.radius, 0, Math.PI * 2); ctx.fillStyle = entry.color!; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.stroke(); text(entry.label, x + 70, labelY, labelWidth, labelHeight, legend.fontSize); continue }
+    if (entry.shape === "line" || (entry.kind && dbtSymbolDefinitions[entry.kind].geometry === "line")) {
+      const paint = vectorPaint(entry.kind, entry.styleKey)
+      if (!entry.kind && entry.color) { paint.color = entry.color }
+      ctx.save(); ctx.beginPath(); ctx.moveTo(x + 1, center); ctx.lineTo(x + 61, center); strokeCartographyLine(ctx, paint, [[x + 1, center], [x + 61, center]]); ctx.restore()
+    } else if (entry.kind && dbtSymbolDefinitions[entry.kind].geometry === "point") { drawSymbol(entry.kind, x + 30, center, 27) } else {
+      const paint = vectorPaint(entry.kind)
+      ctx.fillStyle = entry.noData ? missingPattern : entry.color || paint.fill || paint.color; ctx.fillRect(x + 14, center - 9, 32, 18); ctx.strokeStyle = entry.kind ? paint.color : "#68757b"; ctx.lineWidth = 0.8; ctx.strokeRect(x + 14, center - 9, 32, 18)
+    }
+    text(entry.label, x + 70, labelY, width, labelHeight, legend.fontSize)
+  }
+  const scale = cartographyScale(bounds, doc!.crs, map.w)
+  if (scale) {
+    const { stepKm, width, segments } = scale; const x = 90; const y = 1090
     ctx.strokeStyle = "#222"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + width, y)
-    for (let i = 0; i <= 2; i++) { const at = x + width * i / 2; ctx.moveTo(at, y - 8); ctx.lineTo(at, y) }; ctx.stroke()
-    for (let i = 0; i <= 2; i++) { const at = x + width * i / 2; text(`${i * stepKm}${i === 2 ? " km" : ""}`, at - 16, y - 37, 95, 28, 18) }
-  } else { issues.push("范围过小，无法容纳以 5 km 倍数标记的比例尺"); text("比例尺待调整", 90, 1055, 270, 40, 18) }
-  const sources = [...new Set(visible.map(layer => layer.authority).filter(Boolean))].join("、")
-  text(`数据来源：${sources || "[待核验]"}`, 400, 1065, 690, 73, 17)
-  text(`制作单位：${doc?.agency || "[待填写]"}\n制图时间：${doc?.createdAt || "[待填写]"}`, 1150, 1065, 480, 80, 18)
-  text(`${DBT_PAGE.millimeters.join(" × ")} mm · A3 · ${dpi || "预览"}${dpi ? " DPI" : ""}    ${doc?.crs === "EPSG:4490" ? "CGCS2000 · 地理坐标 · 度" : "坐标系统待核验"}`, 90, 1140, 1450, 35, 16)
+    for (let i = 0; i <= segments; i++) { const at = x + width * i / segments; ctx.moveTo(at, y - 8); ctx.lineTo(at, y) }; ctx.stroke()
+    for (let i = 0; i <= segments; i++) { const at = x + width * i / segments; text(`${i * stepKm}${i === segments ? " km" : ""}`, i === 0 ? x : at - 16, y - 37, 95, 28, 18) }
+    text(`参考纬度 ${scale.latitude.toFixed(2)}°`, 90, 1093, 300, 26, 13)
+  } else { issues.push("当前坐标未核验或图幅过小，无法绘制以 5 km 倍数标记的比例尺"); text("比例尺待核验", 90, 1055, 270, 40, 18) }
+  const sources = [...new Set(visible.map(layer => layer.authority || layer.onlineSource?.itemId || (layer.sourceReference ? layer.sourceReference.catalogId : "")).filter(Boolean))].join("、")
+  text(`数据来源：${sources || "[待核验]"}`, 400, 1065, 690, 48, 14)
+  text(`制作单位：${doc?.agency || "[待填写]"}`, 1150, 1065, 480, 44, 18)
+  const timestamp = doc?.createdAt && Number.isFinite(Date.parse(doc.createdAt)) ? `${new Date(doc.createdAt).toISOString().slice(0, 19).replace("T", " ")} UTC` : "[待填写]"
+  text(`制图时间：${timestamp}`, 1150, 1109, 480, 28, 16)
+  const coordinateLabel = { "EPSG:4490": "CGCS2000 · 地理坐标 · 度", "EPSG:4326": "WGS84 · 非 CGCS2000 正式图件", "EPSG:4024": "原 Krassowsky 椭球经纬度 · 基准未核验" }[doc?.crs || ""] || "坐标系统待核验"
+  text(`${DBT_PAGE.millimeters.join(" × ")} mm · A3 · ${dpi || "预览"}${dpi ? " DPI" : ""}    ${coordinateLabel}`, 90, 1140, 1450, 35, 16)
   let code = "分类编码待核验"
   try { code = dbtMapCode(id, doc?.classification?.instance, doc?.classification?.spatial) } catch { issues.push(code) }
   text(code, 1460, 1140, 190, 26, 16)
   const invalidFormal = options.draft === false && inspectDbtDocument(doc, id).some(issue => issue.severity === "error")
   if (invalidFormal) { issues.push("数据检查未通过，不能生成无校样标识的正式图件") }
-  if (options.draft !== false || doc?.usage !== "operational" || invalidFormal || issues.length) {
+  if (dataExtent) {
+    issues.push("当前采用人口数据覆盖范围预览，缺少快速评估烈度面，尚非规范制图范围")
+    ctx.fillStyle = "#7e2924"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "left"; ctx.fillText("人口数据预览 · 规范范围待评估 · 禁止正式使用", 90, 1132)
+  } else if (doc?.usage === "reference") {
+    let label = "历史模型数据参考 · 非正式应急图件 · 不含虚构震情或等震线"
+    if (doc.layers.some(layer => layer.sourceReference)) { label = "本地数据参考 · 坐标/精度/单位限制见说明 · 非正式应急图件" }
+    if (doc.layers.some(layer => layer.onlineSource)) { label = "在线原始数据校样 · 来源/单位/坐标依据待核验 · 非正式图件" }
+    ctx.fillStyle = "#7e2924"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "left"; ctx.fillText(label, 90, 1132)
+  } else if (options.draft !== false || doc?.usage !== "operational" || invalidFormal || issues.length) {
     ctx.save(); ctx.translate(630, 590); ctx.rotate(-0.3); ctx.fillStyle = "rgba(159, 29, 29, 0.18)"; ctx.font = "bold 66px sans-serif"; ctx.textAlign = "center"; ctx.fillText(doc?.usage === "test" ? "合成测试 · 禁止业务使用" : "校样 · 未完成质量审核", 0, 0); ctx.restore()
   }
-  return { bounds, issues: [...new Set(issues)], statistics, bands, legendCount: entries.length, legendY, width: canvas.width, height: canvas.height }
+  return { bounds, mapFrame: map, issues: [...new Set(issues)], statistics, bands, annotations: annotationLayout, legendEntries: completeLegend, legendCount: completeLegend.length, legendY, width: canvas.width, height: canvas.height }
 }

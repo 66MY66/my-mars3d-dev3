@@ -39,6 +39,10 @@ export function buildColorMapping(values: number[], style: RenderStyle): { legen
   return createStyleMapper(values)(style)
 }
 
+export function legendNumber(value: number) {
+  return String(value)
+}
+
 // Snapshot/sort once per source; recoloring and opacity edits reuse classification.
 export function createStyleMapper(values: number[]) {
   const sorted = values.filter(Number.isFinite).sort((a, b) => a - b)
@@ -73,8 +77,8 @@ export function createStyleMapper(values: number[]) {
     return colors[index === -1 ? colors.length - 1 : index]
   }
   const legend = style.mode === "raster"
-    ? [style.min, (style.min + style.max) / 2, style.max].map((value) => ({ label: value.toFixed(2), color: color(value)! }))
-    : breaks.map((end, i) => ({ label: style.mode === "unique" ? String(end) : `${i === 0 ? "[" : "("}${(i === 0 ? minimum : breaks[i - 1]).toFixed(2)}, ${end.toFixed(2)}]`, color: interpolateColor(style.low, style.high, i / Math.max(1, breaks.length - 1)) }))
+    ? [style.min, (style.min + style.max) / 2, style.max].map((value) => ({ label: legendNumber(value), color: color(value)! }))
+    : breaks.map((end, i) => ({ label: style.mode === "unique" ? String(end) : `${i === 0 ? "[" : "("}${legendNumber(i === 0 ? minimum : breaks[i - 1])}, ${legendNumber(end)}]`, color: interpolateColor(style.low, style.high, i / Math.max(1, breaks.length - 1)) }))
   return { legend, color }
   }
 }

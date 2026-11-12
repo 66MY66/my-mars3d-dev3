@@ -7,11 +7,48 @@ import type { CartographySymbolKind, TemplateIconBinding } from "./template-icon
 import type { DisplayPoint, DisplayPolygon, EffectSettings, LegendEntry } from "./display-model"
 import { inBounds, uniqueLegend } from "./display-model"
 import type { Thematic3D } from "./thematic-3d"
-import type { TemplateScene } from "./template-renderer"
+import type { TemplateDocument, TemplateScene } from "./template-renderer"
 import { mapTemplatePalettes, templateHeatGradient } from "./template-palettes"
 import type { DbtMapPreview } from "./dbt-draft-preview"
+import { collectMapDataSources } from "./business-map-data"
+import type { RemoteRaster } from "./remote-cartography-source"
+import { selectionBoundary } from "./selection-geometry"
+import { createNativeLabelOverlay } from "./native-label-overlay"
+import type { GeographicLabel } from "./cartography-labels"
+import { preserveNativeLinePaths } from "./native-line-style"
 
 export const eventTarget = new mars3d.BaseClass()
+
+export function getBusinessDataSources() {
+  return collectMapDataSources(map?.getLayers({ basemaps: false }) || [])
+}
+
+export function onBusinessLayersChanged(listener: () => void) {
+  const current = map
+  const watched = new Set<any>()
+  const events = [mars3d.EventType.load, mars3d.EventType.show, mars3d.EventType.hide, mars3d.EventType.change, mars3d.EventType.addGraphic, mars3d.EventType.removeGraphic]
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const changed = () => { clearTimeout(timer); timer = setTimeout(listener, 50) }
+  const bind = (layer: any) => {
+    if (!layer || watched.has(layer) || String(layer.id || "").startsWith("thematic-workbench-")) { return }
+    watched.add(layer)
+    for (const event of events) { layer.on?.(event, changed) }
+    if (Array.isArray(layer.layers)) { layer.layers.forEach(bind) }
+  }
+  current?.getLayers({ basemaps: false }).forEach(bind)
+  const handler = (event: any) => {
+    if (!String(event.layer?.id || "").startsWith("thematic-workbench-")) { bind(event.layer); changed() }
+  }
+  current?.on(mars3d.EventType.addLayer, handler)
+  current?.on(mars3d.EventType.removeLayer, handler)
+  return () => {
+    clearTimeout(timer)
+    for (const layer of watched) { for (const event of events) { layer.off?.(event, changed) } }
+    watched.clear()
+    current?.off(mars3d.EventType.addLayer, handler)
+    current?.off(mars3d.EventType.removeLayer, handler)
+  }
+}
 
 export type RectInfo = { west: number; south: number; east: number; north: number }
 export type CartographySymbolStyle = { size: number; rotation: number; opacity: number; color: string }
@@ -21,6 +58,13 @@ type RectangleSelectionOptions = { rightReserve?: number }
 export const SELECTION_FRAME_WIDTH = 10
 
 let map: mars3d.Map | undefined
+let remoteReferenceLayer: mars3d.layer.BaseLayer | undefined
+let remoteReferenceVersion = 0
+let stopRemotePoint: (() => void) | undefined
+const workflowLayers = new Map<string, mars3d.layer.BaseLayer>()
+const workflowOpacities = new WeakMap<mars3d.layer.BaseLayer, number>()
+const workflowLabels = new Map<string, GeographicLabel[]>()
+let nativeLabels: ReturnType<typeof createNativeLabelOverlay> | undefined
 let drawLayer: mars3d.layer.GraphicLayer | undefined
 let rasterResultLayer: mars3d.layer.GraphicLayer | undefined
 let templateHeatLayer: mars3d.layer.HeatLayer | undefined
@@ -433,15 +477,18 @@ function getToolbarAnchor(bounds: SelectionViewportBounds | null) {
 function emitSelectionBounds(rectInfo: RectInfo, eventName: "selectionCreated" | "selectionBoundsChanged", changedOnly = false) {
   const bounds = getSelectionViewportBounds(rectInfo)
   const canvasBounds = getCanvasViewportBounds()
+  const canvas = map?.scene?.canvas as HTMLCanvasElement | undefined
+  const outline = canvasBounds && canvas ? getSelectionCanvasOutline(rectInfo)?.map(point => ({ x: canvasBounds.left + point.x * canvasBounds.width / canvas.clientWidth, y: canvasBounds.top + point.y * canvasBounds.height / canvas.clientHeight })) : null
   const anchor = getToolbarAnchor(bounds)
   const key = [bounds?.left, bounds?.top, bounds?.width, bounds?.height,
-    canvasBounds?.left, canvasBounds?.top, canvasBounds?.width, canvasBounds?.height, anchor.left, anchor.top].join(",")
+    canvasBounds?.left, canvasBounds?.top, canvasBounds?.width, canvasBounds?.height, anchor.left, anchor.top, outline?.map(point => `${point.x.toFixed(2)}:${point.y.toFixed(2)}`).join(";")].join(",")
   if (changedOnly && key === lastSelectionBoundsKey) { return }
   lastSelectionBoundsKey = key
   threeEffects?.setClip(bounds)
   eventTarget.fire(eventName, {
     rectangle: rectInfo,
     bounds,
+    outline,
     canvasBounds,
     anchor
   })
@@ -489,29 +536,28 @@ function drawRectangleByPoints(a: mars3d.LngLatPoint, b: mars3d.LngLatPoint) {
   return graphic
 }
 
-function getSelectionCanvasBounds(rectInfo: RectInfo) {
-  if (!map) {
-    return null
-  }
+function getSelectionCanvasOutline(rectInfo: RectInfo): Array<{ x: number; y: number }> | null {
+  if (!map) { return null }
   const Cesium = mars3d.Cesium
-  const points = [
-    Cesium.Cartesian3.fromDegrees(rectInfo.west, rectInfo.north),
-    Cesium.Cartesian3.fromDegrees(rectInfo.east, rectInfo.north),
-    Cesium.Cartesian3.fromDegrees(rectInfo.east, rectInfo.south),
-    Cesium.Cartesian3.fromDegrees(rectInfo.west, rectInfo.south)
-  ]
-  const screens = points
-    .map((item) => map?.scene?.cartesianToCanvasCoordinates?.(item))
-    .filter((item) => item && Number.isFinite(item.x) && Number.isFinite(item.y))
-  if (screens.length < 4) {
-    return null
-  }
+  // Image layers follow the globe, not the screen-space box enclosing four corners.
+  const screens = selectionBoundary(rectInfo).map(([longitude, latitude]) => {
+    const position = Cesium.Cartographic.fromDegrees(longitude, latitude)
+    const height = map?.scene?.globe?.getHeight(position) ?? 0
+    return map?.scene?.cartesianToCanvasCoordinates?.(Cesium.Cartesian3.fromDegrees(longitude, latitude, height))
+  })
+  if (screens.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y))) { return null }
+  return screens as Array<{ x: number; y: number }>
+}
+
+function getSelectionCanvasBounds(rectInfo: RectInfo) {
+  const screens = getSelectionCanvasOutline(rectInfo)
+  if (!screens) { return null }
   const xs = screens.map((item: any) => Number(item.x))
   const ys = screens.map((item: any) => Number(item.y))
-  const left = Math.floor(Math.min(...xs))
-  const top = Math.floor(Math.min(...ys))
-  const right = Math.ceil(Math.max(...xs))
-  const bottom = Math.ceil(Math.max(...ys))
+  const left = Math.min(...xs)
+  const top = Math.min(...ys)
+  const right = Math.max(...xs)
+  const bottom = Math.max(...ys)
   const width = Math.max(1, right - left)
   const height = Math.max(1, bottom - top)
   return { left, top, width, height }
@@ -536,6 +582,7 @@ export function onMounted(mapInstance: mars3d.Map): void {
 }
 
 export function onUnmounted(): void {
+  clearRemoteReference()
   clearTemplateHeat()
   disableDisplayEffects()
   displaySource = null
@@ -634,7 +681,148 @@ export function endCartographySession() {
   clearRasterResult()
   clearEarthquakeResult()
   clearDisplaySource()
+  clearRemoteReference()
   map?.scene?.requestRender?.()
+}
+
+export function clearRemoteReference() {
+  clearWorkflowLayers()
+  remoteReferenceVersion++
+  stopRemotePoint?.(); stopRemotePoint = undefined
+  if (remoteReferenceLayer) {
+    try { map?.removeLayer(remoteReferenceLayer, true) } catch {}
+    remoteReferenceLayer = undefined
+  }
+  map?.scene?.requestRender?.()
+}
+export function clearWorkflowLayers(key?: string) {
+  for (const [id, layer] of workflowLayers) {
+    if (key !== undefined && id !== key) { continue }
+    try { map?.removeLayer(layer, true) } catch {}
+    workflowLayers.delete(id)
+    workflowLabels.delete(id)
+  }
+  if (!workflowLayers.size) { nativeLabels?.destroy(); nativeLabels = undefined } else { nativeLabels?.refresh() }
+  map?.scene?.requestRender?.()
+}
+export function updateWorkflowPresentation(key: string, display: { enabled?: boolean; opacity?: number; order?: number }) {
+  const layer = workflowLayers.get(key)
+  if (!layer) { return }
+  const opacity = typeof display.opacity === "number" && display.opacity >= 0 && display.opacity <= 1 ? display.opacity : workflowOpacities.get(layer) ?? Number(layer.opacity ?? 1)
+  workflowOpacities.set(layer, opacity)
+  // Keep hidden native imagery transparent as well as hidden, without losing the operator's opacity setting.
+  layer.opacity = (layer as mars3d.layer.BaseTileLayer).isTile && display.enabled === false ? 0 : opacity
+  if (Number.isInteger(display.order)) { (layer as any).zIndex = 100 + display.order! }
+  layer.show = display.enabled !== false
+  nativeLabels?.refresh()
+  map?.scene?.requestRender?.()
+}
+export function hasWorkflowLayer(key: string) { return workflowLayers.has(key) }
+
+export function prepareWorkflowMap() {
+  clearRasterResult(); clearEarthquakeResult(); clearCartographySymbols(); disableDisplayEffects()
+}
+export async function showWorkflowLayer(key: string, input: { name: string; raster?: RemoteRaster; image?: string; bounds?: RectInfo; document?: TemplateDocument; labels?: GeographicLabel[]; symbol?: { styleOptions: Record<string, any>; type?: string; callback?: (attr: Record<string, any>) => Record<string, any> }; vectorStyle?: { color: string; outlineColor: string }; opacity: number; onError?: (message: string) => void }, signal: AbortSignal) {
+  if (!map) { throw new Error("地图尚未初始化") }
+  signal.throwIfAborted(); prepareWorkflowMap(); clearWorkflowLayers(key)
+  const currentMap = map; const id = `thematic-workbench-online:${key}`
+  let layer: mars3d.layer.BaseLayer | undefined
+  const nativeSymbol = input.labels && input.symbol ? { ...input.symbol, callback: (attr: Record<string, any>) => ({ ...input.symbol!.callback?.(attr), label: { text: "" } }) } : input.symbol
+  if (input.raster) {
+    const { west, east, south, north } = input.raster.bounds
+    layer = new mars3d.layer.XyzLayer({ id, name: input.name, url: input.raster.url, minimumLevel: input.raster.minZoom, maximumLevel: input.raster.maxZoom, rectangle: { xmin: west, xmax: east, ymin: south, ymax: north }, opacity: input.opacity, zIndex: 120 })
+  } else if (input.image && input.bounds) { layer = new mars3d.layer.ImageLayer({ id, name: input.name, url: input.image, rectangle: { xmin: input.bounds.west, xmax: input.bounds.east, ymin: input.bounds.south, ymax: input.bounds.north }, opacity: input.opacity, zIndex: 20 }) } else if (input.document) { layer = new mars3d.layer.GeoJsonLayer({ id, name: input.name, data: input.document, opacity: input.opacity, symbol: nativeSymbol || { styleOptions: { color: input.vectorStyle?.color || "#e4ad55", opacity: input.opacity, outline: true, outlineColor: input.vectorStyle?.outlineColor || "#684315", outlineWidth: 2, clampToGround: true } } }) }
+  if (!layer) { throw new Error("缺少可渲染的真实图层") }
+  workflowLayers.set(key, layer)
+  workflowOpacities.set(layer, input.opacity)
+  if (input.labels?.length) {
+    workflowLabels.set(key, input.labels)
+    nativeLabels ||= createNativeLabelOverlay(currentMap, () => [...workflowLabels].flatMap(([id, labels]) => {
+      const source = workflowLayers.get(id)
+      return source?.show ? labels.map(label => ({ ...label, id: `${id}:${label.id}`, opacity: Number((source as any).opacity ?? 1) })) : []
+    }), () => {
+      const bounds = currentRectInfo && getSelectionCanvasBounds(currentRectInfo)
+      return bounds ? { x: bounds.left, y: bounds.top, w: bounds.width, h: bounds.height } : null
+    })
+    nativeLabels.refresh()
+  }
+  if (input.raster && input.onError) {
+    layer.on(mars3d.EventType.addTileError, () => {
+      if (map === currentMap && workflowLayers.get(key) === layer && !signal.aborted) { input.onError?.("后端 XYZ 瓦片读取失败，请检查资产、服务或内网连接；未使用替代图层") }
+    })
+  }
+  const clear = () => { if (workflowLayers.get(key) === layer) { clearWorkflowLayers(key) } }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let cancelled: (() => void) | undefined
+  signal.addEventListener("abort", clear, { once: true })
+  try {
+    currentMap.addLayer(layer)
+    await new Promise<void>((resolve, reject) => {
+      cancelled = () => reject(signal.reason || new DOMException("图层加载已取消", "AbortError"))
+      signal.addEventListener("abort", cancelled, { once: true })
+      timer = setTimeout(() => reject(new Error("地图图层加载超时，请重试")), 15000)
+      Promise.resolve(layer.readyPromise).then(resolve, reject)
+      if (signal.aborted) { cancelled() }
+    })
+    signal.throwIfAborted()
+    if (map !== currentMap || workflowLayers.get(key) !== layer) { throw new Error("图层或制图任务已变化") }
+    if (input.document) { preserveNativeLinePaths(layer as mars3d.layer.GeoJsonLayer); currentMap.scene.requestRender() }
+  } catch (error) { clear(); throw error } finally { clearTimeout(timer); if (cancelled) { signal.removeEventListener("abort", cancelled) }; signal.removeEventListener("abort", clear) }
+}
+export async function showRemoteReference(input: { name: string; raster?: RemoteRaster; document?: TemplateDocument; onFeature?: (attributes: Record<string, unknown>) => void; onError?: (message: string) => void }, signal?: AbortSignal) {
+  if (!map) { throw new Error("地图尚未初始化，请稍后重试") }
+  signal?.throwIfAborted()
+  clearRemoteReference()
+  const currentMap = map
+  const version = remoteReferenceVersion
+  let layer: mars3d.layer.BaseLayer
+  if (input.raster) {
+    const { west, east, south, north } = input.raster.bounds
+    layer = new mars3d.layer.XyzLayer({ id: "thematic-workbench-remote-reference", name: `${input.name} · 参考`, url: input.raster.url, minimumLevel: input.raster.minZoom, maximumLevel: input.raster.maxZoom, rectangle: { xmin: west, xmax: east, ymin: south, ymax: north }, opacity: 0.85, zIndex: 20 })
+    layer.on(mars3d.EventType.addTileError, () => { if (version === remoteReferenceVersion) { input.onError?.("部分瓦片读取失败，请检查内网、资产和显示参数后重新加载") } })
+  } else if (input.document) {
+    const vector = new mars3d.layer.GeoJsonLayer({
+      id: "thematic-workbench-remote-reference",
+      name: `${input.name} · 参考`,
+      data: input.document,
+      symbol: { styleOptions: { color: "#e4ad55", opacity: 0.35, outline: true, outlineColor: "#684315", outlineWidth: 2, clampToGround: true } }
+    })
+    vector.on(mars3d.EventType.click, event => {
+      if (version === remoteReferenceVersion) { input.onFeature?.(event.graphic?.attr || {}) }
+    })
+    layer = vector
+  } else { throw new Error("缺少在线图层数据") }
+  remoteReferenceLayer = layer
+  const abort = () => { if (version === remoteReferenceVersion) { clearRemoteReference() } }
+  signal?.addEventListener("abort", abort, { once: true })
+  try {
+    currentMap.addLayer(layer)
+    await new Promise<void>((resolve, reject) => {
+      const cancelled = () => reject(signal?.reason || new DOMException("图层读取已取消", "AbortError"))
+      signal?.addEventListener("abort", cancelled, { once: true })
+      Promise.resolve(layer.readyPromise).then(resolve, reject).finally(() => signal?.removeEventListener("abort", cancelled))
+      if (signal?.aborted) { cancelled() }
+    })
+    signal?.throwIfAborted()
+    if (version !== remoteReferenceVersion || map !== currentMap) { throw new Error("在线图层已被替换或工作台已关闭") }
+    if (input.document) { preserveNativeLinePaths(layer as mars3d.layer.GeoJsonLayer); currentMap.scene.requestRender() }
+  } catch (error) { abort(); throw error } finally { signal?.removeEventListener("abort", abort) }
+}
+export function flyToRemoteReference(bounds: RectInfo) {
+  if (!map || !remoteReferenceLayer) { return }
+  map.flyToExtent({ xmin: bounds.west, xmax: bounds.east, ymin: bounds.south, ymax: bounds.north }, { duration: 0.8 })
+}
+export function pickRemoteReferencePoint(callback?: (longitude: number, latitude: number) => void) {
+  stopRemotePoint?.(); stopRemotePoint = undefined
+  if (!callback || !map) { return }
+  const currentMap = map
+  const handler = (event: any) => {
+    if (!event.cartesian) { return }
+    const point = mars3d.LngLatPoint.fromCartesian(event.cartesian)
+    callback(point.lng, point.lat)
+  }
+  currentMap.on(mars3d.EventType.click, handler)
+  stopRemotePoint = () => currentMap.off(mars3d.EventType.click, handler)
 }
 
 export function confirmRectangleSelection() {
@@ -648,6 +836,16 @@ export function confirmRectangleSelection() {
     bounds,
     canvasBounds: getCanvasViewportBounds()
   })
+}
+
+export function restorePublishedSelection(bounds: RectInfo) {
+  if (!map || ![bounds.west, bounds.south, bounds.east, bounds.north].every(Number.isFinite) || bounds.west < -180 || bounds.east > 180 || bounds.south <= -85 || bounds.north >= 85 || bounds.west >= bounds.east || bounds.south >= bounds.north) { throw new Error("地图未就绪或发布范围超出当前地图支持范围") }
+  stopRectangleSelectionListener()
+  clearCurrentGraphic()
+  drawRectangleByPoints(new mars3d.LngLatPoint(bounds.west, bounds.south), new mars3d.LngLatPoint(bounds.east, bounds.north))
+  selectionLocked = true
+  emitSelectionBounds(bounds, "selectionBoundsChanged", true)
+  map.flyToExtent({ xmin: bounds.west, xmax: bounds.east, ymin: bounds.south, ymax: bounds.north }, { duration: 0 })
 }
 
 export function getLockedSelection(): RectInfo | null {
@@ -839,18 +1037,22 @@ export async function captureTemplateBaseImage() {
   }
 }
 
-export async function renderTemplateScene(scene: TemplateScene, radius = 45, signal?: AbortSignal) {
+export async function renderTemplateScene(scene: TemplateScene, radius = 45, signal?: AbortSignal, workflowKey?: string) {
   const rectangle = getLockedSelection()
-  const layer = ensureRasterResultLayer()
+  const layer = workflowKey && map ? new mars3d.layer.GraphicLayer({ id: `thematic-workbench-expression:${workflowKey}:${performance.now()}`, name: scene.kind }) : ensureRasterResultLayer()
   if (!map || !rectangle || !layer) { throw new Error("请先锁定地图范围") }
   if (scene.heat) { await import("mars3d-heatmap") }
   signal?.throwIfAborted()
   if (!map || JSON.stringify(rectangle) !== JSON.stringify(getLockedSelection())) { throw new Error("框选范围已改变，请重新渲染") }
-  clearTemplateHeat(); disableDisplayEffects(); layer.clear(); rasterGraphic = undefined; layer.show = true
-  earthquakeResultLayer?.clear(); pointGraphics = []
+  if (workflowKey) { map.addLayer(layer) } else { clearTemplateHeat(); disableDisplayEffects(); layer.clear(); rasterGraphic = undefined; earthquakeResultLayer?.clear(); pointGraphics = [] }
+  layer.show = true
   const graphics: any[] = []
+  const cleanup = () => { if (workflowKey) { map?.removeLayer(layer, true) } }
+  signal?.addEventListener("abort", cleanup, { once: true })
+  try {
   if (scene.heat) {
     templateHeatLayer = new mars3d.layer.HeatLayer({
+      id: "thematic-workbench-heat-result-layer",
       positions: scene.heat,
       min: 0,
       max: Math.max(...scene.heat.map(p => p.value)),
@@ -864,6 +1066,7 @@ export async function renderTemplateScene(scene: TemplateScene, radius = 45, sig
   } else {
     for (const feature of scene.features) {
       const p = feature.properties
+      if (scene.kind === "proportional-symbol" && p.pixelSize === 0) { continue }
       if (feature.geometry.type === "Point" && p.symbolKind) {
         const size = (p.pixelSize || 20) * 1.8
         const graphic = new mars3d.graphic.BillboardEntity({
@@ -913,6 +1116,7 @@ outlineWidth: 1,
 : new mars3d.graphic.LabelEntity({ position: annotation.position, style: label })
     layer.addGraphic(graphic); graphics.push(graphic)
   }
+  preserveNativeLinePaths(layer)
   displaySource = { kind: "points", points: scene.features.filter(f => f.geometry.type === "Point").map(f => ({ lon: (f.geometry as any).coordinates[0], lat: (f.geometry as any).coordinates[1], value: f.properties.value, label: f.properties.name, color: f.properties.color, band: scene.unit })), image: "", rectangle, name: scene.kind, templateKind: scene.kind, source: `${scene.source}${scene.note ? `；${scene.note}` : ""}`, time: scene.time, unit: scene.unit, legend: scene.legend }
   eventTarget.fire("displayDataChanged", { source: displaySource })
   const source = displaySource
@@ -929,6 +1133,12 @@ outlineWidth: 1,
   signal?.throwIfAborted()
   if (pending()) { throw new Error("模板图层加载超时，请重新应用") }
   await afterDisplayRender()
+  if (workflowKey) {
+    clearWorkflowLayers(workflowKey)
+    workflowLayers.set(workflowKey, layer)
+    workflowOpacities.set(layer, 1)
+  }
+  } catch (error) { cleanup(); throw error } finally { signal?.removeEventListener("abort", cleanup) }
 }
 
 export function highlightTemplateFeature(id: string) {
@@ -1042,11 +1252,20 @@ export async function captureSelectionImage(options?: {
   if (!canvas) {
     return null
   }
+  const capturedMap = map
+  const captureScope = JSON.stringify(currentRectInfo)
+  const deadline = performance.now() + 10000
+  while ((!capturedMap.scene.globe.show || !capturedMap.scene.globe.tilesLoaded) && performance.now() < deadline) {
+    if (map !== capturedMap || !selectionLocked || JSON.stringify(currentRectInfo) !== captureScope) { throw new Error("制图范围已改变，请重新生成") }
+    await afterDisplayRender()
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
+  if (!capturedMap.scene.globe.show || !capturedMap.scene.globe.tilesLoaded) { throw new Error("底图或地形尚未完成渲染，请检查地图服务后重试；未生成校样") }
   try {
     map.scene.requestRender?.()
   } catch {}
-  await nextFrame()
-  await nextFrame()
+  await afterDisplayRender()
+  if (map !== capturedMap || !selectionLocked || JSON.stringify(currentRectInfo) !== captureScope) { throw new Error("制图范围已改变，请重新生成") }
 
   const bounds = getSelectionCanvasBounds(currentRectInfo)
   if (!bounds) {
@@ -1122,6 +1341,7 @@ export async function captureSelectionImage(options?: {
 }
 
 export async function captureStandardMapPreview(selection = false): Promise<DbtMapPreview> {
+  if (remoteReferenceLayer || workflowLayers.size) { throw new Error("当前地图包含待核验的在线参考图层，请使用已绑定的专题数据排版，不将其当作规范底图采集") }
   const source = map?.scene?.canvas as HTMLCanvasElement | undefined
   if (!source || !source.width || !source.height) { throw new Error("地图尚未就绪，请稍后重新采集底图") }
   const rectangle = selection ? getLockedSelection() : null

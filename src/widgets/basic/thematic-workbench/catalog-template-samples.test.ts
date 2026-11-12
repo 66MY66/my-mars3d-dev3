@@ -1,16 +1,20 @@
 import { readFileSync } from "node:fs"
 import { bbox, booleanPointInPolygon, point } from "@turf/turf"
 import { describe, expect, it } from "vitest"
-import { fitTemplateSampleToBounds, CATALOG_SAMPLE_BOUNDS } from "./catalog-template-samples"
+import { isAssessmentKind } from "./assessment-products"
+import { fitTemplateSampleToBounds, CATALOG_SAMPLE_BOUNDS, templateSampleUrl } from "./catalog-template-samples"
 import { TEMPLATE_CONTRACTS, readTemplateDocument, renderTemplateDocument } from "./template-renderer"
 import { classifyTemplatePolygons } from "./template-map"
 import { readPolygonDocument } from "./polygon-source"
 
 const selected = { west: 102.951, south: 26.399, east: 108.9355, north: 29.3849 }
-const sample = (kind: string) => readTemplateDocument(JSON.parse(readFileSync(`public/data/dbt116-test/templates/${kind}.geojson`, "utf8")))
+const sample = (kind: string) => readTemplateDocument(JSON.parse(readFileSync(`public/data/dbt116-test/templates/${kind === "proportional-symbol" ? "graduated-symbol" : kind}.geojson`, "utf8")))
 
 describe("selection-scoped synthetic template samples", () => {
-  it.each(Object.keys(TEMPLATE_CONTRACTS))("places %s in the selection without mutating the original", kind => {
+  it("never assigns a synthetic template file to an observation analysis tool", () => {
+    expect(() => templateSampleUrl("instrumental-intensity")).toThrow("业务分析工具不提供合成模板样例")
+  })
+  it.each(Object.keys(TEMPLATE_CONTRACTS).filter(kind => !isAssessmentKind(kind) && !TEMPLATE_CONTRACTS[kind].analysisOnly))("places legacy %s in the isolated test selection without mutating the original", kind => {
     const original = sample(kind); const before = JSON.stringify(original)
     const fitted = fitTemplateSampleToBounds(original, selected)
     expect(JSON.stringify(original)).toBe(before)

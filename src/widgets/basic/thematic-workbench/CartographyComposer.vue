@@ -8,6 +8,7 @@
           <button type="button" title="撤销 (Ctrl+Z)" aria-label="撤销排版操作" :disabled="!canUndo" @click="travelHistory(-1)"><mars-icon icon="undo" :width="16" /></button>
           <button type="button" title="重做 (Ctrl+Shift+Z / Ctrl+Y)" aria-label="重做排版操作" :disabled="!canRedo" @click="travelHistory(1)"><mars-icon icon="redo" :width="16" /></button>
           <button type="button" :disabled="!imageReady || exporting" @click="exportImage()"><mars-icon icon="download" :width="16" />{{ exporting ? '导出中' : `导出 ${exportFormat.toUpperCase()}` }}</button>
+          <button v-if="dataSnapshot" type="button" title="下载本次制图数据记录" aria-label="下载本次制图数据记录" @click="downloadDataRecord"><mars-icon icon="download" :width="16" /></button>
           <button ref="returnButton" type="button" title="收起排版工作台" aria-label="收起排版工作台" @click="close"><mars-icon icon="close" :width="16" /></button>
         </div>
       </header>
@@ -15,8 +16,9 @@
         <aside class="composer-sidebar" aria-label="制图工具">
           <div class="composer-tool-scroll">
           <section class="composer-output">
-            <h3>{{ standardScene ? '规范专题校样' : '分析辅助校样' }}</h3>
+            <h3>{{ standardScene ? '规范专题校样' : auxiliary ? '截图与辅助计算校样' : '专题校样' }}</h3>
             <button type="button" @click="resetStandardLayout"><mars-icon icon="layout-two" :width="17" />按规范排版</button>
+            <button v-if="standardScene" type="button" @click="emit('review-map')"><mars-icon icon="inspection" :width="17" />人工审核与发布</button>
             <label>输出格式<select v-model="exportFormat" aria-label="排版输出格式"><option value="png">PNG 预览</option><option value="jpg">JPG · A3 / 300 DPI</option><option value="pdf">PDF · A3 / 300 DPI</option></select></label>
             <label v-if="exportFormat === 'png'">图片宽度<select v-model.number="pngWidth" aria-label="排版图片宽度"><option :value="1680">1680 px</option><option :value="2560">2560 px</option><option :value="3840">3840 px</option></select></label>
             <details class="composer-page-settings"><summary>页面设置</summary>
@@ -36,15 +38,21 @@
             <input ref="pictureInput" class="composer-file-input" type="file" accept="image/png,image/jpeg" aria-label="排版图片文件" @change="importPicture" />
           </section>
           <section>
-            <h3>图标库 <a :href="cartographySymbolSource.url" target="_blank" rel="noopener noreferrer" title="DB/T 116-2026 附录 B 地图符号样式">{{ cartographySymbolSource.name }}</a></h3>
+            <h3>{{ dataDriven ? '业务符号' : '图标库' }} <a :href="cartographySymbolSource.url" target="_blank" rel="noopener noreferrer" title="符号参考来源，非图件合规证明">符号参考</a></h3>
             <div class="composer-symbol-tabs" role="tablist" aria-label="排版图标分类">
               <button type="button" role="tab" :aria-selected="symbolFamily === 'basic'" @click="symbolFamily = 'basic'">基础地理</button>
               <button type="button" role="tab" :aria-selected="symbolFamily === 'earthquake'" @click="symbolFamily = 'earthquake'">地震专业</button>
             </div>
             <div class="composer-tools composer-symbols" role="group" :aria-label="symbolFamily === 'basic' ? '基础地理素材' : '地震专业素材'">
-              <button v-for="symbol in symbolOptions" :key="symbol.kind" type="button" draggable="true" :title="`${symbol.label} · ${symbol.reference || ''}`" :aria-label="`添加${symbol.label}图标`" @click="addSymbol(symbol.kind)" @dragstart="startSymbolTransfer(symbol.kind, $event)">
+              <button v-for="symbol in symbolOptions" :key="symbol.kind" type="button" :draggable="!dataDriven" :aria-pressed="dataDriven ? inspectedSymbol === symbol.kind : undefined" :title="`${symbol.label} · ${dataDriven ? `${symbolBindings[symbol.kind] || 0} 个匹配要素` : symbol.reference || ''}`" :aria-label="`${dataDriven ? '查看' : '添加'}${symbol.label}图标`" @click="addSymbol(symbol.kind)" @dragstart="startSymbolTransfer(symbol.kind, $event)">
                 <CartographySymbolIcon :binding="symbol" :size="24" />{{ symbol.shortLabel || symbol.label }}
+                <small v-if="dataDriven">{{ symbolBindings[symbol.kind] ? `${symbolBindings[symbol.kind]} 个匹配要素` : '无匹配要素' }}</small>
               </button>
+            </div>
+            <div v-if="dataDriven && inspectedSymbol" class="composer-symbol-feedback" role="status" aria-label="业务符号绑定状态">
+              <strong>{{ cartographySymbolDefinitions[inspectedSymbol].label }}</strong>
+              <p>{{ symbolBindings[inspectedSymbol] ? `${symbolBindings[inspectedSymbol]} 个可见业务要素已匹配此符号` : '当前图件没有匹配此符号的可见业务要素' }}</p>
+              <button type="button" @click="emit('symbol-sources', inspectedSymbol)"><mars-icon icon="layers" :width="16" />查看对应图层</button>
             </div>
           </section>
           <section>
@@ -158,6 +166,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue"
+import { countSymbolBindings } from "./cartography-symbol-bindings"
+import { compositionProofMark } from "./composition-proof-mark"
+import type { DbtLayer } from "./dbt116-standard"
 import * as echarts from "echarts"
 import { applyCompositionTemplate, type CompositionTemplateText } from "./composition-template"
 import { applyTemplateLayout, templateLayoutProfiles } from "./composition-layout"
@@ -176,6 +187,7 @@ import { compositionSymbolImage } from "./composition-symbols"
 import CartographySymbolIcon from "./CartographySymbolIcon.vue"
 import { standardCompositionIssues, syncStandardComposition, type StandardComposition } from "./standard-composition"
 import { rotationHandle, snapRotation } from "./composition-rotation"
+import type { BusinessMapResult } from "./business-map-data"
 
 const props = defineProps<{
   open: boolean; scopeKey: string; mainImage: string; mainTitle: string; mainMeta: string; source: string; time: string
@@ -184,6 +196,9 @@ const props = defineProps<{
   anchorSelector: string
   description?: string; agency?: string
   standardScene?: StandardComposition | null
+  dataDriven?: boolean; dataSnapshot?: BusinessMapResult | null
+  symbolLayers?: DbtLayer[]
+  auxiliary?: boolean
 }>()
 const emit = defineEmits<{
   "update:open": [value: boolean]
@@ -195,6 +210,8 @@ const emit = defineEmits<{
   "standard-issues": [issues: string[]]
   "preview": [image: string]
   "inspect-standard": []
+  "review-map": []
+  "symbol-sources": [kind: string]
 }>()
 const adornments: Array<{ kind: CompositionKind; label: string; icon: string }> = [
   { kind: "title", label: "标题", icon: "text" }, { kind: "legend", label: "图例", icon: "list" },
@@ -203,14 +220,19 @@ const adornments: Array<{ kind: CompositionKind; label: string; icon: string }> 
   { kind: "description", label: "内容说明", icon: "notes" }, { kind: "agency", label: "制图单位", icon: "building-four" },
   { kind: "text", label: "文本", icon: "edit" }
 ]
-const chartTemplates = [
+const chartTemplates = computed(() => props.dataDriven
+? [
+  { type: "deformation-bar", label: "指标图", name: "绘制要素指标", icon: "chart-histogram" },
+  { type: "population-distribution", label: "分类计数", name: "绘制要素分类计数", icon: "chart-pie" }
+]
+: [
   { type: "contour", label: "折线图", name: "空间剖面曲线", icon: "chart-line" },
   { type: "deformation-bar", label: "柱状图", name: "像素等级占比", icon: "chart-histogram" },
   { type: "population-distribution", label: "饼图", name: "色彩覆盖占比", icon: "chart-pie" },
   { type: "heatmap", label: "热力图", name: "空间热度矩阵", icon: "application-menu" },
   { type: "terrain-density", label: "散点图", name: "像素空间分布", icon: "chart-scatter" },
   { type: "trend-line", label: "通道图", name: "RGB 通道均值", icon: "chart-histogram" }
-]
+])
 const geometryFields = [{ key: "x", label: "水平位置" }, { key: "y", label: "垂直位置" }, { key: "w", label: "元素宽度" }, { key: "h", label: "元素高度" }] as const
 const items = ref<CompositionItem[]>([]); const selectedId = ref("")
 const visibleItems = computed(() => items.value.filter(item => !item.hidden))
@@ -264,6 +286,17 @@ async function importPicture(event: Event) {
 const standardIssues = computed(() => standardCompositionIssues(items.value, props.standardScene || null))
 const activeLayoutName = computed(() => templateLayoutProfiles[items.value.find(item => item.kind === "map")?.templateKind || ""]?.name || "")
 const symbolFamily = ref<TemplateIconFamily>("basic")
+const inspectedSymbol = ref<CartographySymbolKind | null>(null)
+const symbolBindings = computed<Record<string, number | undefined>>(() => {
+  if (props.standardScene) { return props.standardScene.symbolBindings || {} }
+  if (!props.dataSnapshot) { return countSymbolBindings(props.symbolLayers || []) }
+  const counts: Record<string, number> = {}
+  const scene = props.dataSnapshot.scene
+  for (const kind of [...scene.features.map(feature => feature.properties.symbolKind), ...(scene.annotations || []).map(annotation => annotation.symbolKind)]) {
+    if (typeof kind === "string" && Object.hasOwn(cartographySymbolDefinitions, kind)) { counts[kind] = (counts[kind] || 0) + 1 }
+  }
+  return counts
+})
 const symbolOptions = computed(() => Object.values(cartographySymbolDefinitions).filter(symbol => !symbol.legacy && symbol.family === symbolFamily.value).map(symbol => ({ ...symbol, kind: symbol.kind as CartographySymbolKind })))
 const symbolImages = new Map<string, { image: HTMLImageElement; ready: Promise<boolean> }>()
 const rasterImages = new Map<string, { image: HTMLImageElement; ready: Promise<boolean> }>()
@@ -281,6 +314,7 @@ function rasterImage(raster: CompositionRaster) {
 }
 function applyTemplate(raster: CompositionRaster, text: CompositionTemplateText) {
   flushHistory()
+  if (props.dataDriven) { items.value = items.value.filter(item => item.kind !== "symbol") }
   const next = applyCompositionTemplate(items.value, raster, text)
   if (next === items.value) { status.value = "版面元素已满或图片不可用，无法套用版式"; return false }
   items.value = next
@@ -316,6 +350,7 @@ function symbolImage(item: CompositionItem) {
   const entry = { image, ready }; symbolImages.set(key, entry); return entry
 }
 function addSymbol(kind: CartographySymbolKind, style: { size?: number; rotation?: number; opacity?: number; color?: string } = {}, point?: { x: number; y: number }) {
+  if (props.dataDriven) { inspectedSymbol.value = kind; return }
   if (!Object.prototype.hasOwnProperty.call(cartographySymbolDefinitions, kind) || items.value.length >= 60) { return }
   flushHistory()
   const definition = cartographySymbolDefinitions[kind]
@@ -334,6 +369,7 @@ function setSymbolSize(value: number) {
   Object.assign(selected.value, constrainItem({ ...selected.value, w: size, h: size }, [], false, safeMargin.value), { positioned: true })
 }
 function startSymbolTransfer(kind: CartographySymbolKind, event: DragEvent) {
+  if (props.dataDriven) { event.preventDefault(); return }
   event.dataTransfer?.setData("application/x-cartography-symbol", kind)
   if (event.dataTransfer) { event.dataTransfer.effectAllowed = "copy" }
 }
@@ -358,7 +394,7 @@ async function travelHistory(direction: -1 | 1) {
   const snapshot = history.step(direction)
   if (!snapshot) { return }
   restoringHistory = true
-  items.value = snapshot
+  items.value = props.dataDriven ? snapshot.filter(item => item.kind !== "symbol") : snapshot
   if (!snapshot.some(item => item.id === selectedId.value)) { selectedId.value = snapshot[snapshot.length - 1]?.id || "" }
   emit("restore-charts", snapshot.filter(item => item.kind === "chart" && item.linkedId).map(item => ({ id: item.linkedId!, type: item.chartType!, name: item.label })))
   chartCache.clear(); schedulePaint()
@@ -461,6 +497,13 @@ function fit() {
   if (viewport.value) { zoom.value = Math.max(0.15, Math.min(1, (viewport.value.clientWidth - 48) / PAGE.width, (viewport.value.clientHeight - 48) / PAGE.height)) }
 }
 function addElement(kind: CompositionKind) {
+  if (kind === "north" && props.standardScene) {
+    if (Number.isFinite(props.standardScene.northAngle)) {
+      selectedId.value = items.value.find(item => item.kind === "map")?.id || ""
+      status.value = "指北针已按图件地理坐标生成，正北朝上"
+    } else { status.value = "底图草稿北向尚未核验，请先生成有地理定位的图件" }
+    return
+  }
   const existing = kind !== "text" && items.value.find(item => item.kind === kind)
   if (existing) { existing.hidden = false; selectedId.value = existing.id; return }
   if (items.value.length >= 60) { status.value = "版面最多容纳 60 个元素"; return }
@@ -481,14 +524,14 @@ function resetStandardLayout() {
   selectedId.value = ""; chartCache.clear(); flushHistory(); save(); fit()
 }
 function addChart(type: string) {
-  const template = chartTemplates.find(chart => chart.type === type)
+  const template = chartTemplates.value.find(chart => chart.type === type)
   if (!template || !props.chartsReady || items.value.length >= 60) { return }
   emit("add-chart", type)
 }
 function syncCharts(restore = false) {
   if (currentScope !== props.scopeKey || restoringHistory) { return }
   const previousIds = new Set(items.value.map(item => item.id))
-  items.value = reconcileCharts(items.value, props.charts, restore)
+  items.value = reconcileCharts(items.value, props.charts, restore && !props.dataDriven)
   const added = items.value.filter(item => item.kind === "chart" && !previousIds.has(item.id))
   if (added.length) { selectedId.value = added[added.length - 1].id }
   if (!items.value.some(item => item.id === selectedId.value)) { selectedId.value = "" }
@@ -505,7 +548,9 @@ function updateChart(id: string, patch: Partial<CompositionItem>) {
   Object.assign(item, constrainItem({ ...item, ...patch, rotation }, [], false, safeMargin.value), { rotation, background: patch.background ?? item.background, positioned: true })
   selectedId.value = item.id
 }
-defineExpose({ selectChart, updateChart, addSymbol, useRaster, applyTemplate, exportProof: exportImage })
+function publicationLayout() { return compositionMetadata(items.value, { ...cartographySnapshot(), metrics: props.metrics, legend: items.value.find(item => item.kind === "map")?.raster?.legend ?? props.legend }) }
+async function preparePublicationView() { const result = await exportImage("png", 300, true); if (!result) { throw new Error(status.value || "请先打开排版校样并完成当前图件排版") }; return result }
+defineExpose({ selectChart, updateChart, addSymbol, useRaster, applyTemplate, exportProof: exportImage, publicationLayout, preparePublicationView })
 function setRotation(event: Event) {
   setRotationValue(Number((event.target as HTMLInputElement).value))
 }
@@ -637,16 +682,16 @@ function chartImage(item: CompositionItem, pixelRatio = 2) {
 }
 const standardPreviewCanvas = document.createElement("canvas")
 standardPreviewCanvas.width = PAGE.width; standardPreviewCanvas.height = PAGE.height
-function paint(target = canvas.value || (props.standardScene ? standardPreviewCanvas : undefined), outputScale = 1) {
+function paint(target = canvas.value || (props.standardScene ? standardPreviewCanvas : undefined), outputScale = 1, sourceItems = visibleItems.value) {
   frame = 0
   const ctx = target?.getContext("2d")
   if (!ctx) { return }
   ctx.save(); ctx.scale(outputScale, outputScale)
   ctx.clearRect(0, 0, PAGE.width, PAGE.height); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, PAGE.width, PAGE.height)
-  const mapItem = items.value.find(item => item.kind === "map")
+  const mapItem = sourceItems.find(item => item.kind === "map")
   const mainBitmap = mapItem?.raster ? rasterImage(mapItem.raster).image : loadedImage
   if (mapItem && !props.standardScene) { drawStandardFrame(ctx, mapItem) }
-  for (const item of [...visibleItems.value].sort((a, b) => (cartographySymbolDefinitions[a.symbolKind!]?.priority || 0) - (cartographySymbolDefinitions[b.symbolKind!]?.priority || 0))) {
+  for (const item of [...sourceItems].sort((a, b) => (cartographySymbolDefinitions[a.symbolKind!]?.priority || 0) - (cartographySymbolDefinitions[b.symbolKind!]?.priority || 0))) {
     ctx.save()
     ctx.translate(item.x + item.w / 2, item.y + item.h / 2); ctx.rotate(item.rotation * Math.PI / 180); ctx.translate(-item.x - item.w / 2, -item.y - item.h / 2)
     ctx.beginPath(); ctx.rect(item.x, item.y, item.w, item.h); ctx.clip()
@@ -654,7 +699,10 @@ function paint(target = canvas.value || (props.standardScene ? standardPreviewCa
     const standardStyle = standardItem && (["font", "fontSize", "color", "align", "background"] as const).every(key => item[key] === standardItem[key])
     if (standardStyle && item.standardPart && item.raster && item.text === item.raster.detail) {
       const image = rasterImage(item.raster).image
-      if (image.complete && image.naturalWidth) { ctx.drawImage(image, item.x, item.y, item.w, item.h) }
+      if (image.complete && image.naturalWidth) {
+        const rect = containImage(item, image.naturalWidth, image.naturalHeight)
+        ctx.drawImage(image, rect.x, rect.y, rect.w, rect.h)
+      }
     } else if (item.kind === "map") {
       if (mainBitmap?.complete && mainBitmap.naturalWidth) {
         const rect = containImage(item, mainBitmap.naturalWidth, mainBitmap.naturalHeight)
@@ -698,8 +746,9 @@ function paint(target = canvas.value || (props.standardScene ? standardPreviewCa
         const mpp = props.metrics && rect ? props.metrics.metersPerPixel * props.metrics.selectionWidth / rect.w : 0
         if (!drawStandardScale(ctx, item, mpp, item.color)) { textBlock(ctx, item, "比例尺：当前范围不足 5 km 或缺少尺度") }
       } else if (item.kind === "north") {
-        if (props.metrics) {
-          ctx.translate(item.x + item.w / 2, item.y + item.h / 2); ctx.rotate(props.metrics.northAngle)
+        const northAngle = props.standardScene ? props.standardScene.northAngle : props.metrics?.northAngle
+        if (Number.isFinite(northAngle)) {
+          ctx.translate(item.x + item.w / 2, item.y + item.h / 2); ctx.rotate(northAngle!)
           const radius = Math.min(item.w / 2 - 12, item.h / 2 - 24)
           ctx.fillStyle = item.color; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.font = "bold 20px sans-serif"; ctx.textAlign = "center"
           ctx.strokeText("N", 0, -radius - 8); ctx.fillText("N", 0, -radius - 8)
@@ -711,9 +760,13 @@ function paint(target = canvas.value || (props.standardScene ? standardPreviewCa
     if (item.ruleColor) { ctx.fillStyle = item.ruleColor; ctx.fillRect(item.x, item.y + item.h - 5, item.w, 5) }
     ctx.restore()
   }
+  if (props.auxiliary) {
+    ctx.fillStyle = "rgba(153,25,25,0.6)"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center"
+    ctx.fillText("截图与辅助计算 · 非业务图件", PAGE.width / 2, PAGE.height - 12)
+  }
   if (props.standardScene) {
-    ctx.fillStyle = "rgba(153,25,25,0.32)"; ctx.font = "bold 34px sans-serif"; ctx.textAlign = "center"
-    ctx.fillText(props.standardScene.usage === "test" ? "合成测试 · 禁止业务使用" : "校样 · 未完成质量审核", PAGE.width / 2, PAGE.height - 12)
+    ctx.fillStyle = "#993d36"; ctx.font = "bold 22px sans-serif"; ctx.textAlign = "center"
+    ctx.fillText(compositionProofMark(props.standardScene.usage).text, PAGE.width / 2, PAGE.height - 12)
     if (target === canvas.value || target === standardPreviewCanvas) {
       window.clearTimeout(previewTimer)
       previewTimer = window.setTimeout(() => { if (props.standardScene && target) { emit("preview", target.toDataURL("image/png")) } }, 180)
@@ -723,21 +776,42 @@ function paint(target = canvas.value || (props.standardScene ? standardPreviewCa
 }
 let previewTimer = 0
 function schedulePaint() { if ((props.open || props.standardScene) && !frame) { frame = requestAnimationFrame(() => paint()) } }
-async function exportImage(format = exportFormat.value, density = 300) {
+function downloadDataRecord() {
+  if (!props.dataSnapshot) { return }
+  const url = URL.createObjectURL(new Blob([JSON.stringify(props.dataSnapshot, null, 2)], { type: "application/json" }))
+  const link = document.createElement("a"); link.href = url; link.download = `制图数据记录-${props.dataSnapshot.fingerprint.slice(0, 12)}.json`; link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+async function exportImage(format = exportFormat.value, density = 300, delivery = false) {
   if (!imageReady.value || exporting.value) { return }
   exporting.value = true
+  const temporaryRasters: string[] = []
   try {
-    const loaded = await Promise.all([...visibleItems.value.filter(item => item.kind === "symbol").map(item => symbolImage(item).ready), ...visibleItems.value.filter(item => item.raster).map(item => rasterImage(item.raster!).ready)])
+    const scene = props.standardScene; const revision = JSON.stringify(items.value)
+    const scale = format === "png" ? pngWidth.value / PAGE.width : density / 101.6
+    let outputItems = visibleItems.value
+    if (scene?.renderAtDpi) {
+      const high = await scene.renderAtDpi(Math.ceil(scale * 101.6))
+      const originals = new Set(items.value.flatMap(item => item.raster ? [item.raster.image] : []))
+      outputItems = outputItems.map(item => {
+        const raster = high.items.find(entry => entry.id === item.id)?.raster || item.raster
+        if (raster && !originals.has(raster.image)) { temporaryRasters.push(raster.image) }
+        return { ...item, raster }
+      })
+    }
+    const loaded = await Promise.all([...outputItems.filter(item => item.kind === "symbol").map(item => symbolImage(item).ready), ...outputItems.filter(item => item.raster).map(item => rasterImage(item.raster!).ready)])
     if (loaded.some(success => !success)) { throw new Error("素材加载失败") }
     const target = document.createElement("canvas")
-    const scale = format === "png" ? pngWidth.value / PAGE.width : density / 101.6
     target.width = Math.round(PAGE.width * scale); target.height = Math.round(PAGE.height * scale)
-    paint(target, scale)
+    paint(target, scale, outputItems)
     const ctx = target.getContext("2d")!
-    ctx.save(); ctx.scale(scale, scale); ctx.translate(PAGE.width / 2, PAGE.height / 2); ctx.rotate(-0.3)
-    ctx.fillStyle = "rgba(153, 25, 25, 0.35)"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center"
-    const watermark = props.standardScene?.usage === "test" ? "合成测试 · 禁止业务使用" : "校样 · 非正式应急响应成果"
-    ctx.fillText(watermark, 0, 0); ctx.restore()
+    const mark = compositionProofMark(props.standardScene?.usage)
+    const watermark = mark.text
+    if (mark.diagonal) {
+      ctx.save(); ctx.scale(scale, scale); ctx.translate(PAGE.width / 2, PAGE.height / 2); ctx.rotate(-0.3)
+      ctx.fillStyle = "rgba(153, 25, 25, 0.35)"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center"
+      ctx.fillText(watermark, 0, 0); ctx.restore()
+    }
     const title = items.value.find(item => item.kind === "title")?.text || props.mainTitle || "专题制图"
     let blob = format === "png"
       ? await new Promise<Blob>((resolve, reject) => target.toBlob(value => value ? resolve(value) : reject(new Error("图片编码失败")), "image/png"))
@@ -746,13 +820,19 @@ async function exportImage(format = exportFormat.value, density = 300) {
       const metadata = compositionMetadata(items.value, { ...cartographySnapshot(), metrics: props.metrics, legend: items.value.find(item => item.kind === "map")?.raster?.legend ?? props.legend })
       blob = await embedCartographyMetadata(blob, metadata)
     }
+    if (scene !== props.standardScene || revision !== JSON.stringify(items.value)) { throw new Error("排版或图件在导出期间已变化，请重新导出") }
+    if (delivery) { return { file: new File([blob], "composition.png", { type: "image/png" }), layout: publicationLayout() } }
     const url = URL.createObjectURL(blob); const link = document.createElement("a")
     link.href = url; link.download = `${title.replace(/[\\/:*?"<>|]/g, "_")}-校样.${format}`; link.click()
     setTimeout(() => URL.revokeObjectURL(url), 10000); save(); status.value = "排版图片已导出"
-  } catch { status.value = "导出失败，请检查主图后重试" } finally { exporting.value = false }
+  } catch (err) { status.value = err instanceof Error ? err.message : "导出失败，请检查主图后重试" } finally { temporaryRasters.forEach(key => rasterImages.delete(key)); exporting.value = false }
 }
 
 watch(() => props.mainImage, url => {
+  if (props.dataDriven && !url) {
+    for (const item of items.value.filter(item => item.kind === "map")) { delete item.raster }
+    status.value = "数据已失效，待重新生成"; schedulePaint()
+  }
   const version = ++loadVersion
   loadedImage = null; imageReady.value = false; imageError.value = ""
   if (!url) { schedulePaint(); return }
@@ -780,6 +860,7 @@ watch(() => [props.open, props.scopeKey], async () => {
       selectedId.value = items.value[0].id
     }
   }
+  if (props.dataDriven) { items.value = items.value.filter(item => item.kind !== "symbol") }
   if (props.standardScene) { items.value = syncStandardComposition(items.value, props.standardScene) } else { syncCharts(true) }
   if (resetHistory) { history.reset(items.value); historyReady = true; updateHistoryButtons() }
   await nextTick(); observeDock(); await nextTick(); fit(); schedulePaint(); returnButton.value?.focus()
@@ -879,7 +960,11 @@ onBeforeUnmount(() => { stopDock(); stopDrag?.(); save(); loadVersion++; resizeO
 .composer-symbol-tabs button[aria-selected=true] { box-shadow: inset 0 -2px #1287b6; color: #1287b6; }
 .composer-sidebar h3 a { color: #527486; font-size: 11px; font-weight: 400; margin-left: auto; }
 :global(html[data-theme="dark"] .composer-sidebar h3 a) { color: #a9cad9; }
-.composer-symbols button { flex-direction: column; height: 62px; white-space: nowrap; font-size: 12px; padding: 5px; gap: 5px; }
+.composer-symbols button { flex-direction: column; min-height: 78px; white-space: normal; font-size: 12px; padding: 5px; gap: 5px; }
+.composer-symbols small { font-size: 11px; color: inherit; }
+.composer-symbols button[aria-pressed=true] { border-color: #1283a2; box-shadow: inset 0 0 0 1px #1283a2; }
+.composer-symbol-feedback { margin-top: 10px; padding: 10px 0; border-top: 1px solid #526a78; color: inherit; }
+.composer-symbol-feedback p { font-size: 12px; line-height: 1.5; margin: 6px 0; }
 .composer-symbol-opacity { grid-column: 1 / -1; }
 .composer-raster-source { display: grid; gap: 8px; font-size: 12px; overflow-wrap: anywhere; }
 .composer-layer-list { display: grid; gap: 3px; max-height: 180px; overflow-y: auto; }

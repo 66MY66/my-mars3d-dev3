@@ -2,6 +2,10 @@
 <img src="//mars3d.cn/logo.png" width="300px" />
 </p>
 
+## 数据管理后端部署
+
+项目已包含卫星遥感数据管理所需的 Jeecg、MySQL、Redis 与 Nginx Compose 配置。Linux 服务器部署步骤和已有数据库注意事项见 [数据管理（Jeecg）部署说明](docs/deployment/data-management-jeecg.md)。
+
 <p align="center">基于Vue3.x技术栈的 Mars3D🌎基础项目系统</p>
 
 <p align="center">

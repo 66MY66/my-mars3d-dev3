@@ -17,10 +17,13 @@ describe("earthquake business colors", () => {
     expect(earthquakeLegend(result.palette)).toHaveLength(6)
     expect(result.palette.note).toContain("初判")
   })
-  it("keeps thermal boundaries, neutral cold values and stable ordered legends", () => {
+  it("keeps thermal boundaries with cold-neutral-warm diverging colors and ordered legends", () => {
     const result = analyzeEarthquakeDataset(data([308, 300, 292].map(lst_k => ({ lst_k, baseline_mean_k: 300, baseline_sd_k: 4, baseline_count: 20, quality_flag: "good" }))), "thermal", bounds, thresholds)
-    expect(result.points.map(point => point.color)).toEqual(["#d73027", "#fee08b", "#9aa6b2"])
+    expect(result.points.map(point => point.color)).toEqual(["#b2182b", "#f7f7f7", "#2166ac"])
     expect(result.rows.map(row => row.label)).toEqual(["偏冷", "背景范围", "热异常"])
+    expect(result.method).toBe("地表温度时间基线标准化")
+    expect(result.palette.note).toContain("不是亮温")
+    expect(result.caution).toContain("不是行业规范规定值")
   })
   it("preserves signed LOS colors and declares the data's physical direction", () => {
     const dataset = data([-20, 0, 20].map(los_mm => ({ los_mm, coherence: 0.8 })))

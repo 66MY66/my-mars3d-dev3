@@ -8,7 +8,7 @@
 import { onBeforeUnmount, ref, watch } from "vue"
 import { drawCatalogPreview } from "./catalog-template-preview"
 
-export type TemplateVisualKind = "choropleth" | "unique-value" | "graduated-symbol" | "point-heat" | "raster-ramp" | "raster-threshold" | "contour" | "trajectory" | "flow-direction" | "risk-overlay" | "time-compare" | "chart-linkage" | "anomaly-composite" | "thermal-infrared" | "post-quake-risk" | "swarm-trajectory" | "insar-deformation" | "intensity-distribution" | "secondary-hazard" | "building-resilience" | "population-exposure" | "emergency-command"
+export type TemplateVisualKind = "choropleth" | "unique-value" | "graduated-symbol" | "point-heat" | "raster-ramp" | "raster-threshold" | "contour" | "trajectory" | "flow-direction" | "risk-overlay" | "time-compare" | "chart-linkage" | "anomaly-composite" | "thermal-infrared" | "post-quake-risk" | "swarm-trajectory" | "insar-deformation" | "intensity-distribution" | "secondary-hazard" | "building-resilience" | "population-exposure" | "emergency-command" | "building-damage" | "road-damage" | "geological-disaster" | "remote-intensity" | "extreme-zone" | "direct-loss" | "imagery-comparison"
 const props = withDefaults(defineProps<{ kind: TemplateVisualKind; alt: string; palette?: string; compact?: boolean; renderedImage?: string; title?: string; description?: string; legend?: Array<{ label: string; color: string }> }>(), { palette: "", renderedImage: "", title: "", description: "" })
 const canvas = ref<HTMLCanvasElement>(); const error = ref("")
 let revision = 0

@@ -9,6 +9,69 @@ export const RETIRED_LAYER_NAMES = new Set([
 
 export const RETIRED_LAYER_TREE_IDS = new Set([20, 50, 52, 53, 54, 55, 60, 80, 99, 110, 4110, 5030])
 
+export const LAYER_CHECKED_STORAGE_KEY = "mars3d_layer_checked_keys"
+
+type LayerStateStorage = Pick<Storage, "setItem">
+
+export function resetInitialBusinessLayerState<T extends Record<string, any>>(
+  options: T,
+  storage?: LayerStateStorage | null
+): T {
+  const closeLayers = (items: Array<Record<string, any>> = []) => {
+    items.forEach((item) => {
+      if (item?.type !== "group") {
+        item.show = false
+      }
+      if (Array.isArray(item?.layers)) {
+        closeLayers(item.layers)
+      }
+      if (Array.isArray(item?.children)) {
+        closeLayers(item.children)
+      }
+    })
+  }
+
+  closeLayers(Array.isArray(options?.layers) ? options.layers : [])
+  storage?.setItem(LAYER_CHECKED_STORAGE_KEY, "[]")
+  return options
+}
+
+/**
+ * Mars3D may materialize configured layers asynchronously after the map
+ * constructor returns. Re-apply the initial business-layer baseline once the
+ * map instance exists, while leaving the active basemap untouched.
+ */
+export function resetInitialMapLayerVisibility(map: any): void {
+  if (!map || typeof map.getLayers !== "function") {
+    return
+  }
+
+  const basemapIds = new Set<string>()
+  if (typeof map.getBasemaps === "function") {
+    try {
+      for (const basemap of map.getBasemaps(true) || []) {
+        if (basemap?.id != null) {
+          basemapIds.add(String(basemap.id))
+        }
+      }
+    } catch {
+      // Basemap discovery is best-effort; explicit basemap markers below are sufficient.
+    }
+  }
+
+  for (const layer of map.getLayers() || []) {
+    if (!layer || layer._isBasemap === true) {
+      continue
+    }
+    const id = String(layer.id ?? "")
+    const pid = String(layer.pid ?? layer.options?.pid ?? "")
+    if (basemapIds.has(id) || id === "10" || id === "11" || pid === "10" || pid === "11") {
+      continue
+    }
+    layer.show = false
+  }
+}
+
 export function isRetiredLayerMenuEntry(item: Record<string, any>, getById?: (id: string | number) => Record<string, any> | null | undefined): boolean {
   let current: Record<string, any> | null | undefined = item
   const visited = new Set<string>()

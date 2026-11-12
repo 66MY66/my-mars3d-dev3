@@ -1,36 +1,53 @@
-import { bbox, booleanValid, destination, point, featureCollection } from "@turf/turf"
+import { bbox, destination, point, featureCollection } from "@turf/turf"
+import { validVectorGeometry } from "./geometry-validation"
 import type { Feature, FeatureCollection, Geometry, Position } from "geojson"
 import { dbtSymbolDefinitions, type DbtSymbolKind } from "./dbt116-symbols"
-import { baseRequirements, clipLand, containedInBounds, coversBounds, dbtBaseRoles, dbtMapCode, dbtRegion, dbtRoleNames, fitDbtBounds, insideBounds, intensityBands, validBounds } from "./dbt-cartography-rules"
+import { baseRequirements, clipLand, containedInBounds, coversBounds, dbtBaseRoles, dbtMapCode, dbtRegion, dbtRoleNames, fitDbtBounds, insideBounds, validBounds } from "./dbt-cartography-rules"
+import type { SocioeconomicStyle } from "./socioeconomic-style"
+import { populationSummary, validatePopulationGrid, type PopulationGrid } from "./population-grid"
+import { socioeconomicMetrics } from "./socioeconomic-metrics"
+import { validateSourceReferenceGrid, type SourceReferenceGrid } from "./source-reference-grid"
+import { remoteReferenceStyle } from "./remote-reference-style"
+import { backendDocumentIssue, type BackendDocumentBinding } from "./backend-document-binding"
+import { CARTOGRAPHY_RULESET } from "./cartography-standards"
+import { demonstrationSource } from "./cartography-provenance"
+import { layerCoverageGaps } from "./cartography-coverage"
 
-export const DBT_STANDARD = "地震应急响应专题图制作要求（2025-05-05报批稿）"
-export const DBT_CLASSIFICATION = "DB/T 101-2024"
+export const DBT_STANDARD = CARTOGRAPHY_RULESET.title
+export const DBT_CLASSIFICATION = CARTOGRAPHY_RULESET.classification
 export const dbtTemplates = [
-  { id: "T30101000", name: "基本情况专题图", clause: "7.1.1 / 9.3.1", roles: ["distance", "station"], summary: "震中位置、周边行政区、灾害或交通分布" },
+  { id: "T30101000", name: "基本情况专题图", clause: "7.1.1 / 9.3.1", roles: ["distance", "station"], summary: "震中与主要城市或机场、码头的距离连线，或地震监测中心站（至少一种）" },
   { id: "T30102000", name: "社会经济分布专题图", clause: "7.1.2 / 9.3.2", roles: ["population", "building", "economy"], summary: "人口、房屋建筑或经济分布" },
   { id: "T30103000", name: "重点关注目标分布专题图", clause: "7.1.3 / 9.3.3", roles: ["target"], summary: "医院、学校、桥梁、水库或危险源的数量、分布与影响" },
   { id: "T30201000", name: "快速评估地震影响范围专题图", clause: "7.1.4 / 9.3.4", roles: ["fault"], summary: "最高烈度、影响面积、长短轴、分区面积与人口" },
   { id: "T30202000", name: "快速评估地震灾区防震减灾能力专题图", clause: "7.1.5 / 9.3.5", roles: ["pga", "refuge", "supplies", "capacity"], summary: "减灾能力、建筑抗震设防、避难场所或物资储备" },
-  { id: "T30203000", name: "快速评估地震重灾区救灾相关信息专题图", clause: "7.1.6 / 9.3.6", roles: ["imagery", "building", "target", "population", "rescue-area", "geohazard"], summary: "重灾区行政区、地势、救灾目标、道路与次生灾害" }
+  { id: "T30203000", name: "快速评估地震重灾区救灾相关信息专题图", clause: "7.1.6 / 9.3.6 / 附录 A", roles: ["dem", "imagery", "settlement", "transport", "building", "target", "population", "rescue-area", "geohazard"], summary: "重灾区地形、遥感影像、居民地、重点救灾目标、救灾道路或滑坡危险性等（至少一种）" }
 ] as const
 export type DbtTemplateId = typeof dbtTemplates[number]["id"]
 export type DbtBounds = { west: number; south: number; east: number; north: number }
 export type DbtLayer = {
   id: string; name: string; role: string; authority: string; publishedAt: string; source: string
   crs: string; security: string; scale: number; data: FeatureCollection
-  color?: string; colorStandard?: string; parameterEvidence?: string
+  color?: string; colorStandard?: string; parameterEvidence?: string; opacity?: number; order?: number
   unit?: string; enabled?: boolean; coverage?: DbtBounds; coverageEvidence?: string; crsEvidence?: string
-  legend?: Array<{ label: string; color: string; value?: number }>
+  thematic?: SocioeconomicStyle
+  grid?: PopulationGrid
+  sourceGrid?: SourceReferenceGrid
+  sourceReference?: { catalogId: string; originalSha256: string; productSha256: string; processing: string; notice: string }
+  onlineSource?: { collection: string; itemId: string; asset: string; revision: string; sourceItemSha256?: string; fingerprint: string; scope: DbtBounds; statistics?: { valid: number; missing: number; minimum: number | null; maximum: number | null; mean: number | null } | null; rendering?: { engine: string; kind: string; tileUrl?: string; proofUrl?: string; proofUrls?: string[]; sourceWidth?: number; sourceHeight?: number; sourceDpi?: number; classBreaks?: number[]; parameters?: Record<string, unknown> } }
+  legend?: Array<{ label: string; color: string; value?: number; radius?: number; noData?: boolean; kind?: DbtSymbolKind; shape?: "point" | "line" | "area"; styleKey?: string }>
   raster?: { image: string; bounds: DbtBounds; rendering: "hillshade" | "imagery" | "classified"; radiometry: string }
 }
 export type DbtDocument = {
-  version: 1; crs: string; usage?: "test" | "operational"
+  version: 1; crs: string; usage?: "test" | "operational" | "reference"
+  reference?: { title: string; bounds: DbtBounds; notice: string }
   event: { time: string; place: string; magnitude: number; magnitudeType: string; longitude: number; latitude: number; authority: string; bulletin: string }
   region: { zone: "R1" | "R2" | "R3"; province: string; prefecture: string; evidence: string; offshore?: boolean }
   agency: string; createdAt: string; description: string; layers: DbtLayer[]
   classification?: { instance: string; spatial: string }
   assessment?: Record<string, number>
   crsEvidence?: string
+  backendDocument?: BackendDocumentBinding
 }
 export type DbtIssue = { clause: string; message: string; severity: "error" | "review" | "warning" }
 export const dbtReviewClauses = [
@@ -56,34 +73,57 @@ export function readDbtDocument(raw: unknown): DbtDocument {
   const doc = raw as DbtDocument
   if (doc.version !== 1 || !doc.event || !doc.region || !Array.isArray(doc.layers) || doc.layers.length > 60) { throw new Error("数据包结构无效：需要 version、event、region、layers") }
   const strings = [doc.crs, doc.agency, doc.createdAt, doc.description, doc.event.time, doc.event.place, doc.event.magnitudeType, doc.event.authority, doc.event.bulletin, doc.region.zone, doc.region.province, doc.region.prefecture, doc.region.evidence]
-  if (strings.some(value => typeof value !== "string") || (doc.usage !== undefined && !["test", "operational"].includes(doc.usage))) { throw new Error("制图元数据字段类型无效") }
+  if (strings.some(value => typeof value !== "string") || (doc.usage !== undefined && !["test", "operational", "reference"].includes(doc.usage))) { throw new Error("制图元数据字段类型无效") }
+  if (doc.reference && (doc.usage !== "reference" || !validBounds(doc.reference.bounds) || !nonempty(doc.reference.title) || !nonempty(doc.reference.notice))) { throw new Error("历史参考图须独立声明用途、标题、地理范围与限制，不得作为正式图件范围") }
   if (![doc.event.longitude, doc.event.latitude, doc.event.magnitude].every(Number.isFinite) || Math.abs(doc.event.longitude) > 180 || Math.abs(doc.event.latitude) > 90) { throw new Error("地震参数或经纬度无效") }
   if (doc.classification && (typeof doc.classification.instance !== "string" || typeof doc.classification.spatial !== "string")) { throw new Error("分类编码字段类型无效") }
   if (doc.assessment && Object.values(doc.assessment).some(value => !Number.isFinite(value))) { throw new Error("评估统计必须为有限数值") }
   if (doc.crsEvidence !== undefined && typeof doc.crsEvidence !== "string") { throw new Error("坐标依据字段类型无效") }
   if (doc.region.offshore !== undefined && typeof doc.region.offshore !== "boolean") { throw new Error("近海属性必须为布尔值") }
+  if (backendDocumentIssue(doc)) { throw new Error(backendDocumentIssue(doc)) }
   const ids = new Set<string>()
   let count = 0
   for (const layer of doc.layers) {
     if (!layer || [layer.id, layer.name, layer.role, layer.authority, layer.publishedAt, layer.source, layer.crs, layer.security].some(value => typeof value !== "string")) { throw new Error("图层元数据字段类型无效") }
+    if (layer.crs !== doc.crs) { throw new Error(`${layer.id} 与图件坐标不一致，不能直接叠加或改写标签`) }
     if (!nonempty(layer.id) || ids.has(layer.id) || layer.data?.type !== "FeatureCollection" || !Array.isArray(layer.data.features)) { throw new Error("图层 ID 重复或缺少 GeoJSON FeatureCollection") }
     ids.add(layer.id)
     if (!Object.hasOwn(dbtRoleNames, layer.role)) { throw new Error(`${layer.id} 使用了未知图层角色`) }
     if ([layer.unit, layer.crsEvidence, layer.coverageEvidence, layer.colorStandard, layer.parameterEvidence].some(value => value !== undefined && typeof value !== "string")) { throw new Error(`${layer.id} 图层说明字段类型无效`) }
     if (layer.enabled !== undefined && typeof layer.enabled !== "boolean") { throw new Error(`${layer.id} 图层显示状态无效`) }
+    if ((layer.opacity !== undefined && (!Number.isFinite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1)) || (layer.order !== undefined && (!Number.isInteger(layer.order) || layer.order < 0 || layer.order > 100))) { throw new Error(`${layer.id} 图层透明度或层级无效`) }
+    if (layer.thematic && ((layer.thematic.mode !== undefined && !["total", "density"].includes(layer.thematic.mode)) || (layer.thematic.method !== undefined && !["natural", "equal", "quantile"].includes(layer.thematic.method)) || (layer.thematic.count !== undefined && (!Number.isInteger(layer.thematic.count) || layer.thematic.count < 2 || layer.thematic.count > 9)) || (layer.thematic.labels !== undefined && typeof layer.thematic.labels !== "boolean"))) { throw new Error(`${layer.id} 专题分级设置无效`) }
+    if (layer.thematic && ((layer.thematic.inputMetric !== undefined && !["total", "density"].includes(layer.thematic.inputMetric)) || (layer.thematic.field !== undefined && !nonempty(layer.thematic.field)))) { throw new Error(`${layer.id} 原始指标口径或数值字段无效`) }
     if (layer.coverage && !validBounds(layer.coverage)) { throw new Error(`${layer.id} 数据覆盖范围无效`) }
+    if (layer.onlineSource && (doc.usage !== "reference" || !doc.reference || !validBounds(layer.onlineSource.scope) || !/^[a-f0-9]{64}$/.test(layer.onlineSource.fingerprint))) { throw new Error("在线待核验数据必须保留参考用途、选区与数据指纹，不能改写为正式成果") }
+    if (layer.sourceGrid || layer.sourceReference) {
+      if (doc.usage !== "reference" || !doc.reference || !layer.sourceReference || !/^[a-f0-9]{64}$/.test(layer.sourceReference.originalSha256) || !/^[a-f0-9]{64}$/.test(layer.sourceReference.productSha256) || !nonempty(layer.sourceReference.processing) || !nonempty(layer.sourceReference.notice)) { throw new Error("本地待核验产品仅允许独立参考图件；不能改写用途冒充正式数据") }
+      if (layer.sourceGrid) {
+        validateSourceReferenceGrid(layer.sourceGrid)
+        if (layer.crs !== layer.sourceGrid.crs || layer.grid || layer.raster || layer.data.features.length || !["population", "economy"].includes(layer.role)) { throw new Error("原值参考栅格不能混用不同坐标、图片或矢量指标") }
+      }
+    }
+    if (layer.grid) {
+      validatePopulationGrid(layer.grid)
+      if (layer.role !== "population" || layer.crs !== layer.grid.crs || layer.raster || layer.data.features.length) { throw new Error(`${layer.id} 人口数值栅格不得与图片、矢量要素或不一致的坐标混用`) }
+    }
     if (layer.raster && (!validBounds(layer.raster.bounds) || !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(layer.raster.image) || !["hillshade", "imagery", "classified"].includes(layer.raster.rendering))) { throw new Error(`${layer.id} 栅格必须为带地理范围的内嵌 PNG/JPG`) }
     if (layer.raster && typeof layer.raster.radiometry !== "string") { throw new Error(`${layer.id} 栅格处理说明字段类型无效`) }
-    if (layer.legend && (!Array.isArray(layer.legend) || layer.legend.length > 30 || layer.legend.some(row => !nonempty(row.label) || !/^#[\da-f]{6}$/i.test(row.color)))) { throw new Error(`${layer.id} 图例无效`) }
+    if (layer.legend && (!Array.isArray(layer.legend) || layer.legend.length > 30 || layer.legend.some(row => !nonempty(row.label) || !/^#[\da-f]{6}$/i.test(row.color) || (row.noData !== undefined && typeof row.noData !== "boolean") || (row.radius !== undefined && (!Number.isFinite(row.radius) || row.radius < 0 || row.radius > 30))))) { throw new Error(`${layer.id} 图例无效`) }
     for (const feature of layer.data.features) {
       const geometry = feature?.geometry
       if (feature?.type !== "Feature" || !geometry || !(geometry.type in geometryDepths) || !coordinatesValid((geometry as { coordinates?: unknown }).coordinates, geometryDepths[geometry.type])) { throw new Error(`${layer.id} 存在无效几何；坐标顺序须为经度、纬度`) }
       if (JSON.stringify(geometry).length > 2_000_000 || ++count > 20000) { throw new Error("单个几何或要素数超过交互制图限制") }
-      if (!feature.properties || typeof feature.properties !== "object" || !booleanValid(feature)) { throw new Error(`${layer.id} 几何拓扑或要素属性无效`) }
+      if (!feature.properties || typeof feature.properties !== "object" || !validVectorGeometry(feature)) { throw new Error(`${layer.id} 几何拓扑或要素属性无效`) }
       if (feature.properties?.symbol && !Object.hasOwn(dbtSymbolDefinitions, feature.properties.symbol)) { throw new Error(`${layer.id} 含未收录的标准符号`) }
     }
   }
   return JSON.parse(JSON.stringify(doc)) as DbtDocument
+}
+export function mergeDbtSourceLayer(doc: DbtDocument, layer: DbtLayer): DbtDocument {
+  const bound = doc.layers.length || doc.event.time || doc.reference || doc.crsEvidence || doc.usage === "operational"
+  const crs = bound ? doc.crs : layer.crs
+  return readDbtDocument({ ...doc, crs, layers: [...doc.layers.filter(item => item.id !== layer.id), layer] })
 }
 export function intensityLabel(value: number) {
   const roman = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ", "Ⅷ", "Ⅸ", "Ⅹ", "Ⅺ", "Ⅻ"]
@@ -114,11 +154,34 @@ export function standardBounds(doc: DbtDocument, id: DbtTemplateId): DbtBounds |
   return validBounds(result) ? result : null
 }
 export function dbtTitle(doc: DbtDocument, id: DbtTemplateId) {
+  if (doc.usage === "reference" && doc.reference) { return doc.reference.title }
   const date = doc.event.time ? doc.event.time.slice(0, 10) : "[发震日期]"
-  return `${date} ${doc.event.place || "[震中地名]"} ${doc.event.magnitude || "[震级]"}级地震 ${dbtTemplates.find(item => item.id === id)!.name}`
+  const topics: Partial<Record<DbtTemplateId, Record<string, string>>> = {
+    T30101000: { "01": "震中周边交通分布专题图", "02": "震中与主要城市距离分布专题图" },
+    T30102000: { "01": "震中周边人口分布专题图", "02": "震中周边房屋建筑分布专题图", "03": "震中周边国内生产总值分布专题图" },
+    T30103000: { "01": "震中周边医院分布专题图", "02": "震中周边学校分布专题图", "03": "震中周边水库分布专题图", "04": "震中周边桥梁分布专题图", "05": "震中周边危险源分布专题图" },
+    T30202000: { "01": "快速评估地震灾区防震减灾能力专题图", "02": "地震灾区地震动参数区划专题图" },
+    T30203000: { "01": "快速评估地震重灾区地形专题图", "02": "快速评估地震重灾区遥感影像专题图", "03": "快速评估地震重灾区居民地分布专题图", "04": "快速评估地震重灾区重点救灾目标分布专题图", "05": "快速评估地震重灾区救灾道路分布专题图", "06": "快速评估地震重灾区地震滑坡危险性专题图" }
+  }
+  const topic = topics[id]?.[doc.classification?.instance || ""] || dbtTemplates.find(item => item.id === id)!.name
+  return `${date} ${doc.event.place || "[震中地名]"} ${doc.event.magnitude || "[震级]"}级地震 ${topic}`
+}
+export function dbtDrawingBounds(doc: DbtDocument, id: DbtTemplateId): DbtBounds | null {
+  if (doc.usage === "reference" && doc.reference) { return { ...doc.reference.bounds } }
+  const formal = standardBounds(doc, id)
+  if (formal) { return formal }
+  const grid = dbtVisibleLayers(doc, id).find(layer => layer.grid)?.grid
+  return grid ? fitDbtBounds(grid.bounds) : null
 }
 export function dbtFeatureSymbol(layer: DbtLayer, feature: Feature): DbtSymbolKind | undefined {
+  if (remoteReferenceStyle(layer.onlineSource)) { return undefined }
   if (Object.hasOwn(dbtSymbolDefinitions, feature.properties?.symbol || "")) { return feature.properties!.symbol as DbtSymbolKind }
+  if (feature.properties?.cartographySchema === "china-basegeo-250k.gb13923.v1" && Object.hasOwn(dbtSymbolDefinitions, feature.properties?.cartographyKind || "")) { return feature.properties!.cartographyKind as DbtSymbolKind }
+  if (layer.role === "target" && ["Point", "MultiPoint"].includes(feature.geometry.type)) {
+    const category = String(feature.properties?.category || "").trim().toLowerCase()
+    const targets: Record<string, DbtSymbolKind> = { 医院: "dbt-medical", hospital: "dbt-medical", medical: "dbt-medical", 学校: "dbt-school", school: "dbt-school", 机场: "dbt-airport", airport: "dbt-airport", 避难场所: "dbt-refuge", refuge: "dbt-refuge" }
+    return targets[category]
+  }
   const roles: Record<string, DbtSymbolKind> = { station: "dbt-station", history: "dbt-historical-epicenter", aftershock: "dbt-aftershock", fault: "dbt-fault", intensity: "dbt-isoseismal", pga: "dbt-pga", refuge: "dbt-refuge", "rescue-area": "dbt-rescue-area", geohazard: "dbt-geohazard" }
   return roles[layer.role]
 }
@@ -127,10 +190,11 @@ export function dbtVisibleLayers(doc: DbtDocument, id: DbtTemplateId) {
   const roles = [...base, ...dbtTemplates.find(item => item.id === id)!.roles] as string[]
   if (id === "T30101000") { roles.push("history") }
   if (id === "T30203000") { roles.push("aftershock", "fault", "imagery") }
-  return doc.layers.filter(layer => layer.enabled !== false && roles.includes(layer.role))
+  const instanceRole = id === "T30102000" ? ({ "01": "population", "02": "building", "03": "economy" }[doc.classification?.instance || ""]) : undefined
+  return doc.layers.filter(layer => layer.enabled !== false && (layer.opacity ?? 1) > 0 && (roles.includes(layer.role) || (doc.usage === "reference" && layer.role === "business")) && (!instanceRole || !["population", "building", "economy"].includes(layer.role) || layer.role === instanceRole))
 }
 export function dbtScopedLayers(doc: DbtDocument, id: DbtTemplateId) {
-  const bounds = standardBounds(doc, id)
+  const bounds = dbtDrawingBounds(doc, id)
   return dbtVisibleLayers(doc, id).map(layer => {
     let features = layer.data.features
     if (layer.role === "intensity") { features = clipLand(features.filter(f => Number(f.properties?.intensity) >= intensityThreshold(doc, id)), doc) }
@@ -143,33 +207,47 @@ export function inspectDbtDocument(doc: DbtDocument | null, id: DbtTemplateId): 
   if (!doc) { return [{ clause: "4.6 / 4.9", severity: "error", message: "尚未导入权威 CGCS2000 标准制图数据包" }] }
   const issues: DbtIssue[] = []
   const error = (clause: string, message: string) => issues.push({ clause, message, severity: "error" })
-  if (doc.usage !== "operational") { error("4.6 / 10.1", "当前为测试/未声明用途的数据，只能导出带测试标识的校样，禁止正式出图") }
+  if (backendDocumentIssue(doc)) { error("后台审核绑定", backendDocumentIssue(doc)) }
+  if (doc.usage !== "operational") { error("4.6 / 10.1", doc.usage === "reference" ? "当前为待核验的参考数据，尚未完成业务审核；可导出校样，不能直接作为正式成果" : "当前为测试/未声明用途的数据，只能导出带测试标识的校样，禁止正式出图") }
   if (doc.crs !== "EPSG:4490" || doc.layers.some(layer => layer.crs !== "EPSG:4490")) { error("4.9", "图件及所有图层必须为 CGCS2000 地理坐标 EPSG:4490；不接受直接截图或改写标签") }
   if (!nonempty(doc.crsEvidence)) { error("4.9", "缺少 CGCS2000 数据原始坐标或转换成果依据") }
   try { dbtMapCode(id, doc.classification?.instance, doc.classification?.spatial) } catch (err) { error("DB/T 101 第5章", (err as Error).message) }
   if (!validDate(doc.event.time) || !nonempty(doc.event.place) || doc.event.magnitude <= 0 || doc.event.magnitude > 10 || !nonempty(doc.event.magnitudeType)) { error("4.1 / 9.1", "发震时间、震中地名、震级及震级类型不完整") }
-  if (!/中国地震台网|中国地震速报台网|CENC/i.test(doc.event.authority) || /非|合成|模拟|虚构|test/i.test(doc.event.authority + doc.event.bulletin) || !nonempty(doc.event.bulletin)) { error("4.6", "缺少中国地震台网正式震情来源及公告编号/链接") }
+  if (!/中国地震台网|中国地震速报台网|CENC/i.test(doc.event.authority) || /非正式|非权威/.test(doc.event.authority) || demonstrationSource(`${doc.event.authority} ${doc.event.bulletin}`) || !nonempty(doc.event.bulletin)) { error("4.6", "缺少中国地震台网正式震情来源及公告编号/链接") }
   if (!["R1", "R2", "R3"].includes(doc.region.zone) || !nonempty(doc.region.evidence) || !nonempty(doc.region.province)) { error("5", "缺少按震中位置确定的制图分区及依据") }
   const zone = dbtRegion(doc.region.province, doc.region.prefecture, doc.region.offshore)
   if (!zone || zone !== doc.region.zone) { error("5 表1", "制图分区与震中所属省市或近海属性不一致，须核实行政归属") }
   if (!doc.agency?.trim() || !validDate(doc.createdAt) || !doc.description?.trim()) { error("9.1 / 9.3", "制作单位、制图时间及该类别内容说明必须填写") }
   const bounds = standardBounds(doc, id)
   const visible = dbtScopedLayers(doc, id)
+  for (const layer of doc.layers) {
+    if (!["public", "declassified"].includes(layer.security)) { error("4.6 / 发布包", `${layer.name || layer.id}：数据包含未确认公开/脱密的图层，隐藏图层也不得随包发布`) }
+    if (demonstrationSource(`${layer.authority} ${layer.source}`)) { error("4.6", `${layer.name} 为测试来源，不能仅修改用途或隐藏后作为正式数据打包`) }
+  }
   for (const layer of visible) {
     if (!nonempty(layer.authority) || !nonempty(layer.source) || !validDate(layer.publishedAt) || !["public", "declassified"].includes(layer.security)) { error("4.6 / 4.7", `${layer.name || layer.id}：缺少行业来源、数据日期或非涉密/脱密证明`) }
     if (!Number.isFinite(layer.scale) || layer.scale <= 0) { error("4.7", `${layer.name || layer.id}：缺少数据比例尺`) } else if (layer.scale > 1_000_000) { issues.push({ clause: "4.7", severity: "warning", message: `${layer.name} 比例尺小于推荐的 1:1,000,000，需核查适用性` }) }
-    if (/合成|模拟|虚构|test/i.test(layer.authority + layer.source)) { error("4.6", `${layer.name} 为测试来源，不能仅修改用途后作为正式数据`) }
     if (!nonempty(layer.crsEvidence)) { error("4.9", `${layer.name} 缺少原始坐标或转换依据`) }
-    if (!layer.data.features.length && !layer.raster) { error("7 / 8", `${layer.name || layer.id} 在制图范围内没有要素，不能作为已具备图层`) }
-    if (bounds && dbtBaseRoles.includes(layer.role) && (!coversBounds(layer.coverage || layer.raster?.bounds, bounds) || !nonempty(layer.coverageEvidence))) { error("8", `${layer.name} 缺少覆盖整个制图范围的完整性依据`) }
+    if (layer.sourceReference || layer.sourceGrid) { error("4.6 / 4.9 / 10.1", `${layer.name} 为来源待核验或近似定位的独立参考产品，不能正式出图或发布`) }
+    if (layer.onlineSource) { error("4.6 / 4.9 / 10.1", `${layer.name} 为来源、单位或坐标依据待核验的在线数据，不能正式出图或发布`) }
+    if (!layer.data.features.length && !layer.raster && !layer.grid && !layer.sourceGrid) { error("7 / 8", `${layer.name || layer.id} 在制图范围内没有要素，不能作为已具备图层`) }
+    if (["population", "economy"].includes(layer.role) && layer.raster && !layer.grid) { error("7.2.2 / 9.3.2", "人口或经济图片没有原始数值，不能用于统计或替代数值栅格") }
+    if (layer.grid && bounds && !coversBounds(layer.grid.bounds, bounds)) { error("8 / 10.1", `${layer.name} 的原始人口栅格没有覆盖规范范围，不拉伸或填补缺失区域`) }
+    if (layer.grid && bounds) {
+      const cells = populationSummary(layer.grid, bounds)
+      if (!cells.valid || cells.missing) { error("9.3.2 / 10.1", `${layer.name} 范围内存在 ${cells.missing} 个缺测像元或无有效人口像元，不能当作完整人口统计`) }
+    }
+    if (bounds && dbtBaseRoles.includes(layer.role) && (!coversBounds(layer.coverage || layer.raster?.bounds, bounds) || layerCoverageGaps(layer, bounds).length || !nonempty(layer.coverageEvidence))) { error("8", `${layer.name} 缺少覆盖整个制图范围的完整性依据`) }
     if (layer.role === "dem" && layer.raster?.rendering !== "hillshade") { error("8.2.5", "地形底图需提供分级设色/晕渲栅格，等高示意线不能代替 DEM 晕渲") }
     if (layer.raster && !nonempty(layer.raster.radiometry)) { error("7.2.6 / 8.2.5", `${layer.name} 缺少匀光或晕渲处理说明`) }
     if (layer.raster && bounds && ["dem", "imagery"].includes(layer.role) && !coversBounds(layer.raster.bounds, bounds)) { error("8 / 10.1", `${layer.name} 实际栅格范围未覆盖全图，不会拉伸补齐缺失区域`) }
     for (const feature of layer.data.features) {
       const symbol = dbtFeatureSymbol(layer, feature)
+      if (layer.role === "fault" && !["LineString", "MultiLineString"].includes(feature.geometry.type)) { error("7.2.4", `${layer.name} 活动断层必须为线几何，不能用断裂带范围面替代`); break }
+      if (layer.role === "intensity" && !["Polygon", "MultiPolygon"].includes(feature.geometry.type)) { error("6 / 7.2.4", `${layer.name} 需正式烈度分区面，不能用点、半径或线记录代替范围评估`); break }
       if (symbol && dbtSymbolDefinitions[symbol].geometry === "point" && !["Point", "MultiPoint"].includes(feature.geometry.type)) { error("9.4", `${layer.name} 点状符号不能用于线或面几何`); break }
       if (["boundary", "water", "transport"].includes(layer.role) && !symbol) { error("9.4 / 附录 B", `${layer.name} 缺少基础地理要素标准符号编码`); break }
-      if (["Point", "MultiPoint"].includes(feature.geometry.type) && !dbtFeatureSymbol(layer, feature)) { error("9.4 / 附录 B", `${layer.name} 点要素缺少标准符号编码`); break }
+      if (["Point", "MultiPoint"].includes(feature.geometry.type) && !["population", "economy"].includes(layer.role) && !dbtFeatureSymbol(layer, feature)) { error("9.4 / 附录 B", `${layer.name} 点要素缺少标准符号编码`); break }
       if (layer.role === "intensity" && !intensityLabel(Number(feature.properties?.intensity))) { error("7.2.4", `${layer.name} 存在缺失或无效烈度（应为 1–12 整数）`); break }
       if (["history", "aftershock"].includes(layer.role) && (!validDate(feature.properties?.occurredAt) || !Number.isFinite(feature.properties?.magnitude))) { error("7.2.1 / 7.2.6", `${layer.name} 缺少发震时间或震级`); break }
       if (layer.role === "history" && (!nonempty(feature.properties?.label) || !Number.isFinite(feature.properties?.casualties))) { error("7.2.1", "历史地震缺少震中位置或人员伤亡记录"); break }
@@ -180,13 +258,19 @@ export function inspectDbtDocument(doc: DbtDocument | null, id: DbtTemplateId): 
       if (!nonempty(layer.parameterEvidence) || !/GB\s*18306/.test(layer.parameterEvidence) || !/GB\s*55002/.test(layer.parameterEvidence)) { error("7.2.5", "地震动参数缺少 GB 18306（含适用修改单）与 GB 55002 对应关系的核验依据") }
       if (layer.data.features.some(f => !Number.isFinite(f.properties?.pga) || f.properties!.pga <= 0 || !Number.isInteger(f.properties?.designIntensity) || f.properties!.designIntensity < 6 || f.properties!.designIntensity > 9)) { error("7.2.5", "地震动参数需提供正值 pga（gₙ）和 designIntensity（6–9度），不自动推算对应关系") }
     }
-    if (["population", "economy"].includes(layer.role) && layer.data.features.some(f => !Number.isFinite(f.properties?.[layer.role === "population" ? "population" : "value"]))) { error("9.3.2", `${layer.name} 缺少可汇总数值字段`) }
+    if (["population", "economy"].includes(layer.role) && !layer.grid && !layer.raster && !layer.sourceGrid) {
+      if (!layer.thematic?.inputMetric) { error("9.3.2", `${layer.name} 尚未确认原始指标是总量还是密度`) }
+      try {
+        const metrics = socioeconomicMetrics(layer)
+        if (!metrics.rows.length || metrics.rows.some(row => row.sourceValue === null)) { error("9.3.2", `${layer.name} 缺少完整可汇总指标，缺测不能当作零值`) }
+      } catch (err) { error("9.3.2", err instanceof Error ? err.message : `${layer.name} 数值指标无效`) }
+    }
     if (bounds && ["population", "economy"].includes(layer.role) && layer.data.features.some(f => !containedInBounds(f, bounds))) { error("9.3.2", `${layer.name} 统计单元跨出图件范围；需提供范围内已核算指标，禁止按面积摊分人口或经济数值`) }
     if (layer.role === "economy" && !nonempty(layer.unit)) { error("9.3.2", `${layer.name} 缺少经济指标单位`) }
     if (layer.legend?.length && !nonempty(layer.colorStandard)) { error("9.4", `${layer.name} 分级色带缺少配色依据`) }
   }
   if (!bounds) { error("6 表 2", `缺少 ${intensityLabel(intensityThreshold(doc, id)) || "有效烈度"}及以上的快速评估烈度面，无法生成外扩 10 km 的制图范围`) }
-  const roles = new Set(visible.filter(layer => layer.data.features.length || layer.raster).map(layer => layer.role))
+  const roles = new Set(visible.filter(layer => layer.data.features.length || layer.raster || layer.grid).map(layer => layer.role))
   if (id !== "T30101000" && !roles.has("intensity")) { error("7.1", "当前类别必须显示快速评估等震线，不可隐藏") }
   const instanceRoles: Partial<Record<DbtTemplateId, Record<string, string>>> = {
     T30101000: { "01": "transport", "02": "distance" },
@@ -196,6 +280,7 @@ export function inspectDbtDocument(doc: DbtDocument | null, id: DbtTemplateId): 
   }
   const instanceRole = instanceRoles[id]?.[doc.classification?.instance || "00"]
   if (instanceRole && !roles.has(instanceRole)) { error("DB/T 101 第5章", `实例代码所指专题数据未显示：${dbtRoleNames[instanceRole]}`) }
+  if (id === "T30202000" && doc.classification?.instance === "01" && !["capacity", "refuge", "supplies"].some(role => roles.has(role))) { error("7.1.5 / DB/T 101 第5章", "地震减灾能力实例需要减灾能力、避难场所或物资储备，不能仅用地震动参数区划替代") }
   if (id === "T30103000" && doc.classification?.instance && !["00", "99"].includes(doc.classification.instance)) {
     const targetNames: Record<string, RegExp> = { "01": /医院|medical|hospital/i, "02": /学校|school/i, "03": /水库|reservoir/i, "04": /桥梁|bridge/i, "05": /危险|hazard/i }
     const pattern = targetNames[doc.classification.instance]
@@ -213,10 +298,10 @@ export function inspectDbtDocument(doc: DbtDocument | null, id: DbtTemplateId): 
   if (doc.region.zone === "R3" && !doc.layers.some(layer => layer.role === "land" && layer.data.features.length && nonempty(layer.source) && nonempty(layer.authority))) { error("7.2.4e", "近海制图需要带权威来源的陆地面用于裁切等震线") }
   if (id === "T30201000") {
     if (["longAxisKm", "shortAxisKm", "azimuth"].some(key => !Number.isFinite(doc.assessment?.[key])) || (doc.assessment?.longAxisKm || 0) <= 0 || (doc.assessment?.shortAxisKm || 0) <= 0 || (doc.assessment?.azimuth || 0) < 0 || (doc.assessment?.azimuth || 0) >= 360) { error("9.3.4", "缺少评估成果中的长轴长度、短轴长度、长轴走向（0–360°）") }
-    if (intensityBands(visible).some(band => band.population === null)) { error("9.3.4", "缺少各烈度区人口 zonePopulation，不能用像素统计代替人口") }
+    if (visible.filter(layer => layer.role === "intensity").some(layer => layer.data.features.some(feature => !Number.isFinite(feature.properties?.zonePopulation) || feature.properties!.zonePopulation < 0))) { error("9.3.4", "缺少各烈度区人口 zonePopulation，不能用像素统计代替人口") }
   }
   for (const layer of doc.layers.filter(layer => layer.role === "land" && doc.region.zone === "R3")) {
-    if (!nonempty(layer.crsEvidence) || !validDate(layer.publishedAt) || !["public", "declassified"].includes(layer.security) || /合成|模拟|test/i.test(layer.authority + layer.source)) { error("4.6 / 4.9", "近海裁切使用的陆地范围缺少权威来源、坐标或非涉密依据") }
+    if (!nonempty(layer.crsEvidence) || !validDate(layer.publishedAt) || !["public", "declassified"].includes(layer.security) || demonstrationSource(`${layer.authority} ${layer.source}`)) { error("4.6 / 4.9", "近海裁切使用的陆地范围缺少权威来源、坐标或非涉密依据") }
   }
   return issues
 }

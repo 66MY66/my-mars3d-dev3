@@ -207,7 +207,14 @@
                   <div v-if="!currentDataset?.datasetId" class="empty">
                     <a-empty description="请先选择/导入数据集" :image-style="{ height: '60px' }" />
                   </div>
-                  <div v-else class="thematics-panel">
+                <div v-else class="thematics-panel">
+                    <PublishedThematicMaps
+                      :dataset-id="currentDataset.datasetId"
+                      :active="panelVisible && activeSection === 'thematics'"
+                      :refresh-key="publishedRefreshKey"
+                      :highlight-id="publicationRequest.publicationId"
+                      @count="publishedMapsCount = $event"
+                    />
                     <div class="thematics-jobs">
                       <div class="thematics-header">
                         <mars-button class="task-round-btn" size="small" @click="loadThematicsJobs" :disabled="thematicsLoading">
@@ -566,6 +573,9 @@ import { restoreWorkspace } from "../dataset-repository/workspace/restore"
 import { serializeWorkspace } from "../dataset-repository/workspace/serialize"
 import { getJobs, getJobResult } from "../dataset-repository/services/eoapi-thematics"
 import { setWidgetProtected } from "@mars/common/store/widget-rules"
+import PublishedThematicMaps from "./PublishedThematicMaps.vue"
+import { useTaskPublicationSelection } from "./publication-host"
+import { DEFAULT_PUBLICATION_DATASET } from "./thematic-publications"
 
 const props = withDefaults(
   defineProps<{
@@ -1788,7 +1798,17 @@ function onResizeEnd(e: PointerEvent) {
 const rootOpen = ref(true)
 
 type TaskSection = "layers" | "thematics" | "artifacts" | "versions"
+const publicationRequest = useTaskPublicationSelection()
 const activeSection = ref<TaskSection>("layers")
+const publishedMapsCount = ref(0)
+const publishedRefreshKey = ref(0)
+watch(publicationRequest, (request) => {
+  if (request.section === "thematics" && request.datasetId === currentDataset.value?.datasetId) {
+    rootOpen.value = true
+    activeSection.value = "thematics"
+    publishedRefreshKey.value++
+  }
+}, { immediate: true })
 
 const sectionTabs = computed(() => [
   { key: "layers" as TaskSection, label: "图层", count: layerCountText.value },
@@ -3535,11 +3555,11 @@ const layerCountText = computed(() => {
 })
 
 const thematicsCount = ref<number | null>(null)
-const thematicsCountText = computed(() => (thematicsCount.value === null ? "…" : String(thematicsCount.value)))
+const thematicsCountText = computed(() => (thematicsCount.value === null ? "…" : String(thematicsCount.value + publishedMapsCount.value)))
 
 async function loadThematicsCount() {
   const datasetId = currentDataset.value?.datasetId
-  if (!datasetId) {
+  if (!datasetId || datasetId === DEFAULT_PUBLICATION_DATASET) {
     thematicsCount.value = 0
     return
   }
@@ -3560,8 +3580,9 @@ const thematicResultExpanded = ref(true)
 const thematicsLastLayerId = ref("")
 
 async function loadThematicsJobs() {
+  publishedRefreshKey.value++
   const datasetId = currentDataset.value?.datasetId
-  if (!datasetId) {
+  if (!datasetId || datasetId === DEFAULT_PUBLICATION_DATASET) {
     thematicsJobs.value = []
     selectedThematicJobId.value = ""
     selectedThematicResult.value = null

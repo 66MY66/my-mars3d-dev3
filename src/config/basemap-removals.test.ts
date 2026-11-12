@@ -15,7 +15,12 @@ const removedBasemapNames = [
   "高德矢量(本地)",
   "离线影像地图",
   "单张图片",
-  "微软影像"
+  "微软影像",
+  "OpenStreetMap(外网不可达)",
+  "蓝色底图",
+  "绿色底图",
+  "黑色底图",
+  "无底图"
 ]
 
 describe("底图弹窗配置", () => {
@@ -29,7 +34,6 @@ describe("底图弹窗配置", () => {
 
   it("保留默认底图与未要求删除的底图", () => {
     expect(config.basemaps.some((item) => item.name === "高德影像(本地)" && item.show === true)).toBe(true)
-    expect(config.basemaps.some((item) => item.name === "OpenStreetMap(外网不可达)")).toBe(true)
     expect(config.basemaps.some((item) => item.name === "ArcGIS影像")).toBe(true)
   })
 })

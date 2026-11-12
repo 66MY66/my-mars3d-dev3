@@ -688,6 +688,9 @@ function toogleFold(status) {
 }
 
 function initThumbnail() {
+  if (!thumbnailRef.value) {
+    return
+  }
   const thOp = mergeProps.value.thumbnail
   thumbnailRef.value.style.right = autoUnit(thOp.right)
   thumbnailRef.value.style.left = autoUnit(thOp.right) ? null : autoUnit(thOp.left) // 为了解决在折叠状态下的位置问题
@@ -701,6 +704,9 @@ function initThumbnail() {
 
 // 初始化展示
 function initDialog(skipAnimation = false) {
+  if (!dialogRef.value || !warpperEle) {
+    return
+  }
   // 修复：先设置尺寸，再处理位置
   initSize()
 
@@ -735,8 +741,12 @@ function initDialog(skipAnimation = false) {
     })
   }
 }
-onMounted(() => {
+onMounted(async () => {
+  await nextTick()
   warpperEle = document.querySelector(mergeProps.value.warpper)
+  if (!dialogRef.value || !warpperEle) {
+    return
+  }
   dialogRef.value?.addEventListener?.("animationstart", handleAnimationStart as EventListener)
   dialogRef.value?.addEventListener?.("animationend", handleAnimationEnd as EventListener)
   if (isFold.value) {
@@ -753,6 +763,9 @@ onMounted(() => {
 
 // 初始化位置
 function initPosition() {
+  if (!dialogRef.value) {
+    return
+  }
   const pannelStyle = dialogRef.value.style
   // 层级位置
   pannelStyle.zIndex = `${++globalZIndex}`
@@ -783,6 +796,9 @@ function handleHeaderMouseDown(e: MouseEvent) {
 
 // 初始化大小
 function initSize() {
+  if (!dialogRef.value || !warpperEle) {
+    return
+  }
   let w = null
   let h = null
 
@@ -947,6 +963,9 @@ function applyDockAnchorAfterResize() {
 }
 
 function setSize(attr: "width" | "height", v) {
+  if (!dialogRef.value || !warpperEle) {
+    return
+  }
   if (isAllowValue(v)) {
     let value = v
     switch (attr) {
@@ -979,6 +998,9 @@ function setSize(attr: "width" | "height", v) {
 }
 
 function setPosition(attr: "left" | "top", v) {
+  if (!dialogRef.value || !warpperEle) {
+    return
+  }
   if (isAllowValue(v)) {
     let value = v
     const pb = dialogRef.value
@@ -1027,9 +1049,11 @@ function ensureUserLayoutPosition() {
 
 let domObserver: MutationObserver | null = null
 let niceRaf: number | null = null
-onMounted(() => {
+onMounted(async () => {
   addEvent(window, "resize", resize)
   addEvent(window, "keydown", handleKeydown)
+
+  await nextTick()
 
   // 监听元素变化
   domObserver = new MutationObserver(() => {
@@ -1037,6 +1061,10 @@ onMounted(() => {
   })
 
   const target = (dialogRef.value?.querySelector?.(".mars-dialog__content") as HTMLElement | null) || dialogRef.value
+  if (!target) {
+    domObserver = null
+    return
+  }
   domObserver.observe(target, {
     childList: true,
     subtree: true
@@ -1066,11 +1094,20 @@ function handleAnimationStart(event: AnimationEvent) {
 
 function handleAnimationEnd(event: AnimationEvent) {
   reportDialogDebug("animation-end", { animationName: event.animationName })
-  if (activeAnimationClass.value === leaveAnimationClass.value) {
+
+  // 子元素的 animationend 会冒泡到对话框，不能据此结束对话框自身的动画。
+  if (event.target !== dialogRef.value) {
+    return
+  }
+
+  const leaveClass = leaveAnimationClass.value
+  if (leaveClass && !props.visible && activeAnimationClass.value === leaveClass) {
     finishLeaveAnimation()
     return
   }
-  if (activeAnimationClass.value === enterAnimationClass.value) {
+
+  const enterClass = enterAnimationClass.value
+  if (enterClass && props.visible && activeAnimationClass.value === enterClass) {
     activeAnimationClass.value = ""
   }
 }
@@ -1078,6 +1115,9 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 // 处理高度超出的情况
 function autoNiceHeight() {
+  if (!warpperEle || !dialogRef.value) {
+    return
+  }
   if (observeDialog && !hasUserSet.value) {
     const isExceed = warpperEle.offsetHeight < dialogRef.value.offsetHeight + dialogRef.value.offsetTop
     if (isExceed) {
@@ -1102,7 +1142,7 @@ function scheduleAutoNiceHeight() {
 // 处理窗口缩放
 function resize() {
   const pb = dialogRef.value
-  if (!warpperEle) {
+  if (!warpperEle || !pb) {
     return
   }
 

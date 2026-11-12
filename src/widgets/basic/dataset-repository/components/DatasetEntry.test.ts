@@ -38,7 +38,9 @@ const map = {
     setView: vi.fn(),
     moveEnd: { addEventListener: addMoveEndListener }
   },
-  scene: { requestRender: vi.fn() }
+  scene: { requestRender: vi.fn() },
+  getLayers: vi.fn(() => []),
+  removeLayer: vi.fn()
 }
 
 vi.mock("../map", () => ({
@@ -146,8 +148,9 @@ describe("DatasetEntry cover preview", () => {
 
     await (wrapper.vm as any).$.setupState.closeCoverPreview()
     await flushPromises()
-    expect(restoreWorkspace).toHaveBeenCalledTimes(2)
-    expect(restoreWorkspace.mock.calls[1][2]).toMatchObject({ strategy: "replace", restoreView: false })
+    // 关闭预览不再走 replace 全图重建,按前缀定点清除预览图层
+    expect(restoreWorkspace).toHaveBeenCalledTimes(1)
+    expect(map.removeLayer).not.toHaveBeenCalled() // mock getLayers 返回空,无预览图层可删
     expect(map.camera.setView).toHaveBeenCalledOnce()
     expect(wrapper.find(".modal-stub").exists()).toBe(false)
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:cover-2")

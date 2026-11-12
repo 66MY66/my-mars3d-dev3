@@ -7,6 +7,7 @@ import { markRaw } from "vue"
 import { WidgetState } from "@mars/common/store/widget"
 import { StoreOptions } from "vuex"
 import { createAsyncWidgetComponent as defineAsyncComponent } from "./async-widget"
+import ThematicWorkbenchEntry from "./ThematicWorkbenchEntry.vue"
 
 const store: StoreOptions<WidgetState> = {
   state: {
@@ -38,7 +39,7 @@ const store: StoreOptions<WidgetState> = {
         group: "right-panel"
       },
       {
-        component: markRaw(defineAsyncComponent(() => import("@mars/widgets/basic/thematic-workbench/index.vue"))),
+        component: markRaw(ThematicWorkbenchEntry),
         name: "thematic-workbench",
         group: "right-panel",
         autoDisable: true,
@@ -158,18 +159,6 @@ const store: StoreOptions<WidgetState> = {
       {
         component: markRaw(defineAsyncComponent(() => import("@mars/widgets/basic/current-task/index.vue"))),
         name: "current-task",
-        group: "right-panel",
-        autoDisable: true
-      },
-      {
-        component: markRaw(defineAsyncComponent(() => import("@mars/widgets/basic/hazard-identification/index.vue"))),
-        name: "hazard-identification",
-        group: "right-panel",
-        autoDisable: true
-      },
-      {
-        component: markRaw(defineAsyncComponent(() => import("@mars/widgets/basic/knowledge-graph/index.vue"))),
-        name: "knowledge-graph",
         group: "right-panel",
         autoDisable: true
       }

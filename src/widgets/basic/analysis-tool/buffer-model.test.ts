@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { buildBufferRequestParams, buildBufferResultView, convertDistanceValue, createBufferRunCoordinator } from "./buffer-model"
+import { buildBufferRequestParams, buildBufferResultView, convertDistanceValue, createBufferRunCoordinator, getBufferInputState } from "./buffer-model"
 
 describe("buffer analysis parameter model", () => {
   it("preserves physical distance when switching units", () => {
@@ -12,6 +12,41 @@ describe("buffer analysis parameter model", () => {
       mode: "single",
       radiusM: 1500,
       distanceUnit: "m"
+    })
+  })
+
+  it("describes a valid single-ring radius and rejects a zero radius", () => {
+    expect(getBufferInputState({ mode: "single", unit: "km", distance: 5, ringDistances: [], enabledRingIndexes: [] })).toMatchObject({
+      valid: true,
+      message: "将生成 0–5 km 的单环缓冲区",
+      selectedDistances: [5]
+    })
+    expect(getBufferInputState({ mode: "single", unit: "m", distance: 0, ringDistances: [], enabledRingIndexes: [] })).toMatchObject({
+      valid: false,
+      message: "环半径必须大于 0"
+    })
+  })
+
+  it("builds multi-ring interval rows and rejects duplicate enabled distances", () => {
+    expect(getBufferInputState({ mode: "multi", unit: "km", distance: 1, ringDistances: [1, 5, 10], enabledRingIndexes: [0, 1, 2] })).toMatchObject({
+      valid: true,
+      message: "将生成 3 个互不重叠的距离环带",
+      ranges: [
+        { start: 0, end: 1, label: "0–1 km" },
+        { start: 1, end: 5, label: "1–5 km" },
+        { start: 5, end: 10, label: "5–10 km" }
+      ]
+    })
+    expect(getBufferInputState({ mode: "multi", unit: "km", distance: 1, ringDistances: [1, 1, 10], enabledRingIndexes: [0, 1, 2] })).toMatchObject({
+      valid: false,
+      message: "已启用的多环距离不能重复"
+    })
+  })
+
+  it("requires enabled multi-ring distances to increase from near to far", () => {
+    expect(getBufferInputState({ mode: "multi", unit: "km", distance: 1, ringDistances: [5, 1, 10], enabledRingIndexes: [0, 1, 2] })).toMatchObject({
+      valid: false,
+      message: "多环距离需要由近到远递增"
     })
   })
 

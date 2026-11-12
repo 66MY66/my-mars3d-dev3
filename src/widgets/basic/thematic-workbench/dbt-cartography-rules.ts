@@ -1,6 +1,9 @@
 import { area, bbox, bboxPolygon, booleanIntersects, difference, featureCollection, intersect, union } from "@turf/turf"
 import type { Feature, MultiPolygon, Polygon } from "geojson"
 import type { DbtBounds, DbtDocument, DbtLayer, DbtTemplateId } from "./dbt116-standard"
+import { populationSummary } from "./population-grid"
+import { referenceGridSummary } from "./source-reference-grid"
+import { socioeconomicMetrics } from "./socioeconomic-metrics"
 
 export const dbtInstances: Record<DbtTemplateId, Record<string, string>> = {
   T30101000: { "00": "不区分实例", "01": "交通分布", "02": "主要城市震中距", 99: "其他基本情况" },
@@ -38,6 +41,7 @@ export function dbtRegion(province: string, prefecture: string, offshore = false
 
 export const dbtBaseRoles = ["boundary", "settlement", "water", "transport", "dem"]
 export const dbtRoleNames: Record<string, string> = {
+  event: "地震事件参数",
   boundary: "行政界线",
 settlement: "居民地",
 water: "水系",
@@ -113,8 +117,14 @@ export function intensityBands(layers: DbtLayer[]): IntensityBand[] {
     return [{ intensity, areaKm2: band ? area(band) / 1e6 : 0, population: hasPopulation ? group.reduce((sum, f) => sum + f.properties!.zonePopulation, 0) : null }]
   })
 }
-export function dbtStatistics(doc: DbtDocument, id: DbtTemplateId, layers: DbtLayer[]): DbtStatistic[] {
+export function dbtStatistics(doc: DbtDocument, id: DbtTemplateId, layers: DbtLayer[], bounds?: DbtBounds): DbtStatistic[] {
   if (id === "T30201000") {
+    const onlineReference = doc.usage === "reference" && layers.some(layer => layer.role === "intensity" && layer.onlineSource)
+    if (onlineReference) {
+      const features = layers.filter(layer => layer.role === "intensity").flatMap(layer => layer.data.features)
+      const levels = features.map(feature => Number(feature.properties?.intensity)).filter(value => Number.isInteger(value) && value >= 1 && value <= 12)
+      return [{ label: "最高评估烈度", value: levels.length ? Math.max(...levels) : null, unit: "度（参考）" }, { label: "选区评估要素数", value: features.length, unit: "个", note: "仅为选区内已提供的评估要素，不计算正式影响面积、暴露人口或损失；来源、方法和版本仍待核验。" }]
+    }
     const bands = intensityBands(layers)
     return [
       { label: "最高烈度", value: bands[0]?.intensity ?? null, unit: "度" },
@@ -125,14 +135,42 @@ export function dbtStatistics(doc: DbtDocument, id: DbtTemplateId, layers: DbtLa
   const roles = ({ T30102000: ["population", "building", "economy"], T30103000: ["target"], T30202000: ["refuge", "supplies", "capacity"], T30203000: ["target", "rescue-area", "geohazard", "aftershock"] } as Partial<Record<DbtTemplateId, string[]>>)[id] || ["station", "distance", "history"]
   return layers.filter(layer => roles.includes(layer.role)).flatMap(layer => {
     if (layer.role === "population" || layer.role === "economy") {
-      const key = layer.role === "population" ? "population" : "value"
-      const valid = layer.data.features.every(f => Number.isFinite(f.properties?.[key]) && f.properties![key] >= 0)
-      const total = valid ? layer.data.features.reduce((sum, f) => sum + f.properties![key], 0) : null
-      const result: DbtStatistic[] = [{ label: layer.name, value: total, unit: layer.role === "population" ? "人" : layer.unit || "", note: "按纳入图件的完整统计单元汇总；跨边界单元不按面积摊分人口或经济指标" }]
+      if (layer.onlineSource || layer.raster) {
+        const summary = layer.onlineSource?.statistics
+        return summary
+? [
+          { label: `${layer.name}原值最小值`, value: summary.minimum, unit: "原始值", note: "按框选内原始像元中心纳入；未重采样，不推算人口或 GDP 总量。" },
+          { label: `${layer.name}原值最大值`, value: summary.maximum, unit: "原始值" },
+          { label: "有效／缺测像元", value: summary.valid, unit: `／${summary.missing} 格` }
+        ]
+: [{ label: `${layer.name}业务总量`, value: null, unit: "待核实", note: "图片不能代替原始指标与统计口径，不将空要素集汇总为零。" }]
+      }
+      if (layer.sourceGrid) {
+        const summary = referenceGridSummary(layer.sourceGrid)
+        return [{ label: "选区原值最小 / 最大", value: summary.minimum, unit: ` / ${summary.maximum ?? "缺测"}`, note: "仅为最近邻重采样后选区原始数值的范围，不汇总为人口总数或 GDP 金额。" }, { label: "有效 / 缺测像元", value: summary.valid, unit: ` / ${summary.missing} 格` }]
+      }
+      if (layer.grid) {
+        const summary = populationSummary(layer.grid, bounds || (doc.usage === "reference" ? doc.reference?.bounds : undefined))
+        return [
+          { label: "有效格网人口", value: summary.total, unit: "人", note: "按图幅内像元中心纳入完整源像元；面积按源 CRS 椭球计算，边界像元不按面积摊分人数，缺测不作零人口。数据年份与统计口径以来源记录为准。" },
+          { label: "有效格网面积", value: summary.areaKm2, unit: "km²" },
+          { label: "有效格网人口密度", value: summary.density, unit: "人/km²" },
+          { label: "缺测格网", value: summary.missing, unit: "格" }
+        ]
+      }
+      let metrics: ReturnType<typeof socioeconomicMetrics>
+      try { metrics = socioeconomicMetrics(layer) } catch (err) { return [{ label: layer.name, value: null, unit: "", note: err instanceof Error ? err.message : "指标口径无效" }] }
+      const missing = metrics.rows.filter(row => row.total === null).length
+      const known = metrics.rows.filter(row => row.total !== null)
+      const subtotal = known.reduce((sum, row) => sum + row.total!, 0)
+      const total = known.length && !missing && Number.isFinite(subtotal) ? subtotal : null
+      const note = metrics.inputMetric === "density" ? "按完整统计单元的源密度乘面积积分总量，不将密度直接相加；不按图幅边界摊分，缺测不补零" : "按纳入图件的完整统计单元汇总；跨边界单元不按面积摊分人口或经济指标"
+      const result: DbtStatistic[] = [{ label: `${layer.name}${metrics.inputMetric === "density" ? "（密度积分估算）" : ""}`, value: total, unit: metrics.baseUnit, note }]
       if (layer.role === "population") {
         const combined = polygonUnion(layer.data.features); const km2 = combined ? area(combined) / 1e6 : 0
         result.push({ label: "人口统计单元面积", value: km2 || null, unit: "km²" }, { label: "统计单元人口密度", value: km2 && total !== null ? total / km2 : null, unit: "人/km²" })
       }
+      if (missing) { result.push({ label: "缺测统计单元", value: missing, unit: "个" }) }
       return result
     }
     const groups = new Map<string, number>()

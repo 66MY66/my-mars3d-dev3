@@ -129,6 +129,14 @@ function drawCoordinates(ctx: CanvasRenderingContext2D) {
 }
 
 export async function drawCatalogPreview(canvas: HTMLCanvasElement, kind: string, palette: string, imageUrl = "", title = "", description = "", legend?: TemplateScene["legend"]) {
+  const { productDefinition } = await import("./product-definitions")
+  const product = productDefinition(kind)
+  if (!imageUrl && product) {
+    const { renderTemplateLayoutPreview } = await import("./template-layout-preview")
+    const image = new Image(); image.src = await renderTemplateLayoutPreview(product.name); await image.decode()
+    canvas.width = image.naturalWidth; canvas.height = image.naturalHeight; canvas.getContext("2d")!.drawImage(image, 0, 0)
+    return
+  }
   canvas.width = STANDARD_SHEET.width; canvas.height = STANDARD_SHEET.height
   const ctx = canvas.getContext("2d")!
   ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height)

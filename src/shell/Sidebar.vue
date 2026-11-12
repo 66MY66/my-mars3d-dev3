@@ -250,7 +250,7 @@ function onClick(item: any) {
           initialTab: "template"
         }
       }
-    })
+    }, false)
     return
   }
   if (action.type === "widget.toggle") {

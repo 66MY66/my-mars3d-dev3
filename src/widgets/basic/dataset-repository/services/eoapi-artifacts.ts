@@ -780,7 +780,8 @@ export async function uploadArtifactInChunks(
  * @param params 上传参数
  */
 export async function uploadArtifact(
-  params: UploadArtifactParams
+  params: UploadArtifactParams,
+  _options?: { localFallback?: boolean }
 ): Promise<ApiResponse<UploadArtifactResponse>> {
   if (!params.file) {
     return {

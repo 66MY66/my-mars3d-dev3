@@ -11,17 +11,16 @@
 
 <script lang="ts">
 import { onBeforeUnmount, ref, watch } from "vue"
-import { readDbtDocument, type DbtTemplateId } from "./dbt116-standard"
+import type { DbtTemplateId } from "./dbt116-standard"
 import { renderDbtMap } from "./dbt116-renderer"
+import { loadStandardPreviewDocument } from "./standard-preview-source"
 
 const previews = new Map<DbtTemplateId, Promise<HTMLCanvasElement>>()
 function loadPreview(id: DbtTemplateId) {
   if (!previews.has(id)) {
     const pending = (async () => {
-      const response = await fetch(`${import.meta.env.BASE_URL}data/dbt116-test/${id}.json`, { signal: AbortSignal.timeout(15000) })
-      if (!response.ok) { throw new Error("校样数据加载失败") }
       const canvas = document.createElement("canvas")
-      await renderDbtMap(canvas, readDbtDocument(await response.json()), id)
+      await renderDbtMap(canvas, await loadStandardPreviewDocument(id, AbortSignal.timeout(15000)), id)
       return canvas
     })().catch(error => { previews.delete(id); throw error })
     previews.set(id, pending)

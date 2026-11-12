@@ -1,9 +1,9 @@
 <template>
   <section class="dbt-library" aria-label="地震应急响应标准模板库">
-    <header><h3>地震应急响应专题图</h3><span>DB/T 101-2024 · 制作要求报批稿</span></header>
+    <header><h3>地震应急响应专题图</h3><span>DB/T 101-2024 · DB/T 116-2026 提前采用</span></header>
     <div class="dbt-template-grid">
       <article v-for="item in dbtTemplates" :key="item.id">
-        <img v-if="previews[item.id]" :src="previews[item.id]" :alt="`${item.name}合成测试校样`" loading="lazy" />
+        <img v-if="previews[item.id]" :src="previews[item.id]" :alt="`${item.name} · ${standardPreviewLabel(item.id)}`" loading="lazy" />
         <div v-else class="dbt-loading">{{ failed ? '校样预览暂不可用' : '校样生成中' }}</div>
         <strong>{{ item.name }}</strong><small>{{ item.id }} · {{ item.id.startsWith('T301') ? '震区基本信息' : '快速评估地震灾害影响' }}</small>
         <button type="button" :aria-label="`使用${item.name}标准模板`" @click="emit('use', item.id)"><mars-icon icon="play" :width="14" />使用模板</button>
@@ -13,18 +13,17 @@
 </template>
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from "vue"
-import { dbtTemplates, readDbtDocument, type DbtTemplateId } from "./dbt116-standard"
+import { dbtTemplates, type DbtTemplateId } from "./dbt116-standard"
 import { renderDbtMap } from "./dbt116-renderer"
+import { loadStandardPreviewDocument, standardPreviewLabel } from "./standard-preview-source"
 const emit = defineEmits<{ use: [id: DbtTemplateId] }>()
 const previews = ref<Record<string, string>>({}); const failed = ref(false)
 const controller = new AbortController()
 onMounted(async () => {
   for (const item of dbtTemplates) {
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}data/dbt116-test/${item.id}.json`, { signal: controller.signal })
-      if (!response.ok) { throw new Error("Template data unavailable") }
       const canvas = document.createElement("canvas")
-      await renderDbtMap(canvas, readDbtDocument(await response.json()), item.id)
+      await renderDbtMap(canvas, await loadStandardPreviewDocument(item.id, controller.signal), item.id)
       if (controller.signal.aborted) { return }
       const thumbnail = document.createElement("canvas"); thumbnail.width = 480; thumbnail.height = 340
       thumbnail.getContext("2d")!.drawImage(canvas, 0, 0, 480, 340)

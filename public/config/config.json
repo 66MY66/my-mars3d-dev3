@@ -131,14 +131,6 @@
       "show": true
     },
     {
-      "pid": 10,
-      "name": "OpenStreetMap(外网不可达)",
-      "icon": "./img/thumbnail/basemap/osm.png",
-      "type": "xyz",
-      "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      "show": false
-    },
-    {
       "id": 11,
       "pid": 110,
       "name": "在线地图服务（需外网）",
@@ -227,70 +219,11 @@
     },
     {
       "pid": 11,
-      "name": "蓝色底图",
-      "icon": "./img/thumbnail/basemap/my_blue.png",
-      "type": "gaode",
-      "layer": "vec",
-      "chinaCRS": "GCJ02",
-      "invertColor": true,
-      "filterColor": "#4e70a6",
-      "brightness": 0.6,
-      "contrast": 1.8,
-      "gamma": 0.3,
-      "hue": 1,
-      "saturation": 0,
-      "show": false
-    },
-    {
-      "pid": 11,
-      "name": "绿色底图",
-      "icon": "./img/thumbnail/basemap/my_green.png",
-      "type": "gaode",
-      "layer": "vec",
-      "chinaCRS": "GCJ02",
-      "invertColor": true,
-      "filterColor": "rgba(12, 238, 230)",
-      "brightness": 1,
-      "contrast": 1.0,
-      "gamma": 0.2,
-      "hue": 1,
-      "saturation": 0,
-      "show": false
-    },
-    {
-      "pid": 11,
-      "name": "黑色底图",
-      "icon": "./img/thumbnail/basemap/my_dark.png",
-      "type": "gaode",
-      "layer": "vec",
-      "chinaCRS": "GCJ02",
-      "invertColor": true,
-      "filterColor": "#909090",
-      "brightness": 0.6,
-      "contrast": 1.8,
-      "gamma": 0.3,
-      "hue": 1,
-      "saturation": 0,
-      "show": false
-    },
-    {
-      "pid": 11,
       "name": "ArcGIS影像",
       "icon": "./img/thumbnail/basemap/arcgis_img.png",
       "type": "xyz",
       "url": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       "enablePickFeatures": false,
-      "show": false
-    },
-    {
-      "id": 2023,
-      "pid": 11,
-      "name": "无底图",
-      "icon": "./img/thumbnail/basemap/null.png",
-      "type": "grid",
-      "color": "#ffffff",
-      "alpha": 0.03,
-      "cells": 2,
       "show": false
     }
   ],
@@ -326,6 +259,7 @@
       "flyTo": true,
       "hasOpacity": true,
       "metadata": {
+        "detailProfile": "china-active-faults",
         "source": "eoAPI STAC / GMT 中国地理数据集 v0.4.0",
         "collection": "spatial-thematic",
         "itemId": "SP-china-active-faults",
@@ -789,6 +723,15 @@
       },
       "metadata": {
         "source": "eoAPI STAC",
+        "detailProfile": "china-socioeconomic-grid",
+        "collection": "spatial-thematic",
+        "itemId": "SP-china-gdp2020",
+        "metricName": "GDP密度",
+        "unit": "万元/平方公里",
+        "bandDescription": "gdp_10k_cny_per_km2",
+        "valueRange": "0～979493",
+        "total": "约 1008553 亿元",
+        "updatedAt": "2026-10-30T11:42:59Z",
         "description": "China 2020 GDP density visual asset",
         "temporalRange": "2020"
       },
@@ -812,6 +755,15 @@
       },
       "metadata": {
         "source": "eoAPI STAC",
+        "detailProfile": "china-socioeconomic-grid",
+        "collection": "spatial-thematic",
+        "itemId": "SP-china-pop2020",
+        "metricName": "人口密度",
+        "unit": "人/平方公里",
+        "bandDescription": "people_per_km2",
+        "valueRange": "0～30571",
+        "total": "约 13.88 亿人",
+        "updatedAt": "2026-10-30T11:42:07Z",
         "description": "China 2020 population grid visual asset",
         "temporalRange": "2020"
       },
@@ -933,188 +885,8 @@
     },
     {
       "id": 70,
-      "name": "热异常与遥感异常监测",
+      "name": "卫星遥感产品",
       "type": "group"
-    },
-    {
-      "id": 7010,
-      "pid": 70,
-      "name": "红外遥感数据底图",
-      "type": "group"
-    },
-    {
-      "pid": 7010,
-      "name": "MODIS热红外影像",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_Yunnan_2023_COG.tif&rescale=250,350&colormap_name=hot",
-      "minZoom": 5,
-      "maxZoom": 15,
-      "metadata": {
-        "source": "eoAPI titiler",
-        "description": "MODIS地表温度热红外影像",
-        "temporalRange": "2023年"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "pid": 7010,
-      "name": "Sentinel-3热红外数据",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/sentinel3/SLSTR_Yunnan_COG.tif&bidx=1&rescale=270,320",
-      "minZoom": 8,
-      "maxZoom": 18,
-      "metadata": {
-        "source": "eoAPI titiler",
-        "description": "Sentinel-3 SLSTR热红外数据"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "id": 7020,
-      "pid": 70,
-      "name": "气象遥感底图",
-      "type": "group"
-    },
-    {
-      "pid": 7020,
-      "name": "风云气象卫星影像",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/fy4/FY4A_Yunnan_IR1_COG.tif&rescale=180,300",
-      "minZoom": 4,
-      "maxZoom": 12,
-      "metadata": {
-        "source": "eoAPI titiler",
-        "description": "风云四号红外通道影像"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "pid": 7020,
-      "name": "GPM降水数据",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/gpm/GPM_Yunnan_2023_COG.tif&rescale=0,50&colormap_name=precipitation",
-      "minZoom": 6,
-      "maxZoom": 14,
-      "metadata": {
-        "source": "eoAPI titiler",
-        "description": "GPM降水测量数据"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "id": 7030,
-      "pid": 70,
-      "name": "热异常识别",
-      "type": "group"
-    },
-    {
-      "pid": 7030,
-      "name": "地表热异常检测结果",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/thermal/thermal_anomaly_detection_2023_COG.tif&rescale=0,1&colormap_name=reds",
-      "minZoom": 8,
-      "maxZoom": 16,
-      "metadata": {
-        "source": "eoAPI分析结果",
-        "description": "基于MODIS数据的热异常自动检测结果"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "pid": 7030,
-      "name": "热异常强度分布",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/thermal/thermal_intensity_2023_COG.tif&rescale=0,100&colormap_name=hot",
-      "minZoom": 8,
-      "maxZoom": 16,
-      "metadata": {
-        "source": "eoAPI分析结果",
-        "description": "热异常强度等级分布"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "id": 7040,
-      "pid": 70,
-      "name": "形变隐患识别",
-      "type": "group"
-    },
-    {
-      "pid": 7040,
-      "name": "InSAR形变监测",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/insar/insar_deformation_yunnan_COG.tif&rescale=-50,50&colormap_name=rdbu_r",
-      "minZoom": 10,
-      "maxZoom": 18,
-      "metadata": {
-        "source": "eoAPI titiler",
-        "description": "InSAR地表形变监测结果，正值表示抬升，负值表示下沉"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "pid": 7040,
-      "name": "形变隐患点分布",
-      "type": "geojson",
-      "url": "/data/geojson/deformation_risk_points.json",
-      "symbol": {
-        "styleOptions": {
-          "image": "/img/marker/mark-red.png",
-          "scale": 1,
-          "clampToGround": true,
-          "label": {
-            "text": "{name}",
-            "font_size": 14,
-            "color": "#ff0000",
-            "outline": true,
-            "outlineColor": "#000000"
-          }
-        }
-      },
-      "popup": "隐患点：{name}<br/>形变速率：{rate}mm/year<br/>风险等级：{level}",
-      "show": false,
-      "flyTo": true
-    },
-    {
-      "id": 7050,
-      "pid": 70,
-      "name": "光学影像异常识别",
-      "type": "group"
-    },
-    {
-      "pid": 7050,
-      "name": "地表反射率异常",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/optical/surface_anomaly_2023_COG.tif&rescale=-2,2&colormap_name=puor",
-      "minZoom": 10,
-      "maxZoom": 18,
-      "metadata": {
-        "source": "eoAPI分析结果",
-        "description": "Sentinel-2地表反射率异常检测结果"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "pid": 7050,
-      "name": "植被异常区域",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/optical/vegetation_anomaly_2023_COG.tif&rescale=-0.5,0.5&colormap_name=rdbu",
-      "minZoom": 10,
-      "maxZoom": 18,
-      "metadata": {
-        "source": "eoAPI分析结果",
-        "description": "NDVI异常变化区域检测"
-      },
-      "show": false,
-      "flyTo": false
     },
     {
       "id": 7060,
@@ -1123,6 +895,7 @@
       "type": "group"
     },
     {
+      "id": 706001,
       "pid": 7060,
       "name": "演化过程演示",
       "type": "graphic",
@@ -1159,7 +932,10 @@
           }
         }
       ],
-      "onWidget": "layer-thermal-evolution"
+      "onWidget": "layer-thermal-evolution",
+      "metadata": {
+        "detailProfile": "thermal-evolution-demo"
+      }
     },
     {
       "pid": 7060,
@@ -1199,6 +975,7 @@
       "flyTo": true,
       "hasOpacity": true,
       "metadata": {
+        "detailProfile": "china-admin-boundary",
         "source": "eoAPI STAC",
         "itemId": "SP-china-province-border",
         "description": "中国国界、省级行政区划界线、十段线及南海诸岛",
@@ -1215,34 +992,6 @@
       "pid": 40,
       "name": "地表温度",
       "type": "group"
-    },
-    {
-      "pid": 4020,
-      "name": "MODIS地表温度日产品",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_daily_lst_COG.tif&rescale=250,350&colormap_name=hot",
-      "minZoom": 5,
-      "maxZoom": 15,
-      "metadata": {
-        "source": "MODIS MOD11A1",
-        "description": "MODIS地表温度日产品"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "pid": 4020,
-      "name": "地表温度月均值",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/modis/MOD11A1_monthly_mean_COG.tif&rescale=280,320&colormap_name=thermal",
-      "minZoom": 4,
-      "maxZoom": 12,
-      "metadata": {
-        "source": "MODIS MOD11A1",
-        "description": "地表温度月平均值"
-      },
-      "show": false,
-      "flyTo": false
     },
     {
       "id": 402001,
@@ -1263,7 +1012,62 @@
         "source": "eoAPI STAC",
         "itemId": "SP-landsat-lst-20260216",
         "description": "丽江—大理 Landsat 地表温度样例栅格",
-        "temporalRange": "2026-02-16/2026-04-15"
+        "temporalRange": "2026-02-16/2026-04-15",
+        "collection": "spatial-thematic",
+        "dataContent": "Landsat SR 地表温度栅格",
+        "format": "Cloud Optimized GeoTIFF（COG）",
+        "time": "2026-02-16 至 2026-04-15",
+        "crs": "EPSG:4326（WGS 84）",
+        "resolution": "0.28°",
+        "rasterSize": "9 × 9 像元",
+        "extent": "东经 100.726296°～103.209958°；北纬 25.388546°～27.872208°",
+        "valueRange": "约 10.97～32.53",
+        "mean": "约 22.75",
+        "standardDeviation": "约 4.82",
+        "unitStatus": "未标注",
+        "timeStructure": "单幅栅格，不是多期时间序列",
+        "dataNote": "上图和点查以实际网格坐标范围为准",
+        "detailSections": [
+          {
+            "title": "基本信息",
+            "fields": [
+              { "label": "图层名称", "key": "name" },
+              { "label": "图层类型", "key": "type" },
+              { "label": "图层 ID", "key": "id" },
+              { "label": "数据来源", "key": "source" },
+              { "label": "STAC Item ID", "key": "itemId" },
+              { "label": "所属集合", "key": "collection" }
+            ]
+          },
+          {
+            "title": "数据信息",
+            "fields": [
+              { "label": "数据内容", "key": "dataContent" },
+              { "label": "数据格式", "key": "format" },
+              { "label": "数据时段", "key": "time" },
+              { "label": "源数据坐标系", "key": "crs" },
+              { "label": "像元分辨率", "key": "resolution" },
+              { "label": "栅格尺寸", "key": "rasterSize" },
+              { "label": "空间范围", "key": "extent" }
+            ]
+          },
+          {
+            "title": "数值信息",
+            "fields": [
+              { "label": "像元值范围", "key": "valueRange" },
+              { "label": "平均值", "key": "mean" },
+              { "label": "标准差", "key": "standardDeviation" },
+              { "label": "数值单位", "key": "unitStatus" }
+            ]
+          },
+          {
+            "title": "数据说明",
+            "fields": [
+              { "label": "时间形态", "key": "timeStructure" },
+              { "label": "使用说明", "key": "dataNote" }
+            ]
+          }
+        ]
       },
       "show": true,
       "flyTo": true
@@ -1305,74 +1109,6 @@
       "metadata": {
         "source": "eoAPI分析",
         "description": "NDVI年度变化趋势"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "id": 4030,
-      "pid": 40,
-      "name": "长波辐射",
-      "type": "group"
-    },
-    {
-      "pid": 4030,
-      "name": "OLR长波辐射数据",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/noaa/OLR_Yunnan_COG.tif&rescale=150,300&colormap_name=coolwarm",
-      "minZoom": 4,
-      "maxZoom": 12,
-      "metadata": {
-        "source": "NOAA OLR",
-        "description": "NOAA射出长波辐射数据"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "pid": 4030,
-      "name": "长波辐射异常指数",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/noaa/OLR_anomaly_index_COG.tif&rescale=-20,20&colormap_name=rdbu_r",
-      "minZoom": 4,
-      "maxZoom": 12,
-      "metadata": {
-        "source": "eoAPI分析",
-        "description": "OLR异常指数（地震前兆参考）"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "id": 4010,
-      "pid": 40,
-      "name": "气候数据",
-      "type": "group"
-    },
-    {
-      "pid": 4010,
-      "name": "气温分布",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/climate/temperature_yunnan_COG.tif&rescale=-10,30&colormap_name=temperature",
-      "minZoom": 4,
-      "maxZoom": 12,
-      "metadata": {
-        "source": "eoAPI",
-        "description": "云南区域气温分布"
-      },
-      "show": false,
-      "flyTo": false
-    },
-    {
-      "pid": 4010,
-      "name": "降水分布",
-      "type": "xyz",
-      "url": "http://192.168.10.15:5955/cog/tiles/{z}/{x}/{y}@1x?url=/data/climate/precipitation_yunnan_COG.tif&rescale=0,200&colormap_name=precipitation",
-      "minZoom": 4,
-      "maxZoom": 12,
-      "metadata": {
-        "source": "eoAPI",
-        "description": "云南区域降水分布"
       },
       "show": false,
       "flyTo": false
@@ -2183,6 +1919,40 @@
       "type": "group"
     },
     {
+      "id": 103,
+      "pid": 100,
+      "name": "地震灾害评估",
+      "type": "group"
+    },
+    {
+      "id": 802001,
+      "pid": 103,
+      "name": "房屋损毁热力图（fake_damage10，测试数据）",
+      "type": "xyz",
+      "url": "/api/titiler/collections/building-damage-assessment/items/HD-fake_damage10-01a19a99/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=data&rescale=0,2.983392&colormap_name=ylorrd",
+      "minimumLevel": 0,
+      "maximumLevel": 24,
+      "rectangle": {
+        "xmin": 101.5805,
+        "ymin": 26.5875,
+        "xmax": 101.5835,
+        "ymax": 26.5905
+      },
+      "show": false,
+      "flyTo": true,
+      "hasOpacity": true,
+      "metadata": {
+        "detailProfile": "building-damage-heatmap",
+        "source": "eoAPI STAC / 房屋损毁评估",
+        "collection": "building-damage-assessment",
+        "itemId": "HD-fake_damage10-01a19a99",
+        "runTag": "fake_damage10",
+        "runId": "01a19a99-9ff8-8cd6-85a7-6f3a69325110",
+        "assessmentTime": "2026-11-02T05:00:48.176340Z",
+        "updatedAt": "2026-11-02T10:24:11Z"
+      }
+    },
+    {
       "id": 8050,
       "pid": 101,
       "name": "2017年九寨沟7.0级地震烈度圈",
@@ -2225,6 +1995,7 @@
       "flyTo": true,
       "hasOpacity": true,
       "metadata": {
+        "detailProfile": "jiuzhaigou-intensity",
         "source": "eoAPI STAC",
         "itemId": "SP-jiuzhaigou2017-intensity",
         "eventTime": "2017-08-08T13:19:00Z",
@@ -2281,7 +2052,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "BOUA"
+        "featureCode": "BOUA",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2306,7 +2078,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "BOUL"
+        "featureCode": "BOUL",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2334,7 +2107,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "LRDL"
+        "featureCode": "LRDL",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2359,7 +2133,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "LRRL"
+        "featureCode": "LRRL",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2387,7 +2162,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "HYDA"
+        "featureCode": "HYDA",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2415,7 +2191,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "HYDL"
+        "featureCode": "HYDL",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2443,7 +2220,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "RESA"
+        "featureCode": "RESA",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2471,7 +2249,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "RESP"
+        "featureCode": "RESP",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2503,7 +2282,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "I48",
-        "featureCode": "AGNP"
+        "featureCode": "AGNP",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2531,7 +2311,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "BOUA"
+        "featureCode": "BOUA",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2556,7 +2337,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "BOUL"
+        "featureCode": "BOUL",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2584,7 +2366,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "LRDL"
+        "featureCode": "LRDL",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2609,7 +2392,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "LRRL"
+        "featureCode": "LRRL",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2637,7 +2421,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "HYDA"
+        "featureCode": "HYDA",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2665,7 +2450,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "HYDL"
+        "featureCode": "HYDL",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2693,7 +2479,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "RESA"
+        "featureCode": "RESA",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2721,7 +2508,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "RESP"
+        "featureCode": "RESP",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2753,7 +2541,8 @@
         "source": "eoAPI STAC",
         "itemId": "SP-swchina-basegeo-250k",
         "sheet": "H48",
-        "featureCode": "AGNP"
+        "featureCode": "AGNP",
+        "detailProfile": "basegeo-250k"
       }
     },
     {
@@ -2798,31 +2587,100 @@
       "type": "group"
     },
     {
-      "id": 9010,
-      "pid": 90,
-      "name": "高分辨率光学遥感数据",
-      "type": "graphic",
-      "data": [],
-      "show": false,
-      "hasOpacity": true
+      "id": 91,
+      "name": "影像产品",
+      "type": "group"
     },
     {
-      "id": 9020,
-      "pid": 90,
-      "name": "高分辨率 SAR 遥感数据",
-      "type": "graphic",
-      "data": [],
-      "show": false,
-      "hasOpacity": true
+      "id": 9101,
+      "pid": 91,
+      "name": "2-9 光学真彩色",
+      "type": "xyz",
+      "url": "http://192.168.10.15:5952/collections/fy3-mersi-l1/items/FY3H_MERSI_GRAN_L1_20260927_0700_1000M_V0/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual",
+      "rectangle": {
+        "xmin": 73.44,
+        "ymin": 20.9,
+        "xmax": 108.21,
+        "ymax": 42.48
+      },
+      "show": true,
+      "hasOpacity": true,
+      "flyTo": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "collection": "fy3-mersi-l1",
+        "itemId": "FY3H_MERSI_GRAN_L1_20260927_0700_1000M_V0",
+        "temporalRange": "2026-09-27",
+        "description": "风云三号 MERSI 真彩色 visual 影像"
+      }
     },
     {
-      "id": 9030,
-      "pid": 90,
-      "name": "高分辨率多光谱遥感数据",
-      "type": "graphic",
-      "data": [],
-      "show": false,
-      "hasOpacity": true
+      "id": 9102,
+      "pid": 91,
+      "name": "2-10 SAR 黑白",
+      "type": "xyz",
+      "url": "http://192.168.10.15:5952/collections/sentinel-1-sar/items/S1A_IW_GRDH_1SDV_20260927T100000_DEMO/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual&rescale=0,0.3&colormap_name=gray",
+      "rectangle": {
+        "xmin": 103.2,
+        "ymin": 35.6,
+        "xmax": 104.2,
+        "ymax": 36.6
+      },
+      "show": true,
+      "hasOpacity": true,
+      "flyTo": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "collection": "sentinel-1-sar",
+        "itemId": "S1A_IW_GRDH_1SDV_20260927T100000_DEMO",
+        "temporalRange": "2026-09-27",
+        "description": "Sentinel-1 VV 幅度灰度影像，显示范围 0–0.3"
+      }
+    },
+    {
+      "id": 9103,
+      "pid": 91,
+      "name": "2-11 形变配色",
+      "type": "xyz",
+      "url": "http://192.168.10.15:5952/collections/insar-deformation/items/DEF-20261009151058-2ccbd7/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual",
+      "rectangle": {
+        "xmin": 103.2,
+        "ymin": 35.4,
+        "xmax": 104.4,
+        "ymax": 36.6
+      },
+      "show": true,
+      "hasOpacity": true,
+      "flyTo": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "collection": "insar-deformation",
+        "itemId": "DEF-20261009151058-2ccbd7",
+        "description": "InSAR 形变速率配色 visual 影像"
+      }
+    },
+    {
+      "id": 9104,
+      "pid": 91,
+      "name": "2-12 热异常热力图",
+      "type": "xyz",
+      "url": "http://192.168.10.15:5952/collections/thermal-diff-timeseries/items/TD-kumamoto-2026-07-11/tiles/WebMercatorQuad/{z}/{x}/{y}.png?assets=visual",
+      "rectangle": {
+        "xmin": 128.5,
+        "ymin": 30.5,
+        "xmax": 132.5,
+        "ymax": 34.5
+      },
+      "show": true,
+      "hasOpacity": true,
+      "flyTo": true,
+      "metadata": {
+        "source": "eoAPI STAC",
+        "collection": "thermal-diff-timeseries",
+        "itemId": "TD-kumamoto-2026-07-11",
+        "temporalRange": "2026-07-11",
+        "description": "熊本热异常热力图；蓝色偏热，红色偏冷"
+      }
     }
   ],
   "eoapiI18n": {

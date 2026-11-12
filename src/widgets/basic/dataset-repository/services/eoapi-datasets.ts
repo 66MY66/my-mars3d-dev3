@@ -18,6 +18,7 @@ import {
 import { pickManifestHrefFromStacItem } from "./manifest-resolver"
 import { setPersistedDatasetCover } from "./cover-cache"
 import { eoApiConfig } from "./eoapi-config"
+import { arrowSearchItems, isArrowCandidate, markArrowUnavailable } from "./arrow-fastpath"
 
 // ============ Collection (数据集) API ============
 
@@ -346,6 +347,20 @@ export async function getItems(
     return { success: true, data: apiRes.data.items, code: apiRes.data.items.length }
   }
 
+  // Arrow 极速路径：单 collection 的 items 列表（时间轴/版本列表的主通道）
+  if (isArrowCandidate() && !params?.offset) {
+    const arrowItems = await arrowSearchItems({
+      collections: [collectionId],
+      bbox: params?.bbox,
+      datetime: params?.datetime,
+      limit: params?.limit || 200
+    })
+    if (arrowItems) {
+      return { success: true, data: arrowItems, code: arrowItems.length }
+    }
+    markArrowUnavailable()
+  }
+
   const result = await eoapiGet<StacItemsResponse>(
     `/collections/${collectionId}/items`,
     { params }
@@ -516,6 +531,21 @@ export async function searchItems(params: {
   limit?: number
   query?: Record<string, any>
 }): Promise<ApiResponse<StacItem[]>> {
+  // Arrow 极速路径：无 query 语义过滤时走 sidecar 二进制通道（52ms vs JSON 167ms~1.3s）
+  // 失败自动回退 JSON 路径，业务无感
+  if (isArrowCandidate() && !params.query) {
+    const arrowItems = await arrowSearchItems({
+      collections: params.collections,
+      bbox: params.bbox,
+      datetime: params.datetime,
+      limit: params.limit
+    })
+    if (arrowItems) {
+      return { success: true, data: arrowItems }
+    }
+    markArrowUnavailable()
+  }
+
   const searchParams: Record<string, any> = {}
 
   if (params.collections) {

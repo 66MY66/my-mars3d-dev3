@@ -8,7 +8,7 @@ describe("Standard draft preview remains separate from business data", () => {
     const before = JSON.stringify(doc)
     for (const template of dbtTemplates) {
       const required = draftRequirements(doc, template.id)
-      expect(required.map(item => item.role)).toEqual(["intensity", ...template.roles])
+      expect(required.map(item => item.role)).toEqual(["intensity", "topic"])
       expect(required.every(item => !item.present && item.label)).toBe(true)
       expect(standardBounds(doc, template.id)).toBeNull()
       expect(inspectDbtDocument(doc, template.id).some(item => item.severity === "error")).toBe(true)
@@ -18,7 +18,7 @@ describe("Standard draft preview remains separate from business data", () => {
   it("does not count empty or hidden layers as available thematic data", () => {
     const doc = emptyDbtDocument()
     doc.layers.push({ id: "pop", name: "population", role: "population", authority: "", publishedAt: "", source: "", crs: "EPSG:4490", security: "", scale: 1000000, data: { type: "FeatureCollection", features: [] } })
-    const population = () => draftRequirements(doc, "T30102000").find(item => item.role === "population")!
+    const population = () => draftRequirements(doc, "T30102000").find(item => item.role === "topic")!
     expect(population().present).toBe(false)
     doc.layers[0].data.features.push({ type: "Feature", geometry: { type: "Point", coordinates: [106, 29] }, properties: { population: 10 } })
     expect(population().present).toBe(true)

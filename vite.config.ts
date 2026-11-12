@@ -5,6 +5,7 @@ import vue from "@vitejs/plugin-vue"
 import eslintPlugin from "vite-plugin-eslint"
 import { mars3dPlugin } from "vite-plugin-mars3d"
 import { VitePWA } from "vite-plugin-pwa"
+import { thematicServiceTargets, allowThematicServiceRequest } from "./src/widgets/basic/thematic-workbench/thematic-services"
 
 import { createStyleImportPlugin, AndDesignVueResolve } from "vite-plugin-style-import"
 
@@ -36,6 +37,7 @@ export default ({ mode }: ConfigEnv) => {
     return undefined
   })()
   const useCliHmr = typeof cliPort === "number" && cliPort > 0
+  const thematicReadServices = thematicServiceTargets
 
   return defineConfig({
     base: ENV.VITE_BASE_URL,
@@ -57,6 +59,23 @@ export default ({ mode }: ConfigEnv) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/data-management/, "/jeecg-boot")
         },
+        ...Object.fromEntries(Object.entries(thematicReadServices).map(([prefix, target]) => [prefix, {
+          target,
+          changeOrigin: true,
+          timeout: 20000,
+          proxyTimeout: 20000,
+          rewrite: (url: string) => url.slice(prefix.length),
+          configure(proxy) {
+            proxy.on("proxyReq", req => req.removeHeader("cookie"))
+            proxy.on("proxyRes", res => {
+              delete res.headers["set-cookie"]
+              if (prefix.endsWith("/files") || prefix.endsWith("/cog") || prefix.endsWith("/catalog-health")) {
+                res.headers["content-security-policy"] = "sandbox allow-scripts allow-forms allow-downloads allow-popups"
+                res.headers["x-content-type-options"] = "nosniff"
+              }
+            })
+          }
+        }])) ,
         // datasets-api 代理 - 数据集/成果管理、附件、发布审核（优先匹配，必须在 eoapi 之前）
         "/api/eoapi/datasets": {
           target: "http://192.168.10.15:5960",
@@ -94,6 +113,12 @@ export default ({ mode }: ConfigEnv) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/eoapi/, "")
         },
+        // Arrow 极速通道 - stac-arrow sidecar（二进制 IPC，绕开 JSON hydrate）
+        "/api/arrow": {
+          target: "http://192.168.10.15:5962",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/arrow/, "")
+        },
         // TiTiler COG 代理必须位于普通 TiTiler 代理之前，避免被其前缀匹配截获
         "/api/titiler-cog": {
           target: "http://192.168.10.15:5955",
@@ -111,7 +136,7 @@ export default ({ mode }: ConfigEnv) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/titiler(?=\/|$)/, "")
         }
-      }
+      },
     },
     define: {
       "process.env": {
@@ -246,6 +271,24 @@ export default ({ mode }: ConfigEnv) => {
       emptyOutDir: true
     },
     plugins: [
+      {
+        name: "thematic-read-only-services",
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            const url = new URL(req.url || "/", "http://localhost")
+            const pathname = url.pathname
+            const prefix = Object.keys(thematicReadServices).find(key => pathname.startsWith(`${key}/`))
+            if (!prefix) { next(); return }
+            if (!allowThematicServiceRequest(req.method || "GET", url, prefix)) {
+              res.statusCode = 405
+              res.setHeader("Content-Type", "application/json; charset=utf-8")
+              res.end(JSON.stringify({ detail: "Thematic service operation is not in the configured allowlist" }))
+              return
+            }
+            next()
+          })
+        }
+      },
       vue(),
       eslintPlugin(),
       mars3dPlugin({ useStatic: mode === "production" }) as any,
@@ -267,7 +310,7 @@ export default ({ mode }: ConfigEnv) => {
       // VitePWA 插件配置 - Service Worker 静态资源缓存
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: ["favicon.ico", "logo.svg", "logo.png"],
+        includeAssets: ["logo.svg", "logo.png"],
         manifest: {
           name: "地震灾害损失评估系统",
           short_name: "Mars3D",

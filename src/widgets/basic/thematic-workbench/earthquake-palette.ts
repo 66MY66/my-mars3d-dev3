@@ -13,7 +13,7 @@ export const INTENSITY_COLORS = {
   VI: "#ffd2da", VII: "#ffbebe", VIII: "#ff7f7f", IX: "#c82828", X: "#a80000", XI: "#8c0000"
 } as const
 export const EARTHQUAKE_COLORS = {
-  thermal: { cold: "#9aa6b2", background: "#fee08b", hot: "#d73027" },
+  thermal: { cold: "#2166ac", background: "#f7f7f7", hot: "#b2182b" },
   deformation: { negative: "#2166ac", neutral: "#f7f7f7", positive: "#b2182b" },
   risk: { low: "#27925d", medium: "#f2c94c", high: "#d83b36" }
 } as const
@@ -24,8 +24,8 @@ export function earthquakePalette(operation: EarthquakeOperation, thresholds: { 
     const colors = EARTHQUAKE_COLORS.thermal
     return {
       operation,
-      name: "热异常 · 红黄分级",
-      note: "Z 为基准期标准化亮温偏差；偏冷用中性灰区分，不表示地震前兆。",
+      name: "温度基线偏差 · 蓝白红发散",
+      note: "Z 为地表温度相对时间基线的标准化偏差，不是亮温；蓝色偏冷、近白色处于背景范围、红色偏暖。分级阈值为本次显示参数，不表示地震前兆。",
       entries: [
         { band: "偏冷", label: `偏冷 · Z ≤ −${z}`, color: colors.cold },
         { band: "背景范围", label: `背景范围 · −${z} < Z < ${z}`, color: colors.background },

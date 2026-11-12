@@ -15,15 +15,15 @@ trajectory: "轨迹回放",
 "time-compare": "时相对比",
 "chart-linkage": "图表联动",
   "anomaly-composite": "综合异常",
-"thermal-infrared": "热红外",
-"post-quake-risk": "震后风险",
-"swarm-trajectory": "震群轨迹",
-  "insar-deformation": "InSAR 形变",
-"intensity-distribution": "烈度分布",
-"secondary-hazard": "次生灾害",
-  "building-resilience": "建筑抗震",
-"population-exposure": "人口暴露",
-"emergency-command": "应急指挥"
+"thermal-infrared": "地表温度基线异常",
+"post-quake-risk": "地震灾害风险指数",
+"swarm-trajectory": "地震序列时空分布",
+  "insar-deformation": "InSAR 视线向形变",
+"intensity-distribution": "烈度评定成果",
+"secondary-hazard": "次生灾害调查成果",
+  "building-resilience": "建筑物地震易损性",
+"population-exposure": "人口与资产暴露",
+"emergency-command": "救灾资源与通行状态"
 }
 export const templateLayoutProfiles = Object.fromEntries(Object.entries(names).map(([kind, name]) => [kind, { name: `${name} · A3 四区版式`, family: "standard", accent: "#222222" }]))
 

@@ -24,7 +24,8 @@ export const dbtSymbolDefinitions = Object.fromEntries([thematic, geographic].fl
   const kind = `dbt-${id}` as DbtSymbolKind
   const line = group === 1 ? index >= 6 && index <= 17 : [7, 8, 9].includes(index)
   let geometry: DbtSymbol["geometry"] = "point"
-  if (id === "rescue-area" || index >= 18) { geometry = "area" }
+  if (id === "rescue-area" || (group === 1 && index >= 19)) { geometry = "area" }
+  if (id === "river") { geometry = "line" }
   if (line) { geometry = "line" }
   return [kind, {
  kind,

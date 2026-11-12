@@ -7,9 +7,9 @@
     :custom-class="dialogClass"
     :draggable="!chartPanelVisible"
     :handles="chartPanelVisible ? false : DIALOG_RESIZE_HANDLES"
-    :persist-layout="!chartPanelVisible"
+    :persist-layout="false"
     :width="dialogInitialWidth"
-    :height="SIDE_PANEL_HEIGHT"
+    :height="chartPanelVisible ? SIDE_PANEL_HEIGHT : 'calc(100% - 24px)'"
     :min-width="dialogMinWidth"
     :min-height="480"
     :position="dialogPosition"
@@ -19,19 +19,9 @@
   >
     <template #headerRight>
       <div class="header-actions">
-        <button v-if="workbenchMode === 'analysis'" type="button" class="header-text-btn" title="图层样式与三维" aria-label="图层样式与三维" @mousedown.stop @click="displaySettingsOpen = true"><mars-icon icon="config" :width="16" /></button>
+        <button v-if="workbenchMode === 'analysis' && !auxiliaryActive" type="button" class="header-text-btn" title="图层样式与三维" aria-label="图层样式与三维" @mousedown.stop @click="displaySettingsOpen = true"><mars-icon icon="config" :width="16" /></button>
         <button
-          v-if="workbenchMode === 'analysis' && !chartPanelVisible"
-          type="button"
-          class="header-text-btn"
-          title="打开图表展示"
-          @mousedown.stop
-          @click="openChartPanel"
-        >
-          图表展示
-        </button>
-        <button
-          v-if="workbenchMode === 'analysis' && chartPanelVisible"
+          v-if="chartPanelVisible"
           type="button"
           class="header-text-btn is-active"
           @mousedown.stop
@@ -44,11 +34,11 @@
           type="button"
           class="header-text-btn"
           :disabled="!isDirty"
-          title="保存制图草稿"
+          title="保存本机文案"
           @mousedown.stop
           @click="saveDraft"
         >
-          保存草稿
+          保存文案
         </button>
         <button
           type="button"
@@ -64,24 +54,31 @@
 
     <div class="workbench-shell" :class="{ 'has-chart-panel': chartPanelVisible }">
       <aside v-show="chartPanelVisible && templateLayoutEditing" class="chart-showcase-panel template-live-panel" aria-label="模板实时编辑">
-        <div class="template-live-heading"><strong>{{ draft.templateName }}</strong><mars-button size="small" @click="openChartPanel"><mars-icon icon="chart-histogram" :width="15" />分析结果</mars-button></div>
+        <div class="template-live-heading"><strong>{{ draft.templateName }}</strong><mars-button size="small" @click="showCartographyPanel"><mars-icon icon="left" :width="15" />返回数据与制图</mars-button></div>
         <label class="template-live-palette">配色方案<select v-model="draft.palette" aria-label="排版模板配色"><option v-for="option in paletteOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
         <div id="thematic-template-live-host"></div>
       </aside>
-      <aside v-if="chartPanelVisible && !templateLayoutEditing" class="chart-showcase-panel" :class="{ 'is-board-mode': chartViewMode === 'board' && analysisWorkspaceMode === 'raster' && earthquakeOutputView === 'result', 'is-earthquake-mode': analysisWorkspaceMode === 'earthquake' }">
+      <aside v-if="SCREENSHOT_TOOLS_IN_WORKBENCH && chartPanelVisible && !templateLayoutEditing" class="chart-showcase-panel" :class="{ 'is-board-mode': chartViewMode === 'board' && analysisWorkspaceMode === 'raster' && earthquakeOutputView === 'result', 'is-earthquake-mode': analysisWorkspaceMode === 'earthquake' }">
+        <section class="auxiliary-basis" aria-label="辅助工具结果依据">
+          <strong>高级工具 · {{ auxiliaryBasis.title }}</strong>
+          <span>来源：{{ auxiliaryBasis.source }}</span>
+          <p>{{ auxiliaryBasis.constraint }}</p>
+        </section>
         <section class="side-layout-section operator-section">
           <div class="panel-section-head">
             <div class="analysis-mode-control">
-              <span>分析模块</span>
-              <a-select :value="analysisWorkspaceMode" size="small" aria-label="分析模块" @change="onAnalysisModeChange">
-                <a-select-option value="raster">栅格计算</a-select-option>
-                <a-select-option value="temporal">时序分析</a-select-option>
-                <a-select-option value="signal">信号处理</a-select-option>
-                <a-select-option value="statistics">统计分析</a-select-option>
-                <a-select-option value="spatial">空间分析</a-select-option>
-                <a-select-option value="background">背景场运算</a-select-option>
-                <a-select-option value="numeric">数值变换</a-select-option>
-                <a-select-option value="earthquake">地震专题</a-select-option>
+              <span>辅助工具</span>
+              <a-select :value="analysisWorkspaceMode" size="small" aria-label="辅助工具类型" @change="onAnalysisModeChange">
+                <a-select-opt-group label="地图截图处理（非业务分析）">
+                  <a-select-option value="raster">截图像素运算</a-select-option>
+                  <a-select-option value="temporal">多期截图比较</a-select-option>
+                  <a-select-option value="signal">截图信号处理</a-select-option>
+                  <a-select-option value="statistics">截图亮度统计</a-select-option>
+                  <a-select-option value="spatial">截图空间处理</a-select-option>
+                  <a-select-option value="background">截图基准比较</a-select-option>
+                  <a-select-option value="numeric">像素变换与坐标换算</a-select-option>
+                </a-select-opt-group>
+                <a-select-opt-group label="观测点辅助计算"><a-select-option value="earthquake">地震观测点计算</a-select-option></a-select-opt-group>
               </a-select>
             </div>
             <span class="section-state" :class="{ 'is-ready': activeAnalysisReady }">{{ activeAnalysisStatusLabel }}</span>
@@ -670,7 +667,7 @@
               </div>
             </div>
           </section>
-          <div v-for="item in chartList" :key="item.id" class="chart-list-item" :data-chart-id="item.id">
+          <div v-for="item in auxiliaryCharts" :key="item.id" class="chart-list-item" :data-chart-id="item.id">
             <div class="chart-list-item-head">
               <a-select
                 v-model:value="item.type"
@@ -1185,28 +1182,34 @@
       <div ref="thematicPanelBody" class="thematic-panel-body">
       <div class="context-bar">
         <div class="context-main">
-          <div class="context-title">专题制图模板</div>
+          <div class="context-title">{{ workflowTopic ? workflowName(workflowTopic) : '新建专题制图任务' }}</div>
           <div class="context-desc">{{ contextDesc }}</div>
         </div>
         <div class="context-actions">
-          <mars-button size="small" @click="loadTemplates" :disabled="loadingTemplates">刷新模板</mars-button>
+          <mars-button size="small" @click="loadTemplates" :disabled="loadingTemplates" title="刷新产品目录" aria-label="刷新产品目录"><mars-icon icon="refresh" :width="16" /></mars-button>
+          <mars-button size="small" title="数据维护" aria-label="数据维护" @click="maintenanceOpen = true"><mars-icon icon="config" :width="16" /></mars-button>
         </div>
       </div>
+
+      <section class="production-workflow" aria-label="制图任务流程">
+        <ol>
+          <li><button type="button" :aria-current="!selectionScopeLocked ? 'step' : undefined" @click="startWorkflowSelection">1 确定范围</button></li>
+          <li><button type="button" :aria-current="selectionScopeLocked && activeTab === 'template' ? 'step' : undefined" @click="handleTabChange('template')">2 专题选择</button></li>
+          <li><button type="button" :disabled="!workflowTopic" :aria-current="activeTab === 'editor' && !composerOpen ? 'step' : undefined" @click="handleTabChange('editor')">3 地图制图</button></li>
+          <li><button type="button" :disabled="!workflowCanCompose" :aria-current="composerOpen ? 'step' : undefined" @click="openWorkflowComposition">4 图件排版</button></li>
+          <li><button type="button" :disabled="!workflowTopic" :aria-current="activeTab === 'publish' ? 'step' : undefined" @click="switchToPublish">5 复核与发布</button></li>
+        </ol>
+        <div class="workflow-scope"><span>查询范围 · {{ selectionAreaText }}</span><mars-button size="small" @click="startWorkflowSelection"><mars-icon icon="rectangle-one" :width="15" />{{ selectionScopeLocked ? '重新框选' : '框选地图范围' }}</mars-button></div>
+        <p v-if="workbenchMode === 'standard' && releaseMode === 'standard'">事件与审核资料 · {{ approvedDocument ? `${approvedDocument.event.time} ${approvedDocument.event.place} ${approvedDocument.event.magnitudeType}${approvedDocument.event.magnitude}` : onlineReferenceEvent ? `${onlineReferenceEvent.name} · 后台随包参数，待审核` : '未绑定后台审核事件' }}</p>
+        <p v-if="workbenchMode === 'standard' && releaseMode === 'standard'">正式图幅 · {{ approvedExtent ? `西 ${approvedExtent.west.toFixed(4)} / 南 ${approvedExtent.south.toFixed(4)} / 东 ${approvedExtent.east.toFixed(4)} / 北 ${approvedExtent.north.toFixed(4)}` : '待正式评估烈度校核 · 查询框选不作为规范图幅' }}</p>
+      </section>
 
       <div v-if="effectiveDatasetId" class="dataset-bar">
         <span class="dataset-bar-label">数据集</span>
         <span class="dataset-bar-value">{{ effectiveDatasetName }}</span>
       </div>
 
-      <a-alert
-        v-if="!effectiveDatasetId && activeTab === 'publish'"
-        class="dataset-binding-alert"
-        type="warning"
-        show-icon
-        message="当前未绑定数据集"
-        description="可先从数据集详情或当前任务进入专题制图工作台，发布页会自动带入当前数据集。"
-      />
-      <div v-else-if="effectiveDatasetId && isDirty && activeTab !== 'editor'" class="workbench-tip-section">
+      <div v-if="effectiveDatasetId && isDirty && activeTab !== 'editor'" class="workbench-tip-section">
         <a-alert type="info" show-icon>
           <template #message>存在未保存编辑内容</template>
           <template #description>关闭面板或离开编辑页时会提示确认，建议先保存草稿。</template>
@@ -1214,11 +1217,11 @@
       </div>
 
       <a-tabs :active-key="activeTab" class="workbench-tabs" @change="handleTabChange">
-        <a-tab-pane key="template" tab="模板库">
+        <a-tab-pane key="template" tab="专题产品">
           <div class="template-toolbar">
             <div class="template-toolbar-heading">
-              <span class="template-toolbar-title">专题制图模板</span>
-              <span class="template-filter-summary" aria-live="polite">{{ filteredTemplates.length }} / {{ templateCatalog.length }}</span>
+              <span class="template-toolbar-title">专题产品</span>
+              <span class="template-filter-summary" aria-live="polite">{{ filteredTemplates.length }} / {{ productCatalog(templateCatalog).length }}</span>
             </div>
             <div class="template-edition-filter" role="group" aria-label="模板用途筛选">
               <button
@@ -1246,7 +1249,7 @@
                 </template>
               </a-input>
               <div class="template-filter-row">
-                <a-select v-model:value="selectedTemplateEdition" aria-label="模板领域筛选" :options="templateEditionOptions" />
+                <a-select v-model:value="selectedProductGroup" aria-label="专题业务分类" :options="productGroupOptions" />
                 <a-select
                   v-model:value="selectedTemplateDataTypes"
                   class="template-data-type-select"
@@ -1258,29 +1261,6 @@
                   allow-clear
                   aria-label="数据类型筛选"
                 />
-                <a-select
-                  v-model:value="selectedTemplateCategories"
-                  class="template-category-select"
-                  mode="multiple"
-                  placeholder="专题与表达分类"
-                  :options="catalogCategoryFilterOptions"
-                  :max-tag-count="1"
-                  allow-clear
-                  aria-label="模板分类筛选"
-                />
-                <div class="template-complexity-filter" role="group" aria-label="模板复杂度筛选">
-                  <button
-                    v-for="option in templateComplexityOptions"
-                    :key="option.value"
-                    type="button"
-                    class="template-complexity-option"
-                    :class="{ 'is-active': selectedTemplateComplexity === option.value }"
-                    :aria-pressed="selectedTemplateComplexity === option.value"
-                    @click="selectedTemplateComplexity = option.value"
-                  >
-                    {{ option.label }}
-                  </button>
-                </div>
               </div>
               <div v-if="activeTemplateFilterTags.length" class="template-active-filters">
                 <span class="template-active-filter-label">已选</span>
@@ -1297,8 +1277,10 @@
             <mars-button class="template-empty-action" size="small" @click="resetTemplateFilters">重置筛选</mars-button>
           </a-empty>
           <div v-else class="template-grid">
+            <template v-for="group in groupedTemplates" :key="group.id">
+            <h3 class="template-group-heading">{{ group.label }}<span>{{ group.items.length }}</span></h3>
             <article
-              v-for="tpl in filteredTemplates"
+              v-for="tpl in group.items"
               :key="tpl.templateId"
               class="template-card"
               :data-template-id="tpl.templateId"
@@ -1307,24 +1289,9 @@
               :aria-label="`${tpl.name || tpl.templateId}模板卡片`"
             >
               <div class="template-card-cover">
-                <EmergencyTemplatePreview
-                  v-if="getEmergencyCatalogEntry(tpl)"
-                  class="template-card-cover-image"
-                  :template-id="getEmergencyCatalogEntry(tpl)!.emergencyId"
-                  :alt="`${tpl.name}合成测试校样`"
-                />
-                <TemplateVisualPreview
-                  v-else
-                  class="template-card-cover-image"
-                  :kind="getTemplateVisualKind(tpl)"
-                  :palette="tpl.templateId === draft.templateId ? draft.palette : resolveStandardTemplateProfile(tpl)?.palette"
-                  :rendered-image="tpl.templateId === draft.templateId ? templateResultPreview : ''"
-                  :legend="tpl.templateId === draft.templateId && templateResultPreview ? cartographyContext.legend : undefined"
-                  :alt="`${tpl.name || tpl.templateId}模板缩略图`"
-                  compact
-                />
+                <TemplateContractPreview class="template-card-cover-image" :name="tpl.name || tpl.templateId" :image="isTemplateSelected(tpl) ? (workbenchMode === 'standard' ? standardComposedPreview : templateResultPreview) : ''" />
                 <span class="template-card-cover-shade"></span>
-                <span class="template-card-complexity">{{ getTemplateComplexityLabel(tpl) }}</span>
+                <span class="template-card-complexity" :title="templateProfessionalIdentity(tpl).note">{{ templateProfessionalIdentity(tpl).badge }}</span>
                 <span
                   v-if="getTemplateEditionLabel(tpl)"
                   class="template-card-edition"
@@ -1370,9 +1337,10 @@
                     </span>
                     <div class="template-name">{{ tpl.name || tpl.templateId }}</div>
                   </div>
-                  <span class="template-version">{{ getEmergencyCatalogEntry(tpl)?.emergencyId || `v${tpl.templateVersion || '1.0'}` }}</span>
+                  <span class="template-version">{{ templateProfessionalIdentity(tpl).code || `v${tpl.templateVersion || '1.0'}` }}</span>
                 </div>
                 <div class="template-desc">{{ tpl.description || "专题图模板" }}</div>
+                <div v-if="productMethods(tpl).length" class="template-card-detail-row"><span class="template-card-detail-label">表达</span><div class="template-card-tags"><span v-for="method in productMethods(tpl)" :key="method.templateId" class="template-card-tag">{{ method.name }}</span></div></div>
                 <div class="template-card-detail-row">
                   <span class="template-card-detail-label">类型</span>
                   <div class="template-card-tags">
@@ -1388,28 +1356,30 @@
                     </span>
                   </div>
                 </div>
-                <div class="template-review-status">{{ getEmergencyCatalogEntry(tpl) ? 'DB/T 101-2024 · 制作要求报批稿 · 待校核' : '分析表达 · 非正式图件' }}</div>
+                <div class="template-review-status" :title="templateProfessionalIdentity(tpl).note">{{ templateProfessionalIdentity(tpl).status }}</div>
                 <div class="template-card-actions">
                   <button type="button" class="template-card-action is-preview" @click="openTemplatePreview(tpl)">
                     <mars-icon icon="eyes" :width="14" />
                     <span>预览</span>
                   </button>
-                  <button type="button" class="template-card-action is-use" @click="selectTemplate(tpl)">
+                  <button type="button" class="template-card-action is-use" :disabled="!selectionScopeLocked" :title="selectionScopeLocked ? '选择专题产品' : '请先确定查询范围'" @click="selectTemplate(tpl)">
                     <mars-icon icon="play" :width="14" />
-                    <span>使用模板</span>
+                    <span>选择专题</span>
                   </button>
                 </div>
               </div>
             </article>
+            </template>
           </div>
         </a-tab-pane>
 
-        <a-tab-pane key="editor" tab="编辑">
-          <DbtStandardEditor v-if="selectedStandardTemplate" v-show="workbenchMode === 'standard'" ref="standardEditorRef" embedded :template-id="selectedStandardTemplate" :active="workbenchMode === 'standard' && activeTab === 'editor' && dialogVisible && !isFold" :map-preview="standardMapPreview" :map-busy="standardMapBusy" :map-error="standardMapError" :composition-issues="standardLayoutIssues" :composed-preview="standardComposedPreview" @capture-map="captureStandardPreview(false)" @select-range="startStandardSelection" @rendered="handleStandardRendered" @open-composition="openStandardComposition" @export-proof="exportStandardProof" />
-          <template v-if="workbenchMode === 'analysis'">
-          <Teleport to="#thematic-template-live-host" :disabled="!chartPanelVisible || !templateLayoutEditing">
-            <TemplateMapEditor v-if="selectedTemplate" ref="templateMapEditorRef" :kind="getTemplateVisualKind(selectedTemplate)" :palette="draft.palette" :title="draft.title" :legend-title="draft.legendTitle" :scope-key="lockedScopeKey" :scope-label="selectionAreaText" :observations="earthquakeDataset" @select-range="startTemplateSelection" @applied="handleTemplateApplied" @layout="openTemplateLayout" @invalidate="clearTemplatePreview" />
-          </Teleport>
+        <a-tab-pane key="editor" tab="地图制图" :disabled="!workflowTopic">
+          <p v-if="approvedDocument" class="approved-source-state" role="status">已绑定后台审核图件 · {{ approvedDocument.layers.length }} 个来源图层 · {{ approvedDocument.backendDocument?.revision }}</p>
+          <CartographyDataWorkflow v-if="workflowTopic" v-show="!approvedDocument" ref="workflowDataRef" :topic="workflowTopic" :bounds="lockedSelection" :active="dialogVisible" auto-match :compose-ready="workflowCanCompose" @change="handleOnlineLayers" @compose="openWorkflowComposition" @view-map="toggleWorkbenchFold" @expression-input-ready="focusExpressionFields" @generate-expression="renderMatchedExpression" />
+          <details v-if="workbenchMode === 'standard' && selectedStandardTemplate" class="formal-source-details"><summary>正式出图资料</summary><BackendStandardSources :template-id="selectedStandardTemplate" :active="dialogVisible && activeTab === 'editor' && !isFold" :bounds="lockedSelection" @document="handleBackendDocument" /></details>
+          <DbtStandardEditor v-if="selectedStandardTemplate" :key="effectiveDatasetId" v-show="workbenchMode === 'standard' && (!onlineLayers.length || onlineProofReady)" ref="standardEditorRef" embedded :release-mode="releaseMode" :template-id="selectedStandardTemplate" :query-bounds="lockedSelection" :active="workbenchMode === 'standard' && (activeTab === 'editor' || activeTab === 'publish') && dialogVisible && !isFold" :map-preview="standardMapPreview" :map-busy="standardMapBusy" :map-error="standardMapError" :composition-issues="standardLayoutIssues" :composed-preview="standardComposedPreview" @capture-map="captureStandardPreview(false)" @select-range="startStandardSelection" @rendered="handleStandardRendered" @render-failed="handleStandardRenderFailed" @reset-sources="resetBackendSources" @review-map="reviewCurrentMap" @open-composition="openStandardComposition" @export-proof="exportStandardProof" />
+          <template v-if="workbenchMode === 'analysis' && workflowTopic">
+          <TemplateMapEditor v-if="usesExpressionEditor" ref="templateMapEditorRef" :kind="workflowTopic" :palette="draft.palette" :title="draft.title" :legend-title="draft.legendTitle" :scope-key="lockedScopeKey" :scope-label="selectionAreaText" :backend-sources="expressionSources" @select-range="startTemplateSelection" @choose-data="workflowDataRef?.openDataPreparation()" @applied="handleExpressionApplied" @layout="openTemplateLayout" @invalidate="invalidateExpression" />
           <div class="editor-layout">
             <div class="editor-form">
               <a-form layout="vertical">
@@ -1443,18 +1413,8 @@
 
             <div class="editor-side">
               <div class="preview-card">
-                <div class="preview-note">{{ templateResultPreview ? '本次模板实际渲染结果' : '模板样式示例（待应用）' }}</div>
-                <TemplateVisualPreview
-                  v-if="selectedTemplate"
-                  class="editor-template-visual"
-                  :kind="getTemplateVisualKind(selectedTemplate)"
-                  :palette="draft.palette"
-                  :rendered-image="templateResultPreview"
-                  :title="draft.title"
-                  :description="draft.notes"
-                  :legend="templateResultPreview ? cartographyContext.legend : undefined"
-                  :alt="`${draft.templateName}样式预览`"
-                />
+                <div class="preview-note">{{ templateResultPreview ? '本次模板实际渲染结果' : '版式结构 · 专题数据待载入' }}</div>
+                <TemplateContractPreview v-if="selectedTemplate" class="editor-template-visual" :name="draft.templateName" :image="templateResultPreview" />
                 <div class="preview-card-content">
                   <div class="preview-title">{{ draft.title || "未命名专题图" }}</div>
                   <div class="preview-subtitle">{{ draft.subtitle || "请在左侧补充副标题" }}</div>
@@ -1489,9 +1449,9 @@
 
             </div>
             <div class="editor-actions">
-              <mars-button size="small" @click="resetDraft">恢复上次草稿</mars-button>
-              <mars-button size="small" type="primary" :disabled="!draft.templateId" @click="saveDraft">保存草稿</mars-button>
-              <mars-button size="small" :disabled="!mainImageBlob" @click="openTemplateLayout">制图排版</mars-button>
+              <mars-button size="small" @click="resetDraft">恢复本机文案</mars-button>
+              <mars-button size="small" type="primary" :disabled="!draft.templateId" @click="saveDraft">保存本机文案</mars-button>
+              <mars-button size="small" :disabled="!workflowCanCompose" @click="openWorkflowComposition">排版校样</mars-button>
             </div>
             <details class="template-standard-binding">
               <summary>规范校核</summary>
@@ -1530,44 +1490,14 @@
           </template>
         </a-tab-pane>
 
-        <a-tab-pane key="publish" tab="历史发布" disabled>
-          <div class="publish-summary">
-            <div class="summary-card">
-              <div class="summary-title">发布摘要</div>
-              <div class="summary-item"><span>数据集</span><strong>{{ effectiveDatasetName }}</strong></div>
-              <div class="summary-item"><span>模板</span><strong>{{ draft.templateName || "未选择" }}</strong></div>
-              <div class="summary-item"><span>标题</span><strong>{{ draft.title || "未填写" }}</strong></div>
-              <div class="summary-item"><span>状态</span><strong>{{ isDirty ? "草稿未保存" : "草稿已保存" }}</strong></div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-title">发布说明</div>
-              <a-form layout="vertical">
-                <a-form-item label="发布名称">
-                  <a-input v-model:value="draft.publishName" placeholder="请输入发布名称" />
-                </a-form-item>
-                <a-form-item label="发布描述" required>
-                  <a-textarea v-model:value="draft.publishDesc" :rows="3" placeholder="至少 5 个有效字符，空白不计入" aria-label="专题发布描述" aria-describedby="workbench-publish-description-feedback" :aria-invalid="!!draft.publishDesc && !isPublishDescriptionValid(draft.publishDesc)" />
-                  <div id="workbench-publish-description-feedback" class="publish-description-feedback" :class="{ 'is-ready': isPublishDescriptionValid(draft.publishDesc), 'is-short': !!draft.publishDesc && !isPublishDescriptionValid(draft.publishDesc) }" role="status">
-                    <span>{{ isPublishDescriptionValid(draft.publishDesc) ? '已满足发布要求' : `还需 ${Math.max(0, MIN_PUBLISH_DESCRIPTION_LENGTH - publishDescriptionLength(draft.publishDesc))} 个有效字符` }}</span>
-                    <strong>{{ publishDescriptionLength(draft.publishDesc) }} / {{ MIN_PUBLISH_DESCRIPTION_LENGTH }}</strong>
-                  </div>
-                </a-form-item>
-                <a-form-item label="出图比例尺档位" required>
-                  <a-select v-model:value="cartographySettings.scaleDenominator" placeholder="请选择比例尺" aria-label="发布出图比例尺"><a-select-option v-for="denominator in SCALE_PRESETS" :key="denominator" :value="denominator">1:{{ denominator / 10000 }} 万</a-select-option></a-select>
-                </a-form-item>
-                <div class="publish-actions">
-                  <mars-button type="primary" @click="thematicJobsRef?.openPublishDialog(draft.templateId)">
-                    <mars-icon icon="upload" :width="16" />
-                    发布专题图
-                  </mars-button>
-                </div>
-              </a-form>
-            </div>
-          </div>
-
-          <div class="publish-body">
-            <ThematicJobs ref="thematicJobsRef" :dataset-id="effectiveDatasetId || undefined" :publish-description="draft.publishDesc" :publish-name="draft.publishName" />
-          </div>
+        <a-tab-pane key="publish" tab="检查与发布" :disabled="!workflowTopic">
+          <div v-if="workbenchMode === 'standard' && releaseMode === 'standard'" class="publication-actions"><mars-button @click="reviewCurrentMap"><mars-icon icon="inspection" :width="16" />转到当前地图人工审核</mars-button></div>
+          <div v-if="workbenchMode === 'standard'" class="publication-purpose"><span>发布用途</span><a-segmented v-model:value="releaseMode" :options="[{ label: '单位内部', value: 'internal' }, { label: '规范应急图件', value: 'standard' }]" aria-label="专题地图发布用途" /></div>
+          <StandardPublicationPanel v-if="workbenchMode === 'standard' && releaseMode === 'standard'" :key="effectiveDatasetId" :state="standardEditorRef?.publication" :dataset-id="effectiveDatasetId || undefined" :prepare="standardEditorRef?.preparePublication"
+            @inspect="inspectStandardComposition" @preview="openStandardComposition"
+            @output="(format, dpi) => standardEditorRef?.setPublicationOutput(format, dpi)"
+            @export="formal => standardEditorRef?.exportMap(formal)" @report="standardEditorRef?.downloadReport()" />
+          <HostPublicationPanel :key="effectiveDatasetId" :title="workbenchMode === 'standard' ? standardEditorRef?.publication?.title || workflowName(workflowTopic) : draft.title || workflowName(workflowTopic)" :topic="workflowTopic || draft.templateId || 'map'" :bounds="lockedSelection" :layers="onlineLayers.length ? onlineLayers : approvedDocument?.layers || []" :formal-mode="workbenchMode === 'standard' && releaseMode === 'standard'" :formal-ready="workbenchMode === 'standard' && releaseMode === 'standard' && !!standardEditorRef?.publication?.ready" :source-busy="workflowDataRef?.busy || (workbenchMode === 'standard' && releaseMode === 'standard' && standardEditorRef?.publication?.busy)" :view-error="productPublicationError" :document-revision="workbenchMode === 'standard' && releaseMode === 'standard' ? standardEditorRef?.publication?.revision : undefined" :prepare-formal="workbenchMode === 'standard' ? standardEditorRef?.preparePublication : undefined" :presentation-key="publicationPresentationKey" :prepare-view="preparePublicationView" />
         </a-tab-pane>
       </a-tabs>
       </div>
@@ -1575,17 +1505,34 @@
     </div>
   </mars-dialog>
 
+  <aside v-if="dialogVisible && isFold && visibleOnlineLayers.length && !composerOpen" class="native-map-legend" aria-label="地图专题图例">
+    <section v-for="group in nativeLegendGroups" :key="group.key">
+      <strong>{{ group.name }}</strong><span v-if="group.time" class="native-map-legend-time">{{ group.time }}</span>
+      <ul><li v-for="row in group.rows" :key="row.label"><CartographyLegendSwatch :row="row" /><span>{{ row.label }}</span></li></ul>
+    </section>
+    <p>{{ publishedMapView?.snapshot.usage === 'internal-reviewed' ? '已人工审核 · 单位内部' : publishedMapView?.snapshot.usage === 'operational' ? '规范图件 · 以本次审核记录为准' : '数据与单位待核验' }}</p>
+  </aside>
+
+  <mars-task-modal v-model:open="maintenanceOpen" title="专题数据维护" :footer="false" width="min(720px, calc(100vw - 96px))">
+    <section class="thematic-maintenance" aria-label="专题数据维护">
+      <BackendDeliveryAudit :active="dialogVisible && maintenanceOpen" />
+      <ThematicBackendServices :active="dialogVisible && maintenanceOpen" :bounds="lockedSelection" :items="workflowDataRef?.items || []" @refresh-results="refreshProducedLayers" />
+    </section>
+  </mars-task-modal>
+
   <DisplaySettings ref="displaySettingsRef" v-model:open="displaySettingsOpen" :title="draft.title" :composing="syncingStyleComposition" @open-composer="openStyledComposition" />
   <CartographyComposer
     ref="composerRef"
     :anchor-selector="workbenchMode === 'standard' ? '.thematic-workbench-panel' : '.thematic-workbench-panel.is-chart-docked'"
-    v-model:open="composerOpen" :scope-key="workbenchMode === 'standard' ? `standard:${selectedStandardTemplate}` : `${effectiveDatasetId || 'map'}:${lockedScopeKey}`" :main-image="workbenchMode === 'standard' ? standardScene?.items.find(item => item.kind === 'map')?.raster?.image || '' : mainImageUrl"
+    v-model:open="composerOpen" :scope-key="workbenchMode === 'standard' ? `${effectiveDatasetId || 'map'}:standard:${selectedStandardTemplate}` : `${effectiveDatasetId || 'map'}:${lockedScopeKey}${auxiliaryActive ? ':auxiliary' : ''}`" :main-image="workbenchMode === 'standard' ? standardScene?.items.find(item => item.kind === 'map')?.raster?.image || '' : mainImageUrl"
     :standard-scene="workbenchMode === 'standard' ? standardScene : null"
-    :main-title="draft.title || mainImageTitle" :main-meta="workbenchMode === 'standard' ? `${standardScene?.title || '规范专题图'} · 校样` : mainImageMeta" :source="cartographySettings.source"
-    :description="draft.notes" :agency="draft.agency"
+    :main-title="auxiliaryActive ? '截图与辅助计算 · 非业务图件' : draft.title || mainImageTitle" :main-meta="workbenchMode === 'standard' ? `${standardScene?.title || '规范专题图'} · 校样` : mainImageMeta" :source="auxiliaryActive ? auxiliaryBasis.source : cartographySettings.source"
+    :description="auxiliaryActive ? auxiliaryBasis.constraint : draft.notes" :agency="draft.agency"
     :time="cartographySettings.time" :metrics="composerMetrics" :legend="cartographyContext.legend"
-    :charts="workbenchMode === 'standard' ? [] : chartList" :charts-ready="workbenchMode !== 'standard' && !!screenshotAnalysis && screenshotAnalysis.scopeKey === lockedScopeKey"
-    :chart-option="getComposerChartOption" :chart-revision="screenshotAnalysis"
+    :charts="workbenchMode === 'standard' ? [] : auxiliaryActive ? auxiliaryCharts : businessCharts" :charts-ready="workbenchMode !== 'standard' && (auxiliaryActive ? !!screenshotAnalysis && screenshotAnalysis.scopeKey === lockedScopeKey : !!businessSnapshot)"
+    :data-driven="true" :auxiliary="auxiliaryActive" :data-snapshot="auxiliaryActive ? null : businessSnapshot"
+    :symbol-layers="auxiliaryActive ? [] : visibleOnlineLayers"
+    :chart-option="getComposerChartOption" :chart-revision="auxiliaryActive ? screenshotAnalysis : businessSnapshot"
     @add-chart="type => addChart(type as ChartType)" @remove-chart="removeChartItem"
     @chart-layouts="updateComposerLayouts"
     @restore-charts="restoreCompositionCharts"
@@ -1593,6 +1540,8 @@
     @standard-issues="standardLayoutIssues = $event"
     @preview="standardComposedPreview = $event"
     @inspect-standard="inspectStandardComposition"
+    @review-map="reviewCurrentMap"
+    @symbol-sources="inspectSymbolSources"
   />
 
   <button
@@ -1617,24 +1566,10 @@
   >
     <div v-if="previewedTemplate" class="template-preview-modal">
       <div class="template-preview-hero">
-        <EmergencyTemplatePreview
-          v-if="getEmergencyCatalogEntry(previewedTemplate)"
-          class="template-preview-image"
-          :template-id="getEmergencyCatalogEntry(previewedTemplate)!.emergencyId"
-          :alt="`${previewedTemplate.name}合成测试校样`"
-        />
-        <TemplateVisualPreview
-          v-else
-          class="template-preview-image"
-          :kind="getTemplateVisualKind(previewedTemplate)"
-          :palette="previewedTemplate.templateId === draft.templateId ? draft.palette : resolveStandardTemplateProfile(previewedTemplate)?.palette"
-          :rendered-image="previewedTemplate.templateId === draft.templateId ? templateResultPreview : ''"
-          :legend="previewedTemplate.templateId === draft.templateId && templateResultPreview ? cartographyContext.legend : undefined"
-          :alt="`${previewedTemplate.name || previewedTemplate.templateId}模板预览`"
-        />
+        <TemplateContractPreview class="template-preview-image" :name="previewedTemplate.name || previewedTemplate.templateId" :image="isTemplateSelected(previewedTemplate) ? (workbenchMode === 'standard' ? standardComposedPreview : templateResultPreview) : ''" />
         <div class="template-preview-overlay">
           <span class="template-preview-category">{{ getTemplateCategoryLabel(previewedTemplate) || "专题模板" }}</span>
-          <span class="template-preview-complexity">{{ getTemplateComplexityLabel(previewedTemplate) }}</span>
+          <span class="template-preview-complexity">{{ templateProfessionalIdentity(previewedTemplate).badge }}</span>
           <span
             v-if="getTemplateEditionLabel(previewedTemplate)"
             class="template-preview-edition"
@@ -1665,9 +1600,9 @@
           <div class="template-preview-name">{{ previewedTemplate.name || previewedTemplate.templateId }}</div>
           <div class="template-preview-description">{{ previewedTemplate.description || "专题图模板" }}</div>
         </div>
-        <span class="template-version">{{ getEmergencyCatalogEntry(previewedTemplate)?.emergencyId || `v${previewedTemplate.templateVersion || '1.0'}` }}</span>
+        <span class="template-version">{{ templateProfessionalIdentity(previewedTemplate).code || `v${previewedTemplate.templateVersion || '1.0'}` }}</span>
       </div>
-      <div class="template-review-status">{{ getEmergencyCatalogEntry(previewedTemplate) ? '合成测试校样 · DB/T 101-2024 · 制作要求报批稿 · 待数据与规范校核' : '分析表达预览 · 非正式图件' }}</div>
+      <div class="template-review-status">版式结构预览 · 不是业务数据成图 · 待绑定真实数据</div>
       <div class="template-preview-details">
         <div class="template-preview-detail">
           <span>适用数据</span>
@@ -1678,8 +1613,8 @@
           <strong>{{ getTemplateComponentLabels(previewedTemplate).join("、") }}</strong>
         </div>
         <div class="template-preview-detail">
-          <span>复杂度</span>
-          <strong>{{ getTemplateComplexityLabel(previewedTemplate) }}</strong>
+          <span>产品依据</span>
+          <strong>{{ templateProfessionalIdentity(previewedTemplate).status }}</strong>
         </div>
         <div v-if="getTemplateDisplayIconBindings(previewedTemplate).length" class="template-preview-detail is-icon-binding">
           <span>专题图标</span>
@@ -1726,12 +1661,14 @@
     </div>
   </a-modal>
 
-  <div
-    v-if="showSelectionOverlay && selectionFrameBounds"
+  <svg
+    v-if="showSelectionOverlay && selectionFrameOutline.length && mapViewportBounds"
     class="selection-outline-frame"
     :style="selectionFrameStyle"
+    :width="mapViewportBounds.width"
+    :height="mapViewportBounds.height"
     aria-hidden="true"
-  ></div>
+  ><polygon :points="selectionFramePoints" :stroke-width="mapWork.SELECTION_FRAME_WIDTH" /></svg>
 
   <div
     v-if="dialogVisible && selectionToolbarVisible"
@@ -1762,27 +1699,48 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue"
+import { Segmented as ASegmented } from "ant-design-vue"
+import { computed, inject, nextTick, onMounted, onUnmounted, provide, reactive, ref, shallowRef, watch } from "vue"
+import { THEMATIC_PUBLICATION_HOST } from "./publication-host"
+import { createCurrentTaskPublicationHost } from "../current-task/publication-host"
 import * as echarts from "echarts"
 import { $message } from "@mars/components/mars-ui/index"
 import { useWidget, useWidgetStore } from "@mars/common/store/widget"
 import useLifecycle from "@mars/common/uses/use-lifecycle"
 import { POPUP_PANEL_RESIZE_HANDLES } from "@mars/common/constants/popup-resize-handles"
 import { getCurrentDataset, onCurrentDatasetChange, type CurrentDataset } from "@/shell/currentDataset"
-import { getTemplates } from "../dataset-repository/services/eoapi-thematics"
 import type { ThematicTemplate } from "../dataset-repository/types/eoapi-types"
-import ThematicJobs from "../dataset-repository/components/ThematicJobs.vue"
+import HostPublicationPanel from "./HostPublicationPanel.vue"
+import type { VerifiedPublishedMap } from "./result-map-publication"
 import { isPublishDescriptionValid, MIN_PUBLISH_DESCRIPTION_LENGTH, publishDescriptionLength } from "../dataset-repository/services/publish-description"
+import StandardPublicationPanel from "./StandardPublicationPanel.vue"
 import { SAFE_MARGIN, SNAP_DISTANCE, SCALE_PRESETS, snapRect } from "./cartography-layout"
 import { cartographySettings, cartographyContext, cartographySnapshot } from "./cartography-state"
 import { loadThematicJobDraft, saveThematicJobDraft } from "./thematic-job-draft"
 import CartographyComposer from "./CartographyComposer.vue"
 import CartographySymbolIcon from "./CartographySymbolIcon.vue"
 import TemplateMapEditor from "./TemplateMapEditor.vue"
+import { backendTemplateSources } from "./expression-presentation"
+import "./thematic-theme.css"
+import { businessChartOption, type BusinessMapResult } from "./business-map-data"
 import DbtStandardEditor from "./DbtStandardEditor.vue"
-import EmergencyTemplatePreview from "./EmergencyTemplatePreview.vue"
-import { getEmergencyCatalogEntry, getTemplatePurpose, mergeWorkbenchTemplateCatalog, type TemplatePurpose } from "./workbench-template-catalog"
-import { dbtTemplates, type DbtTemplateId } from "./dbt116-standard"
+import CartographyDataWorkflow from "./CartographyDataWorkflow.vue"
+import { additionalProducts } from "./product-definitions"
+import { layerEventParameters } from "./backend-event-parameters"
+import { onlineLayerDescription } from "./online-layer-description"
+import TemplateContractPreview from "./TemplateContractPreview.vue"
+import { restoreWorkbenchCopy, type WorkbenchDraft as DraftState } from "./workbench-draft"
+import { getEmergencyCatalogEntry, getTemplatePurpose, mergeWorkbenchTemplateCatalog, groupTemplateCatalog, productCatalog, templateTier, templateProfessionalIdentity, productExpressionIds, matchesCatalogProduct, type TemplatePurpose } from "./workbench-template-catalog"
+import { dbtTemplates, dbtScopedLayers, standardBounds, type DbtDocument, type DbtTemplateId, type DbtLayer } from "./dbt116-standard"
+import { symbolSourceKeys } from "./cartography-symbol-bindings"
+import CartographyLegendSwatch from "./CartographyLegendSwatch.vue"
+import { mapLegendGroups } from "./cartography-legend"
+import BackendStandardSources from "./BackendStandardSources.vue"
+import BackendDeliveryAudit from "./BackendDeliveryAudit.vue"
+import ThematicBackendServices from "./ThematicBackendServices.vue"
+import { approvedNativeLayers } from "./approved-native-layers"
+import { sortedCartographyLayers } from "./cartography-layer-order"
+import { workflowName, workflowRequirements, workflowMissing, workflowRequiresCore, scopeFingerprint } from "./cartography-workflow"
 import { dbtRoleNames } from "./dbt-cartography-rules"
 import type { StandardComposition } from "./standard-composition"
 import type { DbtMapPreview } from "./dbt-draft-preview"
@@ -1790,7 +1748,7 @@ import { workbenchDock } from "./composer-dock"
 import CompositionNumberInput from "./CompositionNumberInput.vue"
 import type { CompositionItem } from "./composition-model"
 import { rasterResultLegend } from "./raster-analysis"
-import TemplateVisualPreview, { type TemplateVisualKind } from "./TemplateVisualPreview.vue"
+import type { TemplateVisualKind } from "./TemplateVisualPreview.vue"
 import {
   analyzeScreenshotPixels,
   type ScreenshotAnalysisResult,
@@ -1834,6 +1792,7 @@ import {
 } from "./spatial-analysis"
 import { processBackgroundPixels, type BackgroundOperation, type BackgroundSummary } from "./background-analysis"
 import { processNumericPixels, type NumericChannel, type NumericIndex, type NumericOperation, type NumericSummary } from "./numeric-transform"
+import { auxiliaryResultBasis, createAuxiliaryRunGate, SCREENSHOT_TOOLS_IN_WORKBENCH } from "./workbench-process"
 import { analyzeEarthquakeDataset, EARTHQUAKE_IMPORT_TEMPLATE, filterEarthquakePoints, loadEarthquakeParameters, parseEarthquakeGeoJson, type EarthquakeDataset, type EarthquakeOperation, type EarthquakeResult } from "./earthquake-analysis"
 import {
   getBasicTemplateIconBinding,
@@ -1859,7 +1818,6 @@ const syncingStyleComposition = ref(false)
 useLifecycle(mapWork)
 
 type WorkbenchTab = "template" | "editor" | "publish"
-const thematicJobsRef = ref<InstanceType<typeof ThematicJobs> | null>(null)
 type SelectionViewportBounds = { left: number; top: number; width: number; height: number }
 type LockedSelection = mapWork.RectInfo
 type TemplateCategoryId = "statistics" | "heat" | "flow" | "raster" | "compare"
@@ -2214,7 +2172,7 @@ const numericOperatorOptions: Array<{ label: string; short: string; value: Numer
   { label: "范围投影", short: "WGS84 / 3857", value: "projection", icon: "map-distance", description: "将锁定地理范围的经纬度转换为 Web Mercator 米制坐标。" }
 ]
 const earthquakeOperatorOptions: Array<{ label: string; short: string; value: EarthquakeOperation; icon: string; description: string }> = [
-  { label: "热异常指数", short: "LST / 基准 Z", value: "thermal", icon: "radar-chart", description: "质量合格的亮温与同季节基准比较，输出标准化偏离；不直接推断地震前兆。" },
+  { label: "热异常指数", short: "LST / 基准 Z", value: "thermal", icon: "radar-chart", description: "质量合格的地表温度与时间基线比较，输出标准化偏离；亮温背景不能代替LST，不直接推断地震前兆。" },
   { label: "形变特征", short: "LOS / 相干性", value: "deformation", icon: "data-switching", description: "筛除低相干点，显示有符号的 InSAR 视线向形变。" },
   { label: "风险叠加", short: "危险性 × 暴露 × 脆弱性", value: "risk", icon: "layers", description: "组合三类经校准的 0–1 指数，形成相对风险筛查排序。" },
   { label: "烈度反演", short: "PGA / PGV 初判", value: "intensity", icon: "chart-histogram", description: "仅在 PGA 与 PGV 对 VI–XI 等级一致时给出仪器初判，冲突点待复核。" }
@@ -2275,20 +2233,20 @@ const templateDataTypeOptions: TemplateDataTypeOption[] = [
 
 const templateComplexityOptions: Array<{ value: TemplateComplexityFilter; label: string }> = [
   { value: "all", label: "全部" },
-  { value: "basic", label: "基础" },
-  { value: "standard", label: "进阶" },
-  { value: "professional", label: "专业" }
+  { value: "basic", label: "单项" },
+  { value: "standard", label: "组合" },
+  { value: "professional", label: "多要素" }
 ]
 
 const templateEditionOptions: Array<{ value: TemplateEditionFilter; label: string }> = [
   { value: "all", label: "领域不限" },
-  { value: "standard", label: "通用分析" },
-  { value: "earthquake", label: "地震专业" }
+  { value: "standard", label: "通用业务" },
+  { value: "earthquake", label: "地震业务" }
 ]
 const templatePurposeOptions: Array<{ value: TemplatePurpose; label: string }> = [
-  { value: "all", label: "全部模板" },
-  { value: "emergency", label: "应急响应专题" },
-  { value: "analysis", label: "分析表达" }
+  { value: "all", label: "全部" },
+  { value: "emergency", label: "应急产品" },
+  { value: "analysis", label: "其他业务产品" }
 ]
 
 const paletteOptions = [
@@ -2304,15 +2262,15 @@ const paletteOptions = [
   { value: "compare", label: "时序对比色带" },
   { value: "dashboard", label: "图表联动色组" },
   { value: "seismic-anomaly", label: "异常融合业务色组" },
-  { value: "thermal-infrared", label: "热红外亮温色带" },
+  { value: "thermal-infrared", label: "温度基线偏差 · 蓝白红发散" },
   { value: "post-quake-risk", label: "震后风险等级色带" },
   { value: "quake-swarm", label: "震群深度时间色组" },
   { value: "insar-cycle", label: "InSAR 形变循环色带" },
   { value: "intensity", label: "地震烈度业务色带" },
   { value: "multi-hazard", label: "次生灾害分类色组" },
-  { value: "resilience", label: "房屋抗震能力色带" },
-  { value: "exposure", label: "人口经济暴露色带" },
-  { value: "emergency", label: "应急指挥态势色组" },
+  { value: "resilience", label: "建筑易损性指数色带" },
+  { value: "exposure", label: "人口或资产暴露色带" },
+  { value: "emergency", label: "救灾资源状态色组" },
   { value: "green-yellow", label: "绿黄渐变" },
   { value: "purple-orange", label: "紫橙渐变" }
 ]
@@ -2405,7 +2363,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   {
     templateId: "standard_raster_ramp",
     name: "栅格色带",
-    description: "对导入的规则采样网格连续着色；默认数据为底图 RGB 亮度，不是高程或温度反演。",
+    description: "使用后端真实数值栅格或导入的规则网格连续着色，不从底图截图生成业务指标。",
     category: "raster",
     dataTypes: ["raster"],
     complexity: "basic",
@@ -2420,7 +2378,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   {
     templateId: "standard_raster_threshold",
     name: "栅格阈值",
-    description: "对规则网格或底图 RGB 亮度分段着色，表达数值等级；不直接生成业务告警。",
+    description: "按明确的原值阈值对真实栅格分类；阈值需有依据，不直接生成业务告警。",
     category: "raster",
     dataTypes: ["raster"],
     complexity: "standard",
@@ -2430,12 +2388,12 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
     subtitle: "栅格阈值分区专题",
     legendTitle: "阈值等级",
     palette: "threshold",
-    notes: "按数据分布与分级数量生成断点；颜色表示数值等级，不代表安全或告警结论。"
+    notes: "按明确提供的原值阈值生成分类；颜色表示数值范围，不代表安全或告警结论。"
   },
   {
     templateId: "standard_contour",
     name: "等值线",
-    description: "从完整规则 Point 网格提取等值线，值与单位来自导入字段；默认 RGB 场不是地形。",
+    description: "绑定真实等值线成果或导入完整规则网格，值与单位来自业务字段；分级栅格不能代替等值线。",
     category: "raster",
     dataTypes: ["raster", "vector"],
     complexity: "professional",
@@ -2529,10 +2487,10 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
     category: "compare",
     dataTypes: ["raster", "vector", "timeseries"],
     complexity: "professional",
-    keywords: ["地震", "异常综合", "多源融合", "前兆", "可信度", "综合判识"],
+    keywords: ["地震", "异常综合", "多源融合", "加权指标", "辅助方法"],
     components: ["三项指标", "加权均值", "指数分级"],
     visualKind: "anomaly-composite",
-    subtitle: "多源地震异常综合判识",
+    subtitle: "多源指标加权表达",
     legendTitle: "综合异常指数",
     palette: "seismic-anomaly",
     notes: "输入须已归一化至0–1并声明权重和方法；综合指数不是可信度或地震发生概率。",
@@ -2540,7 +2498,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   },
   {
     templateId: "earthquake_thermal_infrared",
-    name: "热红外",
+    name: "地表温度基线异常",
     description: "比较导入 LST 与基线均值、标准差，显示质量筛选后的 Z 分数，不执行亮温反演。",
     category: "heat",
     dataTypes: ["raster", "timeseries"],
@@ -2548,7 +2506,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
     keywords: ["地震", "热红外", "亮温", "LST", "热异常", "背景场"],
     components: ["LST观测", "基线标准化", "质量筛选"],
     visualKind: "thermal-infrared",
-    subtitle: "地表亮温异常监测",
+    subtitle: "地表温度时间基线异常",
     legendTitle: "热异常 Z 分数",
     palette: "thermal-infrared",
     notes: "Z=(LST−基线均值)/基线标准差；输入温度单位K，仅保留质量良好且基线样本≥10的点。",
@@ -2556,7 +2514,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   },
   {
     templateId: "earthquake_post_quake_risk",
-    name: "震后风险",
+    name: "地震灾害风险指数",
     description: "显示导入的震后风险指数成果，必须声明模型来源；模板自身不计算灾害损失。",
     category: "compare",
     dataTypes: ["raster", "vector", "tabular"],
@@ -2564,15 +2522,15 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
     keywords: ["地震", "震后", "风险", "快速评估", "灾情", "救援优先级"],
     components: ["已评估指数", "模型来源", "分级显示"],
     visualKind: "post-quake-risk",
-    subtitle: "震后快速风险评估",
-    legendTitle: "震后风险等级",
+    subtitle: "已有地震灾害风险评估成果",
+    legendTitle: "模型风险指数",
     palette: "post-quake-risk",
     notes: "渲染0–1风险指数及其模型版本，显示分级仅供筛查，不自动判定救援优先级。",
     edition: "earthquake"
   },
   {
     templateId: "earthquake_swarm_trajectory",
-    name: "震群轨迹",
+    name: "地震序列时空分布",
     description: "按震群编号和发震时间连接事件，点径表示震级、颜色表示深度，不代表传播路径。",
     category: "flow",
     dataTypes: ["trajectory", "timeseries", "vector"],
@@ -2580,7 +2538,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
     keywords: ["地震", "震群", "余震", "迁移", "震源深度", "发震时间"],
     components: ["震源点", "发震时间", "深度编码"],
     visualKind: "swarm-trajectory",
-    subtitle: "震群时空迁移轨迹",
+    subtitle: "地震序列时间顺序分布",
     legendTitle: "震源深度 / km",
     palette: "quake-swarm",
     notes: "连线仅表达时间顺序；深度色带0–100km，超范围取端点色，不预测震群迁移。",
@@ -2588,7 +2546,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   },
   {
     templateId: "earthquake_insar_deformation",
-    name: "InSAR 形变",
+    name: "InSAR 视线向形变",
     description: "显示已处理的 LOS 毫米形变量，并剔除低相干点；不生成干涉条纹或进行相位解缠。",
     category: "raster",
     dataTypes: ["raster", "timeseries"],
@@ -2604,7 +2562,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   },
   {
     templateId: "earthquake_intensity_distribution",
-    name: "烈度分布",
+    name: "烈度评定成果",
     description: "显示已评定的VI–XI度烈度点或等震分区；需要烈度成果，不从底图估计地震衰减。",
     category: "heat",
     dataTypes: ["vector", "raster", "tabular"],
@@ -2620,13 +2578,13 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   },
   {
     templateId: "earthquake_secondary_hazard",
-    name: "次生灾害",
+    name: "次生灾害调查成果",
     description: "显示滑坡、崩塌、泥石流、堰塞湖和火灾的调查点或影响面；不自动识别灾害。",
     category: "compare",
     dataTypes: ["vector", "raster"],
     complexity: "professional",
     keywords: ["地震", "次生灾害", "滑坡", "崩塌", "泥石流", "堰塞湖"],
-    components: ["滑坡隐患", "堰塞湖", "灾害分类"],
+    components: ["调查记录", "实际影响范围", "灾害分类"],
     visualKind: "secondary-hazard",
     subtitle: "震后次生灾害综合态势",
     legendTitle: "灾害类型与等级",
@@ -2636,7 +2594,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   },
   {
     templateId: "earthquake_building_resilience",
-    name: "房屋抗震",
+    name: "建筑物地震易损性",
     description: "按建筑外轮廓显示已有脆弱性指数，必须声明评估方法；不代替抗震鉴定或结构验算。",
     category: "statistics",
     dataTypes: ["vector", "tabular"],
@@ -2644,7 +2602,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
     keywords: ["地震", "房屋", "建筑", "抗震", "设防", "脆弱性"],
     components: ["建筑轮廓", "已有评估", "脆弱性分级"],
     visualKind: "building-resilience",
-    subtitle: "房屋抗震能力评估",
+    subtitle: "建筑物地震易损性评估成果",
     legendTitle: "建筑脆弱性指数",
     palette: "resilience",
     notes: "显示导入的0–1脆弱性指数；不能由填色推断建筑设防充分或居住安全。",
@@ -2652,7 +2610,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   },
   {
     templateId: "earthquake_population_exposure",
-    name: "人口经济暴露",
+    name: "人口与资产暴露",
     description: "按输入烈度筛选受影响分区，可分别显示其人口或资产总量；不是损失评估。",
     category: "statistics",
     dataTypes: ["vector", "tabular", "raster"],
@@ -2660,7 +2618,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
     keywords: ["地震", "人口", "经济", "暴露度", "资产", "网格统计"],
     components: ["统计分区", "烈度筛选", "人口或资产"],
     visualKind: "population-exposure",
-    subtitle: "人口与经济暴露评估",
+    subtitle: "人口或资产暴露分布",
     legendTitle: "人口 / 资产（分别统计）",
     palette: "exposure",
     notes: "保留分区完整人口数或资产值，不按裁切面积推算，不将暴露量解释为伤亡或经济损失。",
@@ -2668,7 +2626,7 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
   },
   {
     templateId: "earthquake_emergency_command",
-    name: "应急指挥",
+    name: "救灾资源与通行状态",
     description: "显示已登记的应急设施点和通道可用、阻断、未知状态，不执行自动路线规划。",
     category: "flow",
     dataTypes: ["vector", "trajectory", "tabular"],
@@ -2676,13 +2634,31 @@ const standardTemplateProfiles: StandardTemplateProfile[] = [
     keywords: ["地震", "应急", "指挥", "救援", "避难场所", "通行路线"],
     components: ["指挥中心", "救援力量", "通行路线"],
     visualKind: "emergency-command",
-    subtitle: "地震应急指挥态势",
+    subtitle: "救灾资源分布与通行状态",
     legendTitle: "应急资源状态",
     palette: "emergency",
     notes: "设施使用对应标准符号，状态由输入记录提供；蓝为可用、红为阻断、灰为未知。",
     edition: "earthquake"
   }
 ]
+
+const additionalProductCategories: Record<string, TemplateCategoryId> = { "imagery-comparison": "compare", "road-damage": "flow" }
+standardTemplateProfiles.push(...additionalProducts.map<StandardTemplateProfile>(product => ({
+  templateId: product.templateId,
+name: product.name,
+description: product.purpose,
+  category: additionalProductCategories[product.kind] || "statistics",
+  dataTypes: (product.kind === "imagery-comparison" ? ["raster", "timeseries"] : ["vector", "tabular"]) as TemplateDataType[],
+  complexity: "professional" as const,
+keywords: [product.name, ...product.standards],
+components: product.inputs,
+  visualKind: product.kind as TemplateVisualKind,
+subtitle: product.purpose,
+legendTitle: product.name,
+  palette: product.kind === "direct-loss" ? "exposure" : "sequential-blue",
+notes: product.boundary,
+edition: "earthquake" as const
+})))
 
 const standardTemplates: ThematicTemplate[] = standardTemplateProfiles.map((profile) => ({
   templateId: profile.templateId,
@@ -2710,19 +2686,6 @@ const localTemplateFilterProfiles: Record<string, TemplateFilterProfile> = {
 
 const DEFAULT_CHART_TYPE: ChartType = "heatmap"
 
-type DraftState = {
-  templateId: string
-  templateName: string
-  title: string
-  subtitle: string
-  legendTitle: string
-  palette: string
-  notes: string
-  agency: string
-  publishName: string
-  publishDesc: string
-}
-
 const props = withDefaults(defineProps<{
   visible?: boolean
   datasetId?: string
@@ -2749,7 +2712,10 @@ const loadingTemplates = ref(false)
 const templates = ref<ThematicTemplate[]>([])
 const selectedTemplateCategories = ref<CatalogCategoryId[]>([])
 const selectedTemplatePurpose = ref<TemplatePurpose>("all")
+const selectedProductGroup = ref("all")
+const selectedCatalogProduct = ref("all")
 const templateCatalog = computed(() => mergeWorkbenchTemplateCatalog(templates.value))
+const productGroupOptions = computed(() => [{ value: "all", label: "全部业务分类" }, ...groupTemplateCatalog(productCatalog(templateCatalog.value)).map(group => ({ value: group.id, label: `${group.label} · ${group.items.length}` }))])
 const selectedTemplateEdition = ref<TemplateEditionFilter>("all")
 const templateSearchKeyword = ref("")
 const selectedTemplateDataTypes = ref<TemplateDataType[]>([])
@@ -2758,11 +2724,18 @@ const templatePreviewOpen = ref(false)
 const previewedTemplate = ref<ThematicTemplate | null>(null)
 const activeTab = ref<WorkbenchTab>(props.initialTab)
 const workbenchMode = ref<"standard" | "analysis">("analysis")
+const releaseMode = ref<"internal" | "standard">("internal")
 const selectedStandardTemplate = ref<DbtTemplateId | null>(null)
 const standardTarget = ref<DbtTemplateId>("T30101000")
 const standardLayerRole = ref("boundary")
 const templateMapEditorRef = ref<InstanceType<typeof TemplateMapEditor>>()
 const standardEditorRef = ref<InstanceType<typeof DbtStandardEditor>>()
+const workflowDataRef = ref<InstanceType<typeof CartographyDataWorkflow>>()
+const maintenanceOpen = ref(false)
+const composingOnline = ref(false)
+const approvedDocument = ref<DbtDocument | null>(null)
+const approvedExtent = computed(() => approvedDocument.value && selectedStandardTemplate.value ? standardBounds(approvedDocument.value, selectedStandardTemplate.value) : null)
+let approvedRequest: AbortController | undefined
 const standardScene = ref<StandardComposition | null>(null)
 const standardLayoutIssues = ref<string[]>(["规范图件尚未生成"])
 const standardComposedPreview = ref("")
@@ -2773,7 +2746,7 @@ async function selectStandardTemplate(id: DbtTemplateId) {
   composerOpen.value = false; chartPanelVisible.value = false; displaySettingsOpen.value = false
   if (selectedStandardTemplate.value !== id) { standardScene.value = null; standardComposedPreview.value = ""; standardLayoutIssues.value = ["规范图件尚未生成"] }
   selectedStandardTemplate.value = id; workbenchMode.value = "standard"; activeTab.value = "editor"
-  mapWork.endCartographySession(); resetSelectionScope(true); restoreWorkbench(); await resetEditorScroll()
+  clearTemplatePreview(); restoreWorkbench(); await resetEditorScroll()
 }
 async function promoteTemplateToStandard() {
   const copy = { description: draft.notes, agency: draft.agency }
@@ -2786,12 +2759,24 @@ async function promoteTemplateToStandard() {
   if (data) { standardEditorRef.value?.importTemplateLayer(data, standardLayerRole.value, draft.templateName || "原模板数据") }
 }
 function handleStandardRendered(scene: StandardComposition) { standardComposedPreview.value = ""; standardScene.value = scene }
-async function openStandardComposition() { if (!standardScene.value) { $message("图件正在生成，请稍后重试"); return }; restoreWorkbench(); composerOpen.value = true }
-async function exportStandardProof(format: "jpg" | "pdf", dpi: number) { await openStandardComposition(); await nextTick(); await composerRef.value?.exportProof(format, dpi) }
+function handleStandardRenderFailed() { standardScene.value = null; standardComposedPreview.value = ""; standardLayoutIssues.value = ["当前数据未能生成图件"]; if (workbenchMode.value === "standard") { composerOpen.value = false } }
+async function openStandardComposition() {
+  const scope = lockedScopeKey.value
+  if (!await standardEditorRef.value?.preparePreview()) { $message(standardEditorRef.value?.publication.error || "图件尚未生成，请检查当前出图信息"); return false }
+  if (scope !== lockedScopeKey.value || !standardScene.value || standardEditorRef.value?.publication.busy) { return false }
+  restoreWorkbench(); composerOpen.value = true; return true
+}
+async function exportStandardProof(format: "jpg" | "pdf", dpi: number) { if (!await openStandardComposition()) { return }; await nextTick(); await composerRef.value?.exportProof(format, dpi) }
 async function inspectStandardComposition() {
   if (window.innerWidth < 900) { composerOpen.value = false }
+  releaseMode.value = "standard"
   activeTab.value = "editor"; await nextTick()
   const check = document.querySelector<HTMLDetailsElement>(".dbt-quality"); if (check) { check.open = true; check.scrollIntoView({ block: "start", behavior: "smooth" }) }
+}
+async function inspectSymbolSources(kind: string) {
+  composerOpen.value = false; restoreWorkbench(); activeTab.value = "editor"; await nextTick()
+  if (approvedDocument.value) { document.querySelector<HTMLElement>(".dbt-editor")?.scrollIntoView({ block: "start" }); return }
+  workflowDataRef.value?.focusRequirement(symbolSourceKeys(kind))
 }
 const chartPanelVisible = ref(false)
 const chartViewMode = ref<ChartViewMode>("list")
@@ -2799,10 +2784,17 @@ const composerOpen = ref(false)
 const thematicPanelBody = ref<HTMLElement>()
 async function resetEditorScroll() {
   await nextTick()
-  if (activeTab.value === "editor" && thematicPanelBody.value) { thematicPanelBody.value.scrollTop = 0 }
+  if ((activeTab.value === "editor" || activeTab.value === "publish") && thematicPanelBody.value) { thematicPanelBody.value.scrollTop = 0 }
 }
 const templateLayoutEditing = ref(false)
 const composerRef = ref<InstanceType<typeof CartographyComposer> | null>(null)
+const publicationPresentationKey = computed(() => JSON.stringify({ cartography: cartographySnapshot(), layout: composerRef.value?.publicationLayout() }))
+async function preparePublicationView() {
+  if (!productCoreReady.value) { throw new Error("缺少当前产品的核心成果，参考图层不能代替本产品发布") }
+  const view = await composerRef.value?.preparePublicationView()
+  if (!view) { throw new Error("请先完成当前图件排版") }
+  return view
+}
 const composerLayouts = ref<Record<string, CompositionItem>>({})
 const compositionFields = [{ key: "x", label: "水平位置" }, { key: "y", label: "垂直位置" }, { key: "w", label: "宽度" }, { key: "h", label: "高度" }, { key: "rotation", label: "旋转角度" }] as const
 function updateComposerLayouts(layouts: CompositionItem[]) {
@@ -2837,6 +2829,8 @@ const rasterResult = ref<RasterResultView | null>(null)
 const rasterUseRole = ref<"main" | "inset">("main")
 const rasterUsing = ref(false)
 async function useRasterResult() {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   const result = rasterResult.value
   if (rasterUsing.value || rasterRunning.value || !result || result.scopeKey !== lockedScopeKey.value) { return }
   rasterUsing.value = true
@@ -2844,7 +2838,7 @@ async function useRasterResult() {
   try {
     if (!composerOpen.value) { toggleBoardMode() }
     await nextTick()
-    if (!composerOpen.value || result.scopeKey !== lockedScopeKey.value || result !== rasterResult.value) { return }
+    if (!auxiliaryRuns.accepts(toolRun) || !composerOpen.value || result.scopeKey !== lockedScopeKey.value || result !== rasterResult.value) { return }
     const applied = composerRef.value?.useRaster({ image: result.image, label: result.label, detail: result.detail, legend: rasterResultLegend(result.summary) }, role)
     if (applied) { $message(role === "main" ? "计算结果已设为排版主图" : "计算结果已添加为排版副图", "success") }
   } finally { rasterUsing.value = false }
@@ -2933,9 +2927,22 @@ const earthquakeSymbolStyle = reactive<mapWork.CartographySymbolStyle>({ size: 3
 const chartList = ref<ChartListItem[]>([])
 const mainImageUrl = ref("")
 const templateResultPreview = ref("")
+const businessSnapshot = shallowRef<BusinessMapResult | null>(null)
+const onlineLayers = shallowRef<DbtLayer[]>([])
+const publishedMapView = shallowRef<VerifiedPublishedMap | null>(null)
+const publishedMapLoadError = ref("")
+let publishedMapRequest: AbortController | undefined
+const onlineReferenceEvent = computed(() => layerEventParameters(onlineLayers.value))
+let onlineRevision = 0
 function clearTemplatePreview() {
   if (templateResultPreview.value) { URL.revokeObjectURL(templateResultPreview.value) }
   templateResultPreview.value = ""
+  businessSnapshot.value = null
+  if (selectedTemplate.value) {
+    chartList.value = []
+    if (mainImageUrl.value) { URL.revokeObjectURL(mainImageUrl.value) }
+    mainImageUrl.value = ""; mainImageBlob = null
+  }
 }
 onUnmounted(clearTemplatePreview)
 const mainImageTitle = ref("专题主图")
@@ -2944,6 +2951,7 @@ const selectionToolbarVisible = ref(false)
 const selectionToolbarLeft = ref(0)
 const selectionToolbarTop = ref(0)
 const selectionFrameBounds = ref<SelectionViewportBounds | null>(null)
+const selectionFrameOutline = ref<Array<{ x: number; y: number }>>([])
 const mapViewportBounds = ref<SelectionViewportBounds | null>(null)
 const selectionScopeLocked = ref(false)
 const selectionPurpose = ref<"chart" | "template" | "standard">("chart")
@@ -2973,9 +2981,15 @@ let viewportResizeHandler: null | (() => void) = null
 let themeChangeHandler: null | (() => void) = null
 let timeExtentChangeHandler: null | ((evt: Event) => void) = null
 let mainImageBlob: Blob | null = null
+let auxiliaryMapBackup: { blob: Blob | null; title: string; meta: string; scope: string } | null = null
 
-const effectiveDatasetId = computed(() => String(props.datasetId || currentDataset.value?.datasetId || ""))
-const effectiveDatasetName = computed(() => String(props.datasetName || currentDataset.value?.name || effectiveDatasetId.value || "当前数据集"))
+// Sidebar sessions follow the live dataset; explicitly opened repository sessions stay pinned.
+const effectiveDatasetId = computed(() => String(props.source === "sidebar" ? currentDataset.value?.datasetId || "" : props.datasetId || currentDataset.value?.datasetId || ""))
+const effectiveDatasetName = computed(() => String((props.source === "sidebar" ? currentDataset.value?.name : props.datasetName || currentDataset.value?.name) || effectiveDatasetId.value || "当前数据集"))
+provide(THEMATIC_PUBLICATION_HOST, inject(THEMATIC_PUBLICATION_HOST, null) || createCurrentTaskPublicationHost(() => ({
+  datasetId: effectiveDatasetId.value,
+  name: effectiveDatasetId.value ? effectiveDatasetName.value : "专题制图成果"
+})))
 const DIALOG_RESIZE_HANDLES = [...POPUP_PANEL_RESIZE_HANDLES]
 const dialogClass = computed(() => {
   if (workbenchMode.value === "standard") { return "thematic-workbench-panel thematic-workbench-layout-v2 is-standard-workbench" }
@@ -3008,7 +3022,7 @@ const rasterStatusLabel = computed(() => {
   if (rasterRunning.value) {
     return "计算中"
   }
-  return rasterResult.value ? "已渲染" : "待计算"
+  return rasterResult.value ? "截图处理完成" : "待计算"
 })
 const temporalStatusLabel = computed(() => {
   if (temporalCapturing.value) {
@@ -3018,7 +3032,7 @@ const temporalStatusLabel = computed(() => {
     return "计算中"
   }
   if (temporalResult.value) {
-    return "已渲染"
+    return "截图比较完成"
   }
   if (temporalFrames.value.length >= 2) {
     return "可计算"
@@ -3029,25 +3043,25 @@ const signalStatusLabel = computed(() => {
   if (signalRunning.value) {
     return "处理中"
   }
-  return signalResult.value ? "已渲染" : "待处理"
+  return signalResult.value ? "截图处理完成" : "待处理"
 })
 const statisticsStatusLabel = computed(() => {
   if (statisticsRunning.value) { return "统计中" }
-  return statisticsResult.value ? "已渲染" : "待统计"
+  return statisticsResult.value ? "亮度统计完成" : "待统计"
 })
 const spatialStatusLabel = computed(() => {
   if (spatialRunning.value) { return "分析中" }
-  return spatialResult.value ? "已渲染" : "待分析"
+  return spatialResult.value ? "截图处理完成" : "待处理"
 })
 const backgroundStatusLabel = computed(() => {
   if (backgroundCapturing.value) { return "采集中" }
   if (backgroundRunning.value) { return "计算中" }
-  if (backgroundResult.value) { return "已渲染" }
+  if (backgroundResult.value) { return "截图比较完成" }
   return backgroundBaseline.value ? "可计算" : "待采集"
 })
 const numericStatusLabel = computed(() => {
   if (numericRunning.value) { return "变换中" }
-  return numericResult.value ? "已渲染" : "待变换"
+  return numericResult.value ? "辅助变换完成" : "待变换"
 })
 const earthquakeStatusLabel = computed(() => {
   if (earthquakeRunning.value) { return "分析中" }
@@ -3059,7 +3073,7 @@ const earthquakeParameterProfile = computed(() => {
   const dataset = earthquakeDataset.value
   const losDirections: Record<string, string> = { away_positive: "远离卫星", toward_positive: "趋近卫星" }
   const definitions: Record<EarthquakeOperation, { fields: string[]; rule: string; constraint: string }> = {
-    thermal: { fields: ["lst_k", "baseline_mean_k", "baseline_sd_k", "baseline_count", "quality_flag"], rule: "同季节亮温 Z 标准化", constraint: "质量 good · 基准样本 ≥10 · K" },
+    thermal: { fields: ["lst_k", "baseline_mean_k", "baseline_sd_k", "baseline_count", "quality_flag"], rule: "地表温度时间基线 Z 标准化", constraint: "质量 good · 基准样本 ≥10 · K（项目参数）" },
     deformation: { fields: ["los_mm", "coherence"], rule: "LOS 位移按相干性筛选", constraint: `正值 ${losDirections[String(dataset?.metadata.losConvention)] || "未声明"} · mm` },
     risk: { fields: ["hazard_index", "exposure_index", "vulnerability_index"], rule: "危险性 × 暴露 × 脆弱性", constraint: "三个校准指数均须在 0–1" },
     intensity: { fields: ["pga_ms2", "pgv_ms"], rule: "PGA / PGV 双指标同级初判", constraint: "仅 VI–XI · 冲突点待复核" }
@@ -3171,22 +3185,22 @@ const selectionToolbarStyle = computed(() => ({
   top: `${selectionToolbarTop.value}px`
 }))
 const selectionFrameStyle = computed(() => {
-  const bounds = selectionFrameBounds.value
-  const frameWidth = mapWork.SELECTION_FRAME_WIDTH
+  const bounds = mapViewportBounds.value
   if (!bounds) {
     return {}
   }
   return {
-    left: `${bounds.left - frameWidth}px`,
-    top: `${bounds.top - frameWidth}px`,
+    left: `${bounds.left}px`,
+    top: `${bounds.top}px`,
     width: `${bounds.width}px`,
-    height: `${bounds.height}px`,
-    borderWidth: `${frameWidth}px`
+    height: `${bounds.height}px`
   }
 })
+const selectionFramePoints = computed(() => selectionFrameOutline.value.map(point => `${point.x - (mapViewportBounds.value?.left || 0)},${point.y - (mapViewportBounds.value?.top || 0)}`).join(" "))
 let selectionSession = 0
 const showSelectionOverlay = computed(() => dialogVisible.value && !!selectionFrameBounds.value && (selectionToolbarVisible.value || selectionScopeLocked.value))
 const lockedScopeKey = computed(() => getSelectionScopeKey(lockedSelection.value))
+watch(lockedScopeKey, clearTemplatePreview)
 const selectionScopeSummary = computed(() => {
   const rect = lockedSelection.value
   if (!rect) {
@@ -3218,18 +3232,16 @@ const sourceLabel = computed(() => {
   return "工具栏入口"
 })
 const contextDesc = computed(() => {
-  const target = String(props.targetName || "").trim()
-  if (target) {
-    return `${sourceLabel.value}已进入制图台，当前目标：${target}`
-  }
-  return `${sourceLabel.value}已进入制图台，可在模板库、编辑、发布三个阶段持续操作`
+  return `${selectionScopeLocked.value ? "查询范围已确认" : "查询范围待确认"} · ${workflowTopic.value ? "专题已选择" : "专题待选择"}`
 })
 const templatePurposeCounts = computed<Record<TemplatePurpose, number>>(() => ({
-  all: templateCatalog.value.length,
+  all: productCatalog(templateCatalog.value).length,
   emergency: templateCatalog.value.filter(template => getTemplatePurpose(template) === "emergency").length,
-  analysis: templateCatalog.value.filter(template => getTemplatePurpose(template) === "analysis").length
+  analysis: productCatalog(templateCatalog.value).filter(template => getTemplatePurpose(template) === "analysis").length,
+  expression: templateCatalog.value.filter(template => getTemplatePurpose(template) === "expression").length,
+  deferred: templateCatalog.value.filter(template => getTemplatePurpose(template) === "deferred").length
 }))
-const secondaryFilteredTemplates = computed(() => templateCatalog.value.filter(matchesTemplateSecondaryFilters))
+const secondaryFilteredTemplates = computed(() => productCatalog(templateCatalog.value).filter(matchesTemplateSecondaryFilters))
 const templateCategoryCounts = computed<Record<CatalogCategoryId, number>>(() => {
   const counts: Record<CatalogCategoryId, number> = {
     emergency: 0,
@@ -3260,8 +3272,13 @@ const filteredTemplates = computed(() => {
     return !!category && selectedTemplateCategories.value.includes(category)
   })
 })
+const groupedTemplates = computed(() => groupTemplateCatalog(filteredTemplates.value))
+const catalogProductOptions = computed(() => [{ value: "all", label: "关联业务产品：不限" }, ...templateCatalog.value.filter(template => !["expression", "auxiliary", "deferred"].includes(templateTier(template))).map(template => ({ value: template.templateId, label: template.name || template.templateId }))])
+function productMethods(template: ThematicTemplate) { const ids = productExpressionIds(template); return templateCatalog.value.filter(entry => ids.includes(entry.templateId)) }
 const activeTemplateFilterTags = computed(() => {
   const tags: string[] = []
+  if (selectedProductGroup.value !== "all") { tags.push(productGroupOptions.value.find(group => group.value === selectedProductGroup.value)?.label || selectedProductGroup.value) }
+  if (selectedCatalogProduct.value !== "all") { tags.push(catalogProductOptions.value.find(entry => entry.value === selectedCatalogProduct.value)?.label || selectedCatalogProduct.value) }
   const keyword = templateSearchKeyword.value.trim()
   if (keyword) {
     tags.push(`搜索：${keyword}`)
@@ -3298,6 +3315,157 @@ const activeTemplateFilterTags = computed(() => {
 })
 const templatePreviewTitle = computed(() => `${previewedTemplate.value?.name || "模板"}预览`)
 const selectedTemplate = computed(() => templates.value.find((template) => template.templateId === draft.templateId) || null)
+const workflowTopic = computed(() => {
+  if (workbenchMode.value === "standard") { return selectedStandardTemplate.value || "" }
+  return selectedTemplate.value ? getTemplateVisualKind(selectedTemplate.value) : ""
+})
+const onlineProofReady = computed(() => onlineLayers.value.length > 0 && onlineLayers.value.every(layer => !layer.raster || !!layer.raster.image))
+const usesExpressionEditor = computed(() => workbenchMode.value === "analysis" && !!workflowTopic.value && workflowRequirements(workflowTopic.value).some(entry => entry.adapter === "business-vector"))
+const expressionSources = computed(() => {
+  const coreInputs = new Set(workflowRequirements(workflowTopic.value).filter(entry => entry.adapter === "business-vector").map(entry => `online:${entry.key}`))
+  return backendTemplateSources(onlineLayers.value, coreInputs)
+})
+const visibleOnlineLayers = computed(() => (publishedMapView.value?.layers.map(entry => entry.layer) || onlineLayers.value).filter(layer => layer.enabled !== false && (layer.opacity ?? 1) > 0))
+const nativeLegendGroups = computed(() => mapLegendGroups(visibleOnlineLayers.value))
+const productCoreReady = computed(() => !workflowRequiresCore(workflowTopic.value) || !workflowMissing(workflowTopic.value, onlineLayers.value.filter(layer => layer.enabled !== false && (layer.opacity ?? 1) > 0 && !layer.onlineSource?.rendering?.parameters?.inputOnly).map(layer => layer.id.replace(/^online:/, ""))).length)
+const productPublicationError = computed(() => publishedMapLoadError.value || (productCoreReady.value ? "" : "缺少当前产品的核心成果，参考图层不能代替本产品发布"))
+const workflowCanCompose = computed(() => !!workflowTopic.value && productCoreReady.value && !composingOnline.value && (workbenchMode.value === "standard" ? !!standardScene.value || onlineLayers.value.length > 0 : selectionScopeLocked.value && (usesExpressionEditor.value ? !!businessSnapshot.value : !!onlineLayers.value.length)))
+const auxiliaryActive = computed(() => SCREENSHOT_TOOLS_IN_WORKBENCH && dialogVisible.value && chartPanelVisible.value && !templateLayoutEditing.value && !isFold.value)
+const auxiliaryBasis = computed(() => auxiliaryResultBasis(analysisWorkspaceMode.value, selectedNumericOperation.value))
+const auxiliaryCharts = computed(() => chartList.value.filter(item => !item.id.startsWith("business_")))
+const businessCharts = computed(() => chartList.value.filter(item => item.id.startsWith("business_")))
+const auxiliaryRuns = createAuxiliaryRunGate()
+watch([auxiliaryActive, analysisWorkspaceMode, lockedScopeKey], ([active]) => auxiliaryRuns.update(active), { flush: "sync" })
+watch(() => chartPanelVisible.value && !templateLayoutEditing.value, (active, previous) => {
+  if (active) {
+    auxiliaryMapBackup = { blob: mainImageBlob, title: mainImageTitle.value, meta: mainImageMeta.value, scope: lockedScopeKey.value }
+  } else if (previous) {
+    mapWork.clearRasterResult(); mapWork.clearEarthquakeResult()
+    if (auxiliaryMapBackup?.scope === lockedScopeKey.value) {
+      if (mainImageUrl.value) { URL.revokeObjectURL(mainImageUrl.value) }
+      mainImageBlob = auxiliaryMapBackup.blob
+      mainImageUrl.value = mainImageBlob ? URL.createObjectURL(mainImageBlob) : ""
+      mainImageTitle.value = auxiliaryMapBackup.title; mainImageMeta.value = auxiliaryMapBackup.meta
+    }
+    auxiliaryMapBackup = null
+  }
+}, { flush: "sync" })
+async function openWorkflowComposition() {
+  if (!workflowCanCompose.value) { return }
+  if (usesExpressionEditor.value && businessSnapshot.value) { await openTemplateLayout(); return }
+  if (onlineLayers.value.length && !approvedDocument.value) { await openOnlineComposition() } else if (workbenchMode.value === "standard") { await openStandardComposition() } else { await openTemplateLayout() }
+}
+function resetBackendSources() { approvedRequest?.abort(); approvedDocument.value = null; mapWork.clearWorkflowLayers(); workflowDataRef.value?.reset() }
+async function refreshProducedLayers() { maintenanceOpen.value = false; await nextTick(); await workflowDataRef.value?.refresh() }
+watch([workflowTopic, lockedScopeKey], () => { approvedRequest?.abort(); approvedDocument.value = null; standardEditorRef.value?.clearBackendDocument(); mapWork.clearWorkflowLayers() })
+let committingExpression = false
+async function focusExpressionFields() { await nextTick(); templateMapEditorRef.value?.focusFields() }
+async function renderMatchedExpression() { await nextTick(); await templateMapEditorRef.value?.applyRecommended() }
+async function handleOnlineLayers(layers: DbtLayer[], bounds: mapWork.RectInfo | null) {
+  const displayed = publishedMapView.value
+  if (displayed && (layers.length || !mapWork.hasWorkflowLayer(`published:${displayed.layers[0]?.key}`))) {
+    publishedMapRequest?.abort()
+    for (const entry of displayed.layers) { mapWork.clearWorkflowLayers(`published:${entry.key}`) }
+    publishedMapView.value = null
+  }
+  if (approvedDocument.value) { approvedRequest?.abort(); approvedDocument.value = null; standardEditorRef.value?.clearBackendDocument() }
+  const token = ++onlineRevision; const hadOnline = onlineLayers.value.length > 0
+  onlineLayers.value = layers; composerOpen.value = false
+  clearTemplatePreview()
+  if (workbenchMode.value !== "standard") {
+    if (!committingExpression) { templateMapEditorRef.value?.resetResult() }
+    return
+  }
+  standardScene.value = null; standardComposedPreview.value = ""; standardLayoutIssues.value = ["数据已变化，待重新生成图件"]
+  standardMapPreview.value = null
+  await nextTick()
+  if (token !== onlineRevision || scopeFingerprint(bounds) !== scopeFingerprint(lockedSelection.value)) { return }
+  const ready = layers.filter(layer => !layer.raster || !!layer.raster.image)
+  if (layers.length || hadOnline) { standardEditorRef.value?.replaceOnlineLayers(ready, bounds, workflowName(workflowTopic.value)) }
+}
+async function applyPublishedMap(result: VerifiedPublishedMap) {
+  if (!dialogVisible.value) { throw new Error("专题工作台已关闭") }
+  publishedMapRequest?.abort()
+  const controller = new AbortController(); publishedMapRequest = controller
+  publishedMapView.value = null; publishedMapLoadError.value = ""; composerOpen.value = false
+  mapWork.restorePublishedSelection(result.snapshot.bounds)
+  selectionSession++; selectionPurpose.value = "template"; chartPanelVisible.value = false; selectionToolbarVisible.value = false
+  lockedSelection.value = { ...result.snapshot.bounds }; selectionScopeLocked.value = true
+  const { west, south, east, north } = result.snapshot.bounds
+  selectionAreaText.value = `框选范围：西${west.toFixed(4)} / 南${south.toFixed(4)} / 东${east.toFixed(4)} / 北${north.toFixed(4)}`
+  await nextTick()
+  mapWork.clearWorkflowLayers(); mapWork.clearRasterResult()
+  try {
+    for (const entry of result.layers) {
+      if (entry.scene) { await mapWork.renderTemplateScene(entry.scene, Number((entry.layer.onlineSource?.rendering?.parameters?.expression as any)?.options?.radius || 45), controller.signal, `published:${entry.key}`); mapWork.updateWorkflowPresentation(`published:${entry.key}`, entry.layer); continue }
+      await mapWork.showWorkflowLayer(`published:${entry.key}`, { name: entry.layer.name, raster: entry.raster, document: entry.document, symbol: entry.symbol, labels: entry.labels, vectorStyle: entry.vectorStyle, opacity: entry.layer.opacity ?? 1, onError: message => { publishedMapLoadError.value = message; publishedMapView.value = null; controller.abort(); mapWork.clearWorkflowLayers(); mapWork.clearRasterResult() } }, controller.signal)
+      mapWork.updateWorkflowPresentation(`published:${entry.key}`, entry.layer)
+    }
+    controller.signal.throwIfAborted()
+    publishedMapView.value = result
+    if (!isFold.value) { toggleWorkbenchFold() }
+  } catch (error) { controller.abort(); mapWork.clearWorkflowLayers(); mapWork.clearRasterResult(); throw error }
+}
+async function handleBackendDocument(doc: DbtDocument) {
+  if (workbenchMode.value !== "standard" || !selectedStandardTemplate.value) { return }
+  workflowDataRef.value?.reset(); onlineRevision++; composerOpen.value = false
+  await nextTick()
+  const ticket = ++onlineRevision; const topic = selectedStandardTemplate.value
+  standardScene.value = null; standardComposedPreview.value = ""; standardMapPreview.value = null
+  standardLayoutIssues.value = ["后台审核图件已更换，待重新生成"]
+  mapWork.clearWorkflowLayers()
+  approvedRequest?.abort(); const controller = new AbortController(); approvedRequest = controller
+  try {
+    standardEditorRef.value?.acceptBackendDocument(doc)
+    approvedDocument.value = doc
+    for (const [order, layer] of sortedCartographyLayers(dbtScopedLayers(doc, topic), topic).entries()) {
+      if (ticket !== onlineRevision || !dialogVisible.value || topic !== selectedStandardTemplate.value) { controller.abort(); break }
+      if (layer.raster) { await mapWork.showWorkflowLayer(`approved:${layer.id}`, { name: layer.name, image: layer.raster.image, bounds: layer.raster.bounds, opacity: layer.opacity ?? 1 }, controller.signal); mapWork.updateWorkflowPresentation(`approved:${layer.id}`, { order: 20 + order }) } else {
+        for (const group of approvedNativeLayers(layer, doc.event)) { const key = `approved:${layer.id}:${group.suffix}`; await mapWork.showWorkflowLayer(key, { name: layer.name, document: group.data, symbol: group.symbol, labels: group.labels, opacity: layer.opacity ?? 1 }, controller.signal); mapWork.updateWorkflowPresentation(key, { order: 20 + order }) }
+      }
+    }
+    controller.signal.throwIfAborted()
+    if (ticket !== onlineRevision || !dialogVisible.value) { return }
+    const eventLayer: DbtLayer = { id: "current-event", name: "当前地震", role: "event", authority: doc.event.authority, source: doc.event.bulletin, crs: doc.crs, scale: 0, security: "", publishedAt: doc.event.time, data: { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point", coordinates: [doc.event.longitude, doc.event.latitude] }, properties: { symbol: "dbt-current-epicenter", label: `${doc.event.place} ${doc.event.magnitudeType}${doc.event.magnitude}` } }] } }
+    for (const group of approvedNativeLayers(eventLayer)) { await mapWork.showWorkflowLayer("approved:current-event", { name: eventLayer.name, document: group.data, symbol: group.symbol, labels: group.labels, opacity: 1 }, controller.signal) }
+  } catch (err) {
+    controller.abort()
+    if (ticket === onlineRevision && approvedRequest === controller) { approvedDocument.value = null; standardEditorRef.value?.clearBackendDocument(); mapWork.clearWorkflowLayers(); $message(err instanceof Error ? err.message : "后台审核图层叠加失败") }
+  }
+}
+let lastOnlineTitle = ""; let lastOnlineNotes = ""
+async function openOnlineComposition() {
+  if (composingOnline.value) { return }
+  if (workbenchMode.value === "standard" && approvedDocument.value) { await openStandardComposition(); return }
+  if (!onlineLayers.value.length || !selectionScopeLocked.value) { $message("请先框选范围并叠加真实数据"); return }
+  const scope = lockedScopeKey.value
+  composingOnline.value = true
+  try {
+    if (!await workflowDataRef.value?.prepareComposition() || scope !== lockedScopeKey.value) { return }
+    await nextTick()
+    if (workbenchMode.value === "standard") {
+      if (scope === lockedScopeKey.value) { await openStandardComposition() }
+      return
+    }
+    const token = onlineRevision
+    mapWork.prepareWorkflowMap()
+    const blob = await mapWork.captureSelectionImage({ targetWidth: 1600, fitAspect: true, frameWidth: 0, mime: "image/png" })
+    if (token !== onlineRevision || scope !== lockedScopeKey.value || !dialogVisible.value) { return }
+    if (!blob?.size) { throw new Error("实际地图画面尚未就绪，请重试") }
+    const visible = visibleOnlineLayers.value
+    const currentTemplate = templateCatalog.value.find(template => template.templateId === draft.templateId)
+    const profile = currentTemplate && resolveStandardTemplateProfile(currentTemplate)
+    const generatedTitle = visible.length === 1 && visible[0].onlineSource?.itemId === "SP-landsat-lst-20260216" ? "Landsat 地表温度原值参考图" : `${workflowName(workflowTopic.value)} · 在线数据参考校样`
+    const generatedNotes = onlineLayerDescription(visible)
+    if (!draft.title || draft.title === `${draft.templateName} - ${effectiveDatasetName.value}` || draft.title === lastOnlineTitle) { draft.title = generatedTitle }
+    if (!draft.notes || draft.notes === profile?.notes || draft.notes === lastOnlineNotes) { draft.notes = generatedNotes }
+    lastOnlineTitle = generatedTitle; lastOnlineNotes = generatedNotes
+    Object.assign(cartographySettings, { title: draft.title, source: visible.map(layer => layer.source).join("；"), time: new Date().toISOString(), legendTitle: "原始值显示范围 · 单位依据待核验" })
+    cartographyContext.value = { ...cartographyContext.value, legend: visible.flatMap(layer => layer.legend || []), metrics: mapWork.getMapAdornmentMetrics() }
+    await handleTemplateApplied(blob, false, true)
+    if (token === onlineRevision && scope === lockedScopeKey.value) { await openTemplateLayout() }
+  } catch (err) { $message(err instanceof Error ? err.message : "在线图层校样生成失败") } finally { composingOnline.value = false }
+}
 const isDirty = computed(() => JSON.stringify(snapshotDraft()) !== savedDraftJson.value)
 
 watch(
@@ -3313,6 +3481,7 @@ watch([dialogVisible, isFold, chartPanelVisible], ([visible, folded, chart]) => 
 watch(dialogVisible, (value) => {
   emit("update:visible", value)
   if (!value) {
+    maintenanceOpen.value = false
     standardCaptureVersion++; standardMapBusy.value = false
     selectionSession++
     closeTemplatePreview()
@@ -3323,6 +3492,7 @@ watch(dialogVisible, (value) => {
 })
 
 watch(chartPanelVisible, (visible) => {
+  if (visible && !templateLayoutEditing.value && !SCREENSHOT_TOOLS_IN_WORKBENCH) { showCartographyPanel(); return }
   if (visible) {
     nextTick(() => {
       renderAllCharts()
@@ -3331,6 +3501,7 @@ watch(chartPanelVisible, (visible) => {
 })
 
 watch(rasterOpacity, (opacity) => {
+  if (!auxiliaryActive.value) { return }
   const result = rasterResult.value
   const rectangle = mapWork.getLockedSelection()
   if (analysisWorkspaceMode.value !== "raster" || !result || !rectangle || result.scopeKey !== lockedScopeKey.value) {
@@ -3340,6 +3511,7 @@ watch(rasterOpacity, (opacity) => {
 })
 
 watch(temporalOpacity, (opacity) => {
+  if (!auxiliaryActive.value) { return }
   const result = temporalResult.value
   const rectangle = mapWork.getLockedSelection()
   if (analysisWorkspaceMode.value !== "temporal" || !result || !rectangle || result.scopeKey !== lockedScopeKey.value) {
@@ -3349,6 +3521,7 @@ watch(temporalOpacity, (opacity) => {
 })
 
 watch(signalOpacity, (opacity) => {
+  if (!auxiliaryActive.value) { return }
   const result = signalResult.value
   const rectangle = mapWork.getLockedSelection()
   if (analysisWorkspaceMode.value !== "signal" || !result || !rectangle || result.scopeKey !== lockedScopeKey.value) { return }
@@ -3356,6 +3529,7 @@ watch(signalOpacity, (opacity) => {
 })
 
 watch(statisticsOpacity, (opacity) => {
+  if (!auxiliaryActive.value) { return }
   const result = statisticsResult.value
   const rectangle = mapWork.getLockedSelection()
   if (analysisWorkspaceMode.value !== "statistics" || !result || !rectangle || result.scopeKey !== lockedScopeKey.value) { return }
@@ -3363,24 +3537,28 @@ watch(statisticsOpacity, (opacity) => {
 })
 
 watch(spatialOpacity, (opacity) => {
+  if (!auxiliaryActive.value) { return }
   const result = spatialResult.value
   const rectangle = mapWork.getLockedSelection()
   if (analysisWorkspaceMode.value !== "spatial" || !result || !rectangle || result.scopeKey !== lockedScopeKey.value) { return }
   mapWork.renderRasterResult(result.image, rectangle, opacity / 100)
 })
 watch(backgroundOpacity, (opacity) => {
+  if (!auxiliaryActive.value) { return }
   const result = backgroundResult.value
   const rectangle = mapWork.getLockedSelection()
   if (analysisWorkspaceMode.value !== "background" || !result || !rectangle || result.scopeKey !== lockedScopeKey.value) { return }
   mapWork.renderRasterResult(result.image, rectangle, opacity / 100)
 })
 watch(numericOpacity, (opacity) => {
+  if (!auxiliaryActive.value) { return }
   const result = numericResult.value
   const rectangle = mapWork.getLockedSelection()
   if (analysisWorkspaceMode.value !== "numeric" || !result || !rectangle || result.scopeKey !== lockedScopeKey.value) { return }
   mapWork.renderRasterResult(result.image, rectangle, opacity / 100)
 })
 watch(earthquakeFilteredPoints, (points) => {
+  if (!auxiliaryActive.value) { return }
   if (analysisWorkspaceMode.value !== "earthquake" || !earthquakeResult.value) { return }
   const rectangle = mapWork.getLockedSelection()
   if (rectangle) { mapWork.renderEarthquakePoints(points, rectangle) }
@@ -3391,13 +3569,19 @@ watch([analysisWorkspaceMode, earthquakeOutputView, chartPanelVisible, isFold, d
 watch(analysisWorkspaceMode, mode => { symbolFamily.value = mode === "earthquake" ? "earthquake" : "basic" })
 watch(symbolFamily, cancelEarthquakeSymbolPlacement)
 
-watch(
-  () => [effectiveDatasetId.value, effectiveDatasetName.value],
-  () => {
-    loadDraft()
-  },
-  { immediate: true }
-)
+watch(effectiveDatasetId, (next, previous) => {
+  if (previous !== undefined && next !== previous) {
+    standardCaptureVersion++; selectionSession++
+    composerOpen.value = false; chartPanelVisible.value = false; displaySettingsOpen.value = false
+    closeTemplatePreview(); clearTemplatePreview(); resetSelectionScope(true)
+    mapWork.endCartographySession()
+    standardScene.value = null; standardMapPreview.value = null; standardComposedPreview.value = ""
+    standardMapBusy.value = false; standardMapError.value = ""; standardLayoutIssues.value = ["规范图件尚未生成"]
+    composerLayouts.value = {}; earthquakeDataset.value = null
+    activeTab.value = "template"
+  }
+  loadDraft()
+}, { immediate: true, flush: "sync" })
 
 onMounted(() => {
   loadTemplates()
@@ -3424,7 +3608,11 @@ onMounted(() => {
     const detail = (evt as CustomEvent).detail as any
     const name = String(detail?.name || "")
     const visible = !!detail?.visible
-    if (!visible || name === "thematic-workbench" || !dialogVisible.value || isFold.value) {
+    if (name === "thematic-workbench") {
+      if (visible) { restoreWorkbench() }
+      return
+    }
+    if (!visible || !dialogVisible.value || isFold.value) {
       return
     }
     dialogRef.value?.fold?.()
@@ -3454,6 +3642,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  publishedMapRequest?.abort()
   mapWork.eventTarget.off("selectionCreated", handleSelectionCreated)
   mapWork.eventTarget.off("selectionBoundsChanged", handleSelectionBoundsChanged)
   mapWork.eventTarget.off("selectionConfirmed", handleSelectionConfirmed)
@@ -3548,6 +3737,10 @@ function buildDefaultDraft(): DraftState {
 }
 
 function loadDraft() {
+  selectedStandardTemplate.value = null
+  releaseMode.value = "internal"
+  workbenchMode.value = "analysis"
+  activeTab.value = "template"
   const fallback = buildDefaultDraft()
   try {
     const jobDraft = props.jobId ? loadThematicJobDraft(effectiveDatasetId.value, props.jobId) : null
@@ -3574,9 +3767,7 @@ async function loadTemplates() {
   loadingTemplates.value = true
   templates.value = mergeStandardTemplateCatalog([])
   try {
-    const result = await getTemplates({ limit: 24 })
-    const remoteTemplates = result.success && result.data ? result.data.templates || [] : []
-    const mergedTemplates = mergeStandardTemplateCatalog(remoteTemplates)
+    const mergedTemplates = mergeStandardTemplateCatalog([])
     const activeStandardProfile = standardTemplateProfiles.find((profile) => profile.templateId === draft.templateId)
     if (activeStandardProfile) {
       const matchingTemplate = mergedTemplates.find((template) => resolveStandardTemplateProfile(template)?.templateId === activeStandardProfile.templateId)
@@ -3603,17 +3794,11 @@ function mergeStandardTemplateCatalog(remoteTemplates: ThematicTemplate[]): Them
     consumedTemplateIds.add(matchingRemote.templateId)
     return {
       ...standardTemplate,
-      ...matchingRemote,
       templateVersion: matchingRemote.templateVersion || standardTemplate.templateVersion,
-      description: matchingRemote.description || standardTemplate.description,
-      previewImage: matchingRemote.previewImage || standardTemplate.previewImage,
-      parameters: matchingRemote.parameters?.length ? matchingRemote.parameters : standardTemplate.parameters
+      parameters: standardTemplate.parameters
     }
   })
-  return [
-    ...catalog,
-    ...availableRemoteTemplates.filter((template) => !consumedTemplateIds.has(template.templateId))
-  ]
+  return catalog
 }
 
 function normalizeTemplateFilterText(value: unknown): string {
@@ -3701,6 +3886,8 @@ function getTemplateSearchText(template: ThematicTemplate): string {
 }
 
 function matchesTemplateSecondaryFilters(template: ThematicTemplate): boolean {
+  if (selectedProductGroup.value !== "all" && templateTier(template) !== selectedProductGroup.value) { return false }
+  if (!matchesCatalogProduct(template, selectedCatalogProduct.value, templateCatalog.value)) { return false }
   if (selectedTemplatePurpose.value !== "all" && getTemplatePurpose(template) !== selectedTemplatePurpose.value) { return false }
   if (selectedTemplateEdition.value !== "all" && getTemplateEdition(template) !== selectedTemplateEdition.value) {
     return false
@@ -3733,11 +3920,6 @@ function getTemplateDataTypeLabels(template: ThematicTemplate): string[] {
     templateDataTypeOptions.find((option) => option.value === dataType)?.label || dataType
   ))
   return labels.length > 0 ? labels : ["通用数据"]
-}
-
-function getTemplateComplexityLabel(template: ThematicTemplate): string {
-  const complexity = resolveTemplateComplexity(template)
-  return templateComplexityOptions.find((option) => option.value === complexity)?.label || "标准"
 }
 
 function getTemplateComponentLabels(template: ThematicTemplate): string[] {
@@ -3786,7 +3968,7 @@ function getTemplateEditionLabel(template: ThematicTemplate): string {
   if (getEmergencyCatalogEntry(template)) { return "应急响应专题" }
   const edition = getTemplateEdition(template)
   if (edition === "earthquake") {
-    return "地震专业 · 分析表达"
+    return "地震业务"
   }
   return "分析表达"
 }
@@ -3901,7 +4083,9 @@ function restoreWorkbench() {
 }
 
 function selectTemplatePurpose(purpose: TemplatePurpose) {
+  selectedProductGroup.value = "all"
   selectedTemplatePurpose.value = purpose
+  selectedCatalogProduct.value = "all"
   selectedTemplateEdition.value = "all"
   clearTemplateCategoryFilters()
 }
@@ -3911,7 +4095,9 @@ function clearTemplateCategoryFilters() {
 }
 
 function resetTemplateFilters() {
+  selectedProductGroup.value = "all"
   selectedTemplatePurpose.value = "all"
+  selectedCatalogProduct.value = "all"
   templateSearchKeyword.value = ""
   selectedTemplateEdition.value = "all"
   selectedTemplateDataTypes.value = []
@@ -3953,7 +4139,7 @@ function selectTemplate(template: ThematicTemplate) {
   chartPanelVisible.value = false
   restoreWorkbench()
   resetEditorScroll()
-  $message("已选择模板，请框选范围并应用到地图")
+  $message(selectionScopeLocked.value ? "已选择模板，请加载专题图层" : "已选择模板，请框选范围并应用到地图")
 }
 
 function isTemplateSelected(template: ThematicTemplate) {
@@ -3962,23 +4148,38 @@ function isTemplateSelected(template: ThematicTemplate) {
 }
 
 function startTemplateSelection() {
-  startChartSelectionFlow()
-  selectionPurpose.value = "template"
+  startWorkflowSelection()
 }
+function startWorkflowSelection() { startChartSelectionFlow(); selectionPurpose.value = "template"; composerOpen.value = false; standardCaptureVersion++; standardScene.value = null; standardMapPreview.value = null; standardComposedPreview.value = "" }
 
-async function handleTemplateApplied(blob: Blob, openLayout = false, rendered = false) {
+async function handleTemplateApplied(blob: Blob, openLayout = false, rendered = false, snapshot?: BusinessMapResult) {
   clearTemplatePreview()
+  businessSnapshot.value = rendered && snapshot ? snapshot : null
   if (rendered) { templateResultPreview.value = URL.createObjectURL(blob) }
   if (mainImageUrl.value) { URL.revokeObjectURL(mainImageUrl.value) }
   mainImageBlob = blob
   mainImageUrl.value = URL.createObjectURL(blob)
   mainImageTitle.value = draft.title
   mainImageMeta.value = `${selectionAreaText.value} · ${draft.templateName} · ${new Date().toLocaleString()}`
+  if (businessSnapshot.value) {
+    mainImageMeta.value += ` · 数据记录 ${businessSnapshot.value.fingerprint.slice(0, 12)}`
+    addChart("deformation-bar")
+  }
   if (rendered && !openLayout && composerOpen.value) {
     const image = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(blob) })
     if (mainImageBlob === blob) { composerRef.value?.useRaster({ image, label: draft.templateName, detail: mainImageMeta.value, legend: cartographyContext.value.legend }, "main", true) }
   }
   if (openLayout) { await openTemplateLayout() } else { $message("模板已渲染到框选地图，实际预览已更新", "success") }
+}
+function invalidateExpression() {
+  committingExpression = true
+  try { workflowDataRef.value?.invalidateExpression() } finally { committingExpression = false }
+  clearTemplatePreview()
+}
+async function handleExpressionApplied(blob: Blob, openLayout: boolean, rendered: boolean, snapshot?: BusinessMapResult) {
+  committingExpression = true
+  try { if (snapshot) { workflowDataRef.value?.setExpression(snapshot) } else { workflowDataRef.value?.invalidateExpression() } } finally { committingExpression = false }
+  await handleTemplateApplied(blob, openLayout, rendered, snapshot)
 }
 
 async function openTemplateLayout() {
@@ -4017,6 +4218,7 @@ async function openTemplateLayout() {
 }
 
 function updateCompositionCopy(kind: string, text: string) {
+  if (auxiliaryActive.value) { return }
   if (workbenchMode.value === "standard") { standardEditorRef.value?.updateCopy(kind, text); return }
   if (kind === "title") { draft.title = text }
   if (kind === "description") { draft.notes = text }
@@ -4063,7 +4265,7 @@ async function openStyledComposition() {
 }
 
 function startChartSelectionFlow() {
-  selectionPurpose.value = "chart"
+  selectionPurpose.value = "template"
   resetSelectionScope(true)
   enterCartographyFocusMode()
   mainImageMeta.value = "请在地图上双击一次确定起点，再双击一次确定终点，完成矩形主图框选"
@@ -4084,40 +4286,35 @@ async function captureStandardPreview(selection: boolean) {
 }
 
 function startStandardSelection() {
-  composerOpen.value = false
-  standardCaptureVersion++; standardMapBusy.value = false; standardMapError.value = ""
-  selectionPurpose.value = "standard"
-  resetSelectionScope(true)
-  enterCartographyFocusMode()
-  $message("双击确定框选起点，再双击确定终点；右键取消")
-  mapWork.beginRectangleSelection()
+  startWorkflowSelection()
 }
 
 function openChartPanel() {
-  templateLayoutEditing.value = false
+  if (!SCREENSHOT_TOOLS_IN_WORKBENCH) { showCartographyPanel(); return }
   if (!selectionScopeLocked.value || !mapWork.getLockedSelection()) {
     $message("请先框选并锁定制图范围")
     startChartSelectionFlow()
     return
   }
   restoreWorkbench()
+  composerOpen.value = false
+  templateLayoutEditing.value = false
   chartPanelVisible.value = true
   dialogVisible.value = true
-  nextTick(() => {
-    ensureDemoContent()
-      .then(() => renderAllCharts())
-      .catch(() => $message("框选截图分析失败，请重新生成主图"))
-  })
+  nextTick(() => renderAllCharts())
 }
 
 function showCartographyPanel() {
+  composerOpen.value = false
   chartPanelVisible.value = false
+  activeTab.value = workflowTopic.value ? "editor" : "template"
   restoreWorkbench()
   resetEditorScroll()
 }
 
 function handleSelectionCreated(event: any) {
   const anchor = event?.anchor || {}
+  selectionFrameOutline.value = event?.outline || []
   updateSelectionFrameBounds(event?.bounds)
   updateMapViewportBounds(event?.canvasBounds)
   const left = Number(anchor.left)
@@ -4155,6 +4352,7 @@ function updateMapViewportBounds(bounds: any) {
 }
 
 function handleSelectionBoundsChanged(event: any) {
+  selectionFrameOutline.value = event?.outline || []
   updateSelectionFrameBounds(event?.bounds)
   updateMapViewportBounds(event?.canvasBounds)
   const anchor = event?.anchor || {}
@@ -4174,7 +4372,7 @@ async function handleSelectionConfirmed(event: any) {
     const pending = captureStandardPreview(true); const revision = standardCaptureVersion
     await pending
     if (revision === standardCaptureVersion && dialogVisible.value && workbenchMode.value === "standard") {
-      mapWork.endCartographySession(); resetSelectionScope(true); restoreWorkbench()
+      restoreWorkbench()
     }
     return
   }
@@ -4202,9 +4400,9 @@ async function handleSelectionConfirmed(event: any) {
     $message("框选区主图生成失败，请重新生成")
   } finally {
     if (session === selectionSession && dialogVisible.value) {
-    if (selectionPurpose.value === "template") {
+    if (!SCREENSHOT_TOOLS_IN_WORKBENCH || selectionPurpose.value === "template") {
       chartPanelVisible.value = false
-      activeTab.value = "editor"
+      activeTab.value = workflowTopic.value ? "editor" : "template"
       restoreWorkbench()
       resetEditorScroll()
     } else { openChartPanel() }
@@ -4228,18 +4426,6 @@ function redrawRectangleSelection() {
   selectionFrameBounds.value = null
   mainImageMeta.value = "已取消当前框选，请重新绘制主图范围"
   mapWork.redrawRectangleSelection()
-}
-
-async function ensureDemoContent() {
-  if (!selectionScopeLocked.value || !mapWork.getLockedSelection()) {
-    return
-  }
-  if (!mainImageBlob) {
-    await captureLockedMainImage()
-  }
-  if (screenshotAnalysis.value && chartList.value.length === 0) {
-    addChart(chartTypeOptions[0]?.value || DEFAULT_CHART_TYPE)
-  }
 }
 
 function getSelectedGridSize() {
@@ -4316,6 +4502,8 @@ function getSignalMetricItems() {
 }
 
 async function runSignalAnalysis(operation?: SignalOperation) {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (operation) { selectedSignalOperation.value = operation }
   if (signalRunning.value) { return }
   if (!selectionScopeLocked.value || !mapWork.getLockedSelection()) {
@@ -4351,7 +4539,7 @@ async function runSignalAnalysis(operation?: SignalOperation) {
       edgeMethod: signalEdgeMethod.value,
       edgeThreshold: signalEdgeThreshold.value
     })
-    if (scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "signal") { return }
+    if (!auxiliaryRuns.accepts(toolRun) || scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "signal") { return }
     const output = new ImageData(result.pixels, source.width, source.height)
     const image = imageDataToDataUrl(output)
     if (!mapWork.renderRasterResult(image, rectangle, signalOpacity.value / 100)) { throw new Error("Signal result layer is unavailable") }
@@ -4432,6 +4620,8 @@ function formatStatisticsValue(value: number) {
 }
 
 async function runStatisticsAnalysis(operation?: StatisticsOperation) {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (operation) { selectedStatisticsOperation.value = operation }
   if (statisticsRunning.value) { return }
   if (!selectionScopeLocked.value || !mapWork.getLockedSelection()) {
@@ -4467,7 +4657,7 @@ async function runStatisticsAnalysis(operation?: StatisticsOperation) {
       brightnessThreshold: statisticsBrightnessThreshold.value,
       densityRadius: statisticsDensityRadius.value
     })
-    if (scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "statistics") { return }
+    if (!auxiliaryRuns.accepts(toolRun) || scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "statistics") { return }
     const image = imageDataToDataUrl(new ImageData(result.pixels, source.width, source.height))
     if (!mapWork.renderRasterResult(image, rectangle, statisticsOpacity.value / 100)) { throw new Error("Statistics result layer is unavailable") }
     const operator = statisticsOperatorOptions.find((item) => item.value === operationValue)
@@ -4535,6 +4725,8 @@ function getSpatialBarWidth(value: number) {
 }
 
 async function runSpatialAnalysis(operation?: SpatialOperation) {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (operation) { selectedSpatialOperation.value = operation }
   if (spatialRunning.value) { return }
   if (!selectionScopeLocked.value || !mapWork.getLockedSelection()) {
@@ -4568,7 +4760,7 @@ async function runSpatialAnalysis(operation?: SpatialOperation) {
       overlayMode: spatialOverlayMode.value,
       neighborhoodMetric
     })
-    if (scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "spatial") { return }
+    if (!auxiliaryRuns.accepts(toolRun) || scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "spatial") { return }
     const image = imageDataToDataUrl(new ImageData(result.pixels, source.width, source.height))
     if (!mapWork.renderRasterResult(image, rectangle, spatialOpacity.value / 100)) { throw new Error("Spatial result layer is unavailable") }
     const operator = spatialOperatorOptions.find((item) => item.value === operationValue)
@@ -4615,6 +4807,8 @@ function getBackgroundBarWidth(value: number) {
 }
 
 async function captureBackgroundBaseline() {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   const scopeKey = lockedScopeKey.value
   if (!selectionScopeLocked.value || !scopeKey || !mapWork.getLockedSelection() || backgroundCapturing.value) {
     $message("请先框选并锁定制图范围")
@@ -4628,7 +4822,7 @@ async function captureBackgroundBaseline() {
     const blob = await mapWork.captureSelectionImage({ targetWidth: BACKGROUND_CAPTURE_WIDTH, fitAspect: true, mime: "image/png", frameWidth: 0 })
     if (!blob?.size) { throw new Error("Empty baseline capture") }
     const source = await readScreenshotPixels(blob)
-    if (scopeKey !== lockedScopeKey.value) { return }
+    if (!auxiliaryRuns.accepts(toolRun) || scopeKey !== lockedScopeKey.value) { return }
     backgroundBaseline.value = { pixels: new Uint8ClampedArray(source.data), width: source.width, height: source.height, image: imageDataToDataUrl(source), scopeKey }
     $message("基准影像已采集；切换图层或时间后执行运算", "success")
   } catch {
@@ -4640,6 +4834,8 @@ async function captureBackgroundBaseline() {
 }
 
 async function runBackgroundAnalysis(operation?: BackgroundOperation) {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (operation) { selectedBackgroundOperation.value = operation }
   const scopeKey = lockedScopeKey.value
   const baseline = backgroundBaseline.value
@@ -4663,7 +4859,7 @@ async function runBackgroundAnalysis(operation?: BackgroundOperation) {
     const result = processBackgroundPixels(source.data, baseline.pixels, source.width, source.height, {
       operation: operationValue, denoiseWindow: backgroundDenoiseWindow.value, sensitivity: backgroundSensitivity.value / 100
     })
-    if (scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "background") { return }
+    if (!auxiliaryRuns.accepts(toolRun) || scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "background") { return }
     const image = imageDataToDataUrl(new ImageData(result.pixels, source.width, source.height))
     if (!mapWork.renderRasterResult(image, rectangle, backgroundOpacity.value / 100)) { throw new Error("Result layer unavailable") }
     const label = backgroundOperatorOptions.find((item) => item.value === operationValue)?.label || "背景场运算"
@@ -4719,6 +4915,8 @@ function getNumericBarWidth(value: number) {
 }
 
 async function runNumericTransform(operation?: NumericOperation) {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (operation) { selectedNumericOperation.value = operation }
   if (numericRunning.value) { return }
   const scopeKey = lockedScopeKey.value
@@ -4746,7 +4944,7 @@ async function runNumericTransform(operation?: NumericOperation) {
       index: numericIndex.value,
       bounds: rectangle
     })
-    if (scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "numeric") { return }
+    if (!auxiliaryRuns.accepts(toolRun) || scopeKey !== lockedScopeKey.value || analysisWorkspaceMode.value !== "numeric") { return }
     const image = imageDataToDataUrl(new ImageData(result.pixels, source.width, source.height))
     if (!mapWork.renderRasterResult(image, rectangle, numericOpacity.value / 100)) { throw new Error("Result layer unavailable") }
     const label = numericOperatorOptions.find((item) => item.value === operationValue)?.label || "数值变换"
@@ -4849,6 +5047,7 @@ function handleEarthquakeSymbolPlacementRejected() {
 }
 
 function beginEarthquakeSymbolPlacement(kind: CartographySymbolKind) {
+  if (selectedTemplate.value || workbenchMode.value === "standard") { $message("业务符号由图层坐标与属性自动生成，请编辑源数据"); return }
   const binding = cartographySymbolDefinitions[kind]
   if (composerOpen.value && composerRef.value) {
     cancelEarthquakeSymbolPlacement()
@@ -4945,6 +5144,7 @@ function downloadEarthquakeResult() {
 }
 
 function runEarthquakeAnalysis(operation?: EarthquakeOperation) {
+  if (!auxiliaryActive.value) { return }
   if (operation) { selectedEarthquakeOperation.value = operation }
   if (earthquakeRunning.value) { return }
   const dataset = earthquakeDataset.value
@@ -5010,6 +5210,7 @@ function setAnalysisWorkspaceMode(mode: AnalysisWorkspaceMode) {
   analysisWorkspaceMode.value = mode
   mapWork.clearRasterResult()
   mapWork.clearEarthquakeResult()
+  if (!auxiliaryActive.value) { return }
   const rectangle = mapWork.getLockedSelection()
   if (mode === "earthquake") {
     if (rectangle && earthquakeResult.value && lockedScopeKey.value) { mapWork.renderEarthquakePoints(earthquakeFilteredPoints.value, rectangle) }
@@ -5049,6 +5250,8 @@ function onAnalysisModeChange(value: string) {
 }
 
 async function captureTemporalFrame(showMessage = true) {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (!selectionScopeLocked.value || !mapWork.getLockedSelection()) {
     $message("请先框选并锁定制图范围")
     startChartSelectionFlow()
@@ -5072,6 +5275,7 @@ async function captureTemporalFrame(showMessage = true) {
       throw new Error("Temporal frame capture is empty")
     }
     const imageData = await readScreenshotPixels(blob)
+    if (!auxiliaryRuns.accepts(toolRun)) { return }
     const timestamp = timelineCurrentTime.value || new Date().toISOString()
     const existingIndex = timelineCurrentTime.value
       ? temporalFrames.value.findIndex((frame) => frame.timestamp === timestamp)
@@ -5167,6 +5371,7 @@ function getTemporalMetricItems() {
 }
 
 async function runTemporalAnalysis(operation?: TemporalOperation) {
+  if (!auxiliaryActive.value) { return }
   if (operation) {
     selectedTemporalOperation.value = operation
   }
@@ -5248,6 +5453,8 @@ function getRasterResultDetail(operation: RasterOperation, summary: RasterAnalys
 }
 
 async function runRasterCalculation(operation?: RasterOperation) {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (operation) {
     selectedRasterOperation.value = operation
   }
@@ -5288,7 +5495,7 @@ async function runRasterCalculation(operation?: RasterOperation) {
       opacity: rasterOpacity.value
     })
 
-    if (scopeKey !== lockedScopeKey.value) {
+    if (!auxiliaryRuns.accepts(toolRun) || scopeKey !== lockedScopeKey.value) {
       return
     }
     const canvas = document.createElement("canvas")
@@ -5332,6 +5539,8 @@ function clearRasterCalculation() {
 }
 
 async function analyzeCurrentScreenshot(showMessage = false) {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (!mainImageBlob || !lockedScopeKey.value) {
     throw new Error("Screenshot is unavailable")
   }
@@ -5348,7 +5557,7 @@ async function analyzeCurrentScreenshot(showMessage = false) {
       inset: mapWork.SELECTION_FRAME_WIDTH,
       profileSegments: 8
     })
-    if (scopeKey !== lockedScopeKey.value) {
+    if (!auxiliaryRuns.accepts(toolRun) || scopeKey !== lockedScopeKey.value) {
       return
     }
     screenshotAnalysis.value = {
@@ -5367,18 +5576,18 @@ async function analyzeCurrentScreenshot(showMessage = false) {
 }
 
 async function runScreenshotAnalysis() {
+  if (!auxiliaryActive.value) { return }
+  const toolRun = auxiliaryRuns.capture()
   if (!selectionScopeLocked.value || !mapWork.getLockedSelection()) {
     $message("请先框选并锁定制图范围")
     startChartSelectionFlow()
     return
   }
   try {
-    if (!mainImageBlob) {
-      await captureLockedMainImage()
-      $message("截图运算完成", "success")
-      return
-    }
+    await captureLockedMainImage(toolRun)
+    if (!auxiliaryRuns.accepts(toolRun)) { return }
     await analyzeCurrentScreenshot(true)
+    if (auxiliaryRuns.accepts(toolRun) && !auxiliaryCharts.value.length) { addChart(chartTypeOptions[0]?.value || DEFAULT_CHART_TYPE) }
   } catch {
     $message("截图像素运算失败，请重新生成主图")
   }
@@ -5526,6 +5735,7 @@ function toggleBoardMode() {
 }
 
 function getComposerChartOption(type: string): echarts.EChartsOption {
+  if (!auxiliaryActive.value) { return businessSnapshot.value ? businessChartOption(businessSnapshot.value, type) : getBlankChartOption(type as ChartType) }
   const analysis = screenshotAnalysis.value
   return analysis && analysis.scopeKey === lockedScopeKey.value
     ? getAnalysisChartOption(type as ChartType, analysis, true)
@@ -5963,15 +6173,25 @@ function addChart(type?: ChartType) {
     $message("请先框选并锁定制图范围")
     return
   }
+  if (selectedTemplate.value && !auxiliaryActive.value) {
+    if (!businessSnapshot.value) { $message("请先应用真实业务数据"); return }
+    const chartType = type || "deformation-bar"
+    if (!["deformation-bar", "population-distribution"].includes(chartType) || businessCharts.value.some(item => item.type === chartType)) { return }
+    const slot = clampBoardRect(getBoardSlot(businessCharts.value.length))
+    const id = `business_${chartType}`
+    chartList.value.push({ id, type: chartType, name: chartType === "population-distribution" ? "绘制要素分类计数" : "绘制要素指标", ...slot, scopeKey: lockedScopeKey.value })
+    nextTick(() => renderChartItem(id))
+    return
+  }
   if (!screenshotAnalysis.value || screenshotAnalysis.value.scopeKey !== lockedScopeKey.value) {
     $message("请先运行截图算子")
     return
   }
-  if (chartList.value.length >= chartTypeOptions.length) {
+  if (auxiliaryCharts.value.length >= chartTypeOptions.length) {
     $message(`最多可添加 ${chartTypeOptions.length} 个图表`)
     return
   }
-  const nextType = type || chartTypeOptions.find((item) => !chartList.value.some((chart) => chart.type === item.value))?.value || DEFAULT_CHART_TYPE
+  const nextType = type || chartTypeOptions.find((item) => !auxiliaryCharts.value.some((chart) => chart.type === item.value))?.value || DEFAULT_CHART_TYPE
   const chartType = chartTypeOptions.some((item) => item.value === nextType) ? nextType : DEFAULT_CHART_TYPE
   const sameTypeCount = chartList.value.filter((item) => item.type === chartType).length + 1
   const id = `chart_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -5997,7 +6217,7 @@ async function addChartTemplate(type: ChartType) {
   if (chartList.value.length > count) { await focusCompositionChart(chartList.value[chartList.value.length - 1].id) }
 }
 
-async function captureLockedMainImage() {
+async function captureLockedMainImage(auxiliaryTicket?: number) {
   const session = selectionSession
   const scope = lockedScopeKey.value
   if (!selectionScopeLocked.value || !mapWork.getLockedSelection()) {
@@ -6010,6 +6230,7 @@ async function captureLockedMainImage() {
     frameWidth: 0
   })
   if (session !== selectionSession || scope !== lockedScopeKey.value || !dialogVisible.value) { return }
+  if (auxiliaryTicket !== undefined && !auxiliaryRuns.accepts(auxiliaryTicket)) { return }
   if (!blob || blob.size <= 0) {
     throw new Error("Selection capture is empty")
   }
@@ -6019,7 +6240,6 @@ async function captureLockedMainImage() {
   mainImageBlob = blob
   mainImageUrl.value = URL.createObjectURL(blob)
   mainImageMeta.value = `${selectionAreaText.value} · 仅框选区 · ${new Date().toLocaleString()}`
-  await analyzeCurrentScreenshot(false)
   await nextTick()
 }
 
@@ -6095,17 +6315,19 @@ function clearChartPanelState() {
 
 function restoreCompositionCharts(charts: Array<{ id: string; type: string; name: string }>) {
   if (!selectionScopeLocked.value || !lockedScopeKey.value) { return }
-  const valid = charts.filter(chart => chartTypeOptions.some(option => option.value === chart.type)).slice(0, chartTypeOptions.length)
-  for (const item of chartList.value) {
+  const ownChart = (id: string) => auxiliaryActive.value ? !id.startsWith("business_") : id.startsWith("business_")
+  const retained = chartList.value.filter(item => !ownChart(item.id))
+  const valid = charts.filter(chart => ownChart(chart.id) && chartTypeOptions.some(option => option.value === chart.type)).slice(0, chartTypeOptions.length)
+  for (const item of chartList.value.filter(item => ownChart(item.id))) {
     if (!valid.some(chart => chart.id === item.id)) { disposeChartItem(item.id) }
   }
-  chartList.value = valid.map((chart, index) => ({
+  chartList.value = [...retained, ...valid.map((chart, index) => ({
     ...clampBoardRect(getBoardSlot(index)),
     ...chartList.value.find(item => item.id === chart.id),
     ...chart,
     type: chart.type as ChartType,
     scopeKey: lockedScopeKey.value
-  }))
+  }))]
   nextTick(() => chartList.value.forEach(item => renderChartItem(item.id)))
 }
 
@@ -6454,7 +6676,8 @@ function renderChartItem(id: string) {
   }
 
   const analysis = screenshotAnalysis.value
-  instance.setOption(analysis && analysis.scopeKey === item.scopeKey ? getAnalysisChartOption(item.type, analysis) : getBlankChartOption(item.type), true)
+  const option = analysis && analysis.scopeKey === item.scopeKey ? getAnalysisChartOption(item.type, analysis) : getBlankChartOption(item.type)
+  instance.setOption(item.id.startsWith("business_") && businessSnapshot.value ? businessChartOption(businessSnapshot.value, item.type) : option, true)
   instance.resize()
 }
 
@@ -6468,26 +6691,38 @@ function saveDraft() {
     saveThematicJobDraft(effectiveDatasetId.value, props.jobId, { ...cartographySnapshot(), draft: snapshotDraft() } as any)
   }
   savedDraftJson.value = JSON.stringify(snapshotDraft())
-  $message("专题草稿已保存", "success")
+  $message("文案已保存到本机浏览器，不含后台数据和审核状态", "success")
 }
 
 function resetDraft() {
-  if (isDirty.value && !window.confirm("当前存在未保存修改，确认恢复到上次保存的草稿吗？")) {
-    return
-  }
-  loadDraft()
+  try {
+    const restored = restoreWorkbenchCopy(snapshotDraft(), JSON.parse(localStorage.getItem(getDraftStorageKey()) || "null"))
+    if (isDirty.value && !window.confirm("当前存在未保存修改，确认恢复到上次保存的文案吗？")) { return }
+    applyDraft(restored)
+    savedDraftJson.value = JSON.stringify(snapshotDraft())
+    $message("当前模板的本机文案已恢复，不含后台数据和审核状态", "success")
+  } catch (error) { $message(error instanceof Error ? error.message : "本机文案读取失败，当前内容已保留") }
 }
 
 function switchToPublish() {
-  if (!draft.templateId) {
-    $message("请先选择模板并完成编辑")
-    return
-  }
-  activeTab.value = "publish"
+  handleTabChange("publish")
+}
+
+async function reviewCurrentMap() {
+  releaseMode.value = "internal"; composerOpen.value = false; restoreWorkbench()
+  handleTabChange("publish"); await nextTick()
+  const form = document.querySelector<HTMLElement>(".result-map-release .manual-review")
+  form?.scrollIntoView({ block: "start" })
+  form?.querySelector<HTMLInputElement>('input[autocomplete="name"]')?.focus({ preventScroll: true })
 }
 
 function handleTabChange(nextKey: string) {
   const next = (nextKey || "template") as WorkbenchTab
+  if ((next === "editor" || next === "publish") && !workflowTopic.value) {
+    activeTab.value = "template"
+    $message("请先选择专题模板")
+    return
+  }
   if (workbenchMode.value === "analysis" && activeTab.value === "editor" && next !== "editor" && isDirty.value) {
     const ok = window.confirm("编辑内容尚未保存，确认切换页签吗？")
     if (!ok) {
@@ -6495,7 +6730,9 @@ function handleTabChange(nextKey: string) {
     }
   }
   activeTab.value = next
+  if (next !== "editor") { workflowDataRef.value?.clearAnalysisPreview() }
   if (next !== "editor") { composerOpen.value = false }
+  if (next === "publish") { chartPanelVisible.value = false }
   resetEditorScroll()
 }
 
@@ -6527,6 +6764,27 @@ function handleClose() {
 </script>
 
 <style lang="less" scoped>
+.native-map-legend { position: fixed; z-index: 950; right: 16px; bottom: 48px; width: min(270px, calc(100vw - 108px)); max-height: 40dvh; padding: 12px; overflow: auto; border: 1px solid var(--thematic-line); border-radius: 4px; color: var(--thematic-ink); background: var(--thematic-surface); font-size: 12px; }
+.native-map-legend section + section { border-top: 1px solid var(--thematic-line); margin-top: 10px; padding-top: 10px; }
+.native-map-legend strong { display: block; font-size: 14px; }.native-map-legend-time { color: var(--thematic-muted); overflow-wrap: anywhere; }
+.native-map-legend ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }.native-map-legend li { display: flex; align-items: center; gap: 8px; min-width: 0; }.native-map-legend li span { overflow-wrap: anywhere; }.native-map-legend i { flex: 0 0 20px; height: 12px; border: 1px solid var(--thematic-line); }.native-map-legend p { margin: 10px 0 0; color: var(--thematic-warning); }
+.thematic-maintenance { color: var(--thematic-ink); background: var(--thematic-surface); padding: 8px 12px; max-height: 70dvh; overflow: auto; }
+.formal-source-details { margin: 12px 0; color: var(--thematic-ink); }.formal-source-details > summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
+.publication-purpose { display: grid; gap: 8px; margin-block: 12px; color: var(--thematic-ink); }
+.production-workflow { position: sticky; top: 0; z-index: 5; margin: 12px 0; padding: 10px 0; border-block: 1px solid var(--thematic-line); color: var(--thematic-ink); background: var(--thematic-surface); }
+.workbench-tabs :deep(> .ant-tabs-nav) { display: none; }
+.template-card-action:disabled { cursor: not-allowed; opacity: .6; }
+.production-workflow ol { display: flex; flex-wrap: wrap; list-style: none; padding: 0; margin: 0 0 10px; gap: 4px 12px; font-size: 13px; color: var(--thematic-muted); }
+.production-workflow li { min-width: 0; }
+.production-workflow li button { min-height: 34px; padding: 4px 0; background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--thematic-ink); cursor: pointer; text-align: left; }
+.production-workflow li button[aria-current=step] { color: var(--thematic-accent); border-bottom-color: var(--thematic-accent); font-weight: 600; }
+.production-workflow li button:disabled { color: var(--thematic-muted); cursor: not-allowed; }
+.production-workflow li button:focus-visible { outline: 2px solid var(--thematic-accent); outline-offset: 2px; }
+.auxiliary-basis { display: grid; gap: 6px; padding: 12px 0; margin-bottom: 12px; border-bottom: 1px solid var(--thematic-line); color: var(--thematic-ink); }
+.auxiliary-basis span { font-size: 12px; color: var(--thematic-muted); }
+.auxiliary-basis p { margin: 0; font-size: 12px; line-height: 1.6; color: var(--thematic-warning); overflow-wrap: anywhere; }
+.workflow-scope { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.workflow-scope > span { font-size: 12px; color: var(--thematic-muted); overflow-wrap: anywhere; }
 .linked-chart-properties { margin-top: 6px; border-top: 1px solid #405767; padding-top: 8px; }
 .linked-chart-properties summary { cursor: pointer; color: #8ed6ee; font-size: 12px; }
 .linked-chart-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 10px; }
@@ -6562,6 +6820,10 @@ function handleClose() {
     min-height: 0 !important;
     min-width: 0 !important;
   }
+}
+@media (max-width: 600px) {
+  .header-actions .auxiliary-entry span { display: none; }
+  .header-actions button[title="保存本机文案"] { display: none; }
 }
 :global(body:has(.thematic-workbench-panel) .cui-fab),
 :global(body:has(.thematic-workbench-panel) .map-float-ball) {
@@ -6802,8 +7064,8 @@ function handleClose() {
 }
 .publish-description-feedback { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; color: var(--mars-text-color-secondary, #aebccc); font-size: 11px; line-height: 1.4; }
 .publish-description-feedback strong { color: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.publish-description-feedback.is-short { color: #f3b76a; }
-.publish-description-feedback.is-ready { color: #6bd4b0; }
+.publish-description-feedback.is-short { color: var(--thematic-warning); }
+.publish-description-feedback.is-ready { color: var(--thematic-success); }
 
 .chart-showcase-panel.is-earthquake-mode .parameter-section {
   flex: 0 0 184px;
@@ -8304,12 +8566,11 @@ function handleClose() {
 .selection-outline-frame {
   position: fixed;
   z-index: 880;
-  box-sizing: content-box;
-  border-style: solid;
-  border-color: #fff;
+  overflow: hidden;
   background: transparent;
   pointer-events: none;
 }
+.selection-outline-frame polygon { fill: none; stroke: #fff; stroke-linejoin: round; }
 
 .selection-confirm-toolbar {
   position: fixed;
@@ -8772,7 +9033,9 @@ function handleClose() {
   }
 
   &:disabled {
-    opacity: 0.45;
+    opacity: 1;
+    color: var(--thematic-disabled-ink);
+    background: var(--thematic-disabled-bg);
     cursor: not-allowed;
   }
 }
@@ -8995,7 +9258,7 @@ function handleClose() {
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: var(--mars-text-color-secondary);
+  color: var(--thematic-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9010,7 +9273,8 @@ function handleClose() {
   min-width: 17px;
   padding: 1px 4px;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--mars-text-color) 8%, transparent);
+  background: var(--thematic-surface);
+  color: var(--thematic-ink);
   font-size: 10px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
@@ -9022,13 +9286,14 @@ function handleClose() {
 }
 
 .template-edition-option.is-active {
-  background: var(--color-primary, #2d8cf0);
+  background: var(--thematic-primary);
   color: #ffffff;
   box-shadow: 0 1px 2px rgba(4, 18, 34, 0.2);
 }
 
 .template-edition-option.is-active strong {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--thematic-primary-hover);
+  color: #ffffff;
 }
 
 .template-edition-option:focus-visible {
@@ -9088,7 +9353,7 @@ function handleClose() {
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: var(--mars-text-color-secondary);
+  color: var(--thematic-muted);
   font-size: 12px;
   font-weight: 600;
   line-height: 26px;
@@ -9103,7 +9368,7 @@ function handleClose() {
 }
 
 .template-complexity-option.is-active {
-  background: var(--color-primary, #2d8cf0);
+  background: var(--thematic-primary);
   color: #ffffff;
   box-shadow: 0 1px 2px rgba(4, 18, 34, 0.2);
 }
@@ -9146,7 +9411,7 @@ function handleClose() {
   padding: 0 6px;
   border: 0;
   background: transparent;
-  color: var(--color-primary, #2d8cf0);
+  color: var(--thematic-accent);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -9155,7 +9420,7 @@ function handleClose() {
 }
 
 .template-filter-reset:hover {
-  color: color-mix(in srgb, var(--color-primary, #2d8cf0) 78%, #ffffff);
+  color: var(--thematic-ink);
 }
 
 .template-filter-reset:focus-visible {
@@ -9307,6 +9572,8 @@ function handleClose() {
   grid-template-columns: 1fr;
   gap: 12px;
 }
+.template-group-heading { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 4px 0 0; padding-block: 10px; border-bottom: 1px solid var(--thematic-line); color: var(--thematic-ink); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.template-group-heading span { font-size: 12px; color: var(--thematic-muted); font-weight: 400; }
 
 .template-card {
   min-width: 0;
@@ -9491,7 +9758,7 @@ function handleClose() {
   border: 1px solid color-mix(in srgb, var(--color-primary, #2d8cf0) 42%, transparent);
   border-radius: 4px;
   background: color-mix(in srgb, var(--color-primary, #2d8cf0) 12%, transparent);
-  color: var(--color-primary, #2d8cf0);
+  color: var(--thematic-accent);
   font-size: 11px;
   line-height: 1.3;
   overflow: hidden;
@@ -9555,13 +9822,13 @@ function handleClose() {
 .template-card-tag {
   border: 1px solid color-mix(in srgb, var(--mars-text-color-secondary) 28%, transparent);
   background: color-mix(in srgb, var(--mars-text-color) 6%, transparent);
-  color: var(--mars-text-color-secondary);
+  color: var(--thematic-muted);
 }
 
 .template-component-tag {
   border: 1px solid color-mix(in srgb, #2db7a3 34%, transparent);
   background: color-mix(in srgb, #2db7a3 10%, transparent);
-  color: color-mix(in srgb, #2db7a3 76%, var(--mars-text-color));
+  color: var(--thematic-success);
 }
 
 .template-card-actions {
@@ -9597,13 +9864,13 @@ function handleClose() {
 }
 
 .template-card-action.is-use {
-  border-color: var(--color-primary, #2d8cf0);
-  background: var(--color-primary, #2d8cf0);
+  border-color: var(--thematic-primary);
+  background: var(--thematic-primary);
   color: #ffffff;
 }
 
 .template-card-action.is-use:hover {
-  background: color-mix(in srgb, var(--color-primary, #2d8cf0) 84%, #ffffff);
+  background: var(--thematic-primary-hover);
 }
 
 .template-card-action:focus-visible {
@@ -9614,6 +9881,10 @@ function handleClose() {
 .template-preview-modal {
   display: grid;
   gap: 16px;
+}
+
+:global(.mars-task-modal:has(.template-preview-modal)) {
+  max-width: calc(100vw - 160px);
 }
 
 .template-preview-hero {
@@ -9789,7 +10060,7 @@ function handleClose() {
 }
 
 .template-icon-binding > span {
-  color: inherit;
+  color: var(--thematic-ink);
   font-size: inherit;
 }
 
@@ -9807,7 +10078,7 @@ function handleClose() {
 .template-standard-binding { grid-column: 1 / -1; padding: 12px 0; color: var(--mars-text-color, #edf5fa); border-top: 1px solid var(--mars-border-color); }
 .template-standard-binding summary { cursor: pointer; font-weight: 600; }
 .template-standard-binding > div { display: grid; gap: 10px; padding-top: 10px; }
-.template-standard-binding > div > span { font-size: 12px; color: #d7b276; }
+.template-standard-binding > div > span { font-size: 12px; color: var(--thematic-warning); }
 .standard-binding-field { display: grid; gap: 6px; min-width: 0; }
 .standard-binding-field :deep(.ant-select) { width: 100%; min-width: 0; }
 :global(.thematic-standard-select-popup) { max-width: calc(100vw - 24px); }
@@ -9949,7 +10220,7 @@ function handleClose() {
 }
 
 .palette-thermal-infrared {
-  background: linear-gradient(90deg, #fee08b, #fdae61, #f46d43, #d73027, #a50026);
+  background: linear-gradient(90deg, #2166ac, #f7f7f7, #b2182b);
 }
 
 .palette-post-quake-risk {
@@ -9995,7 +10266,7 @@ function handleClose() {
   border: 1px solid color-mix(in srgb, #2db7a3 34%, transparent);
   border-radius: 4px;
   background: color-mix(in srgb, #2db7a3 9%, transparent);
-  color: color-mix(in srgb, #2db7a3 72%, var(--mars-text-color));
+  color: var(--thematic-success);
   font-size: 10px;
 }
 
@@ -10085,7 +10356,18 @@ function handleClose() {
 
   .template-card-cover {
     min-height: 0;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: auto;
+    justify-content: center;
+  }
+
+  .template-card-cover-image {
+    max-width: 320px;
+  }
+
+  :global(.mars-task-modal:has(.template-preview-modal)) {
+    left: 8px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
   }
 
   .template-preview-details {

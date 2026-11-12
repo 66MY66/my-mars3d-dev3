@@ -20,7 +20,101 @@ function ensureWarpper() {
   document.body.appendChild(div)
 }
 
+function createAnimationEndEvent(animationName: string) {
+  const event = new Event("animationend", { bubbles: true })
+  Object.defineProperty(event, "animationName", { value: animationName })
+  return event
+}
+
 describe("mars-dialog a11y", () => {
+  it("stays visible when a child animation ends while dialog animation is disabled", async () => {
+    ensureWarpper()
+
+    const wrapper = mount(MarsDialog, {
+      attachTo: document.body,
+      props: {
+        visible: true,
+        title: "无动画面板",
+        animation: false
+      },
+      global: {
+        stubs: {
+          teleport: true,
+          "mars-icon": { template: "<span></span>" }
+        }
+      },
+      slots: {
+        default: '<span class="animated-child">内容</span>'
+      }
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const root = wrapper.element.querySelector(".mars-dialog") as HTMLElement
+    const child = wrapper.element.querySelector(".animated-child") as HTMLElement
+    child.dispatchEvent(createAnimationEndEvent("childFade"))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(root.style.display).not.toBe("none")
+    wrapper.unmount()
+  })
+
+  it("stays visible when the dialog receives animationend while animation is disabled", async () => {
+    ensureWarpper()
+
+    const wrapper = mount(MarsDialog, {
+      attachTo: document.body,
+      props: {
+        visible: true,
+        title: "无动画面板",
+        animation: false
+      },
+      global: {
+        stubs: {
+          teleport: true,
+          "mars-icon": { template: "<span></span>" }
+        }
+      }
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const root = wrapper.element.querySelector(".mars-dialog") as HTMLElement
+    root.dispatchEvent(createAnimationEndEvent("unexpected"))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(root.style.display).not.toBe("none")
+    wrapper.unmount()
+  })
+
+  it("does not crash when teleported elements are not ready during mount", () => {
+    ensureWarpper()
+
+    expect(() => {
+      const wrapper = mount(MarsDialog, {
+        attachTo: document.body,
+        props: {
+          visible: true,
+          title: "延迟挂载面板",
+          draggable: false,
+          animation: false,
+          persistLayout: false,
+          position: { top: 0, left: 0, bottom: 0 },
+          width: 420,
+          minWidth: 420,
+          minHeight: 420,
+          handles: true
+        },
+        global: {
+          stubs: {
+            teleport: { template: "<div></div>" },
+            "mars-icon": { template: "<span></span>" }
+          }
+        }
+      })
+
+      wrapper.unmount()
+    }).not.toThrow()
+  })
+
   it("focuses close button on open and keeps dialog mounted during leave animation", async () => {
     ensureWarpper()
 

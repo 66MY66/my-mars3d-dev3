@@ -12,7 +12,8 @@ const datasetCoverTtlMs = 365 * 24 * 60 * 60 * 1000
 const persistedCoverDb = createStore("ksh002-dataset-cover-db", "covers")
 
 function datasetCoverKey(datasetId: string): string {
-  return `ksh002:dataset-cover:${datasetId}`
+  // v2: 旧键被 OSM 失败期的灰色占位图污染，升版本使其整体失效重新生成
+  return `ksh002:dataset-cover:v2:${datasetId}`
 }
 
 type PersistedCoverEntry = {
@@ -128,6 +129,98 @@ export async function setPersistedDatasetCover(datasetId: string, coverUrl: stri
   }
 }
 
+/**
+ * 服务端封面：取 collection 第一个 item 的可视化资产，由 titiler-pgstac 渲染缩略图。
+ * MAXAR 等自带影像的数据集走这条路（一次请求出真影像封面），无资产/失败返回 null 走天地图生成。
+ */
+export async function fetchServerCover(collectionId: string): Promise<string | null> {
+  if (!collectionId || collectionId.startsWith("local_")) {
+    return null
+  }
+  try {
+    const itemsRes = await fetch(`/api/eoapi/collections/${encodeURIComponent(collectionId)}/items?limit=1`)
+    if (!itemsRes.ok) {
+      return null
+    }
+    const items = await itemsRes.json()
+    const itemId = items?.features?.[0]?.id
+    if (!itemId) {
+      return null
+    }
+    const url = `/api/titiler/collections/${encodeURIComponent(collectionId)}/items/${encodeURIComponent(itemId)}/preview.png?assets=visual&max_size=256`
+    const blob = await fetchTitilerPreview(url)
+    if (!blob) {
+      return null
+    }
+    return await blobToDataUrl(blob) 
+} catch {
+    return null
+  }
+}
+
+async function fetchTitilerPreview(url: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) {
+      return null
+    }
+    const blob = await res.blob()
+    return blob.type.startsWith("image/") ? blob : null
+  } catch {
+    return null
+  }
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string | null> {
+  return await new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || "") || null)
+    reader.onerror = () => resolve(null)
+    reader.readAsDataURL(blob)
+  })
+}
+
+/**
+ * 后端共享封面：存于 datasets-api /covers/{id}，所有浏览器共用一份。
+ * 返回封面 http url；后端没有（404）返回 null，由调用方生成后 putServerCover 上传。
+ */
+export async function getServerCover(collectionId: string): Promise<string | null> {
+  if (!collectionId || collectionId.startsWith("local_")) {
+    return null
+  }
+  try {
+    const res = await fetch(`/api/eoapi/covers/${encodeURIComponent(collectionId)}`)
+    return res.ok ? `/api/eoapi/covers/${encodeURIComponent(collectionId)}` : null
+  } catch {
+    return null
+  }
+}
+
+export async function putServerCover(collectionId: string, dataUrl: string): Promise<void> {
+  if (!collectionId || collectionId.startsWith("local_") || !dataUrl) {
+    return
+  }
+  try {
+    const [meta, b64] = dataUrl.split(",")
+    if (!b64) {
+      return
+    }
+    const bin = atob(b64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) {
+      bytes[i] = bin.charCodeAt(i)
+    }
+    const mime = meta?.match(/data:(image\/\w+)/)?.[1] || "image/png"
+    await fetch(`/api/eoapi/covers/${encodeURIComponent(collectionId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": mime },
+      body: bytes
+    })
+  } catch {
+    // 上传失败不影响本地展示，下次打开会再试
+  }
+}
+
 export function computeCoverCacheKey(input: {
   bbox?: [number, number, number, number]
   center?: { longitude: number; latitude: number }
@@ -150,7 +243,9 @@ export async function getOrCreateBboxCover(params: {
   height?: number
 }): Promise<string> {
   const bbox = params.bbox || [0, 0, 0, 0]
-  const key = `bbox-cover-v2:${params.datasetId}:${bbox.map((n) => n.toFixed(4)).join(",")}`
+  // ponytail: v3 —— v2 时代 OSM 外网不通，大量灰色占位图被持久化；升键使其全部失效。
+  // 用户手动上传的封面走 dataset-cover 独立键，不受影响
+  const key = `bbox-cover-v3:${params.datasetId}:${bbox.map((n) => n.toFixed(4)).join(",")}`
   const cached = getCoverCache(key, 24 * 60 * 60 * 1000)
   if (cached) {
     return cached
@@ -261,9 +356,11 @@ async function renderTileMiniMap(input: {
   width: number
   height: number
 }): Promise<string> {
+  // 天地图底图。token 是"服务器端"类型 key（浏览器直连返回 301013 权限类型错误），
+  // 必须经 5954 代理服务端转发（与 eoapi-basemaps.ts 的底图走法一致），不能直连 t{s}.tianditu.gov.cn
   const template =
     (import.meta as any).env?.VITE_EOAPI_COVER_TILE_TEMPLATE ||
-    "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    "http://192.168.10.15:5954/tianditu/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=120a6aeb42bd1b1e181cbe4116e6185a"
 
   const bbox = normalizeBbox(input.bbox)
   const padded = padBbox(bbox, 0.08)
@@ -303,6 +400,7 @@ async function renderTileMiniMap(input: {
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 2500)
+  let drewAnyTile = false
   try {
     await runWithConcurrency(6, tiles, async (t) => {
       const url = buildTileUrl(template, zoom, t.x, t.y)
@@ -310,6 +408,7 @@ async function renderTileMiniMap(input: {
       if (!img) {
         return
       }
+      drewAnyTile = true
       const px = { x: t.x * tileSize, y: t.y * tileSize }
       const dx = Math.round(px.x - topLeftPx.x)
       const dy = Math.round(px.y - topLeftPx.y)
@@ -319,6 +418,11 @@ async function renderTileMiniMap(input: {
     return ""
   } finally {
     clearTimeout(timeout)
+  }
+  // 瓦片一张都没画上（网络不通/超时）→ 返回空串走 fallback 占位图，
+  // 避免"浅色假地图"被当作真封面持久化一年
+  if (!drewAnyTile) {
+    return ""
   }
 
   const [w, s, e, n] = bbox
@@ -353,7 +457,11 @@ async function renderTileMiniMap(input: {
 }
 
 function buildTileUrl(template: string, z: number, x: number, y: number): string {
-  return template.replaceAll("{z}", String(z)).replaceAll("{x}", String(x)).replaceAll("{y}", String(y))
+  // DataServer 代理走单域，x/y 交错请求即可，无需子域轮换
+  return template
+    .replaceAll("{z}", String(z))
+    .replaceAll("{x}", String(x))
+    .replaceAll("{y}", String(y))
 }
 
 async function loadTile(url: string, signal: AbortSignal): Promise<ImageBitmap | HTMLImageElement | null> {

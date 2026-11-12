@@ -91,49 +91,72 @@
 
         <div v-else-if="stepIndex === 1" class="step-body">
           <div class="param-card">
-            <div class="param-title">参数配置：</div>
+            <div class="param-heading">
+              <div>
+                <div class="param-title">缓冲范围</div>
+                <div class="param-subtitle">选择一种缓冲方式并输入距离，地图将按实际几何生成范围。</div>
+              </div>
+              <div class="unit-select">
+                <span>单位</span>
+                <mars-select v-model:value="bufferDistanceUnit" :options="bufferUnitOptions" @change="onBufferUnitChange" />
+              </div>
+            </div>
+
+            <div class="mode-cards" role="radiogroup" aria-label="缓冲方式">
+              <button type="button" class="mode-card" :class="{ active: bufferMode === 'single' }" role="radio" :aria-checked="bufferMode === 'single'" @click="bufferMode = 'single'">
+                <span class="mode-icon single"></span>
+                <span class="mode-copy"><strong>单环缓冲</strong><small>输入一个环半径，生成单一范围</small></span>
+                <span class="mode-check">{{ bufferMode === 'single' ? '●' : '○' }}</span>
+              </button>
+              <button type="button" class="mode-card" :class="{ active: bufferMode === 'multi' }" role="radio" :aria-checked="bufferMode === 'multi'" @click="bufferMode = 'multi'">
+                <span class="mode-icon multi"></span>
+                <span class="mode-copy"><strong>多环缓冲</strong><small>输入多级外圈距离，生成分级环带</small></span>
+                <span class="mode-check">{{ bufferMode === 'multi' ? '●' : '○' }}</span>
+              </button>
+            </div>
 
             <div class="param-grid">
-              <div class="param-row">
-                <div class="label">模式：</div>
-                <div class="value">
-                  <mars-select v-model:value="bufferMode" :options="bufferModeOptions" />
+              <div v-if="bufferMode === 'single'" class="distance-section">
+                <div class="distance-section-head">
+                  <div><strong>环半径</strong><span>从分析对象向外的最大距离</span></div>
+                  <span class="range-preview">0–{{ bufferRadiusM || 0 }} {{ bufferDistanceUnit }}</span>
                 </div>
-              </div>
-              <div class="param-row">
-                <div class="label">单位：</div>
-                <div class="value">
-                  <mars-select v-model:value="bufferDistanceUnit" :options="bufferUnitOptions" @change="onBufferUnitChange" />
-                </div>
-              </div>
-              <div v-if="bufferMode === 'single'" class="param-row">
-                <div class="label">半径：</div>
-                <div class="value">
+                <div class="single-radius-input">
                   <mars-input-number v-model:value="bufferRadiusM" :min="0" :step="bufferDistanceUnit === 'm' ? 50 : 0.1" />
                   <span class="unit">{{ bufferDistanceUnit }}</span>
                 </div>
               </div>
-              <div v-else class="param-row ring-editor-row">
-                <div class="label">多环距离：</div>
-                <div class="value ring-editor">
+              <div v-else class="distance-section">
+                <div class="distance-section-head">
+                  <div><strong>多环距离</strong><span>数值表示每一级环带的外边界</span></div>
+                </div>
+                <div class="ring-editor">
                   <label v-for="(distance, index) in bufferRingDistances" :key="index" class="ring-distance-item">
                     <a-checkbox v-model:checked="bufferRingEnabled[index]" />
-                    <span>{{ bufferRingLabels[index] }}</span>
+                    <span class="ring-color" :class="`ring-${index}`"></span>
+                    <span class="ring-copy">
+                      <strong>{{ bufferRingLabels[index] }}</strong>
+                      <small>{{ bufferInputState.ranges.find((range) => range.sourceIndex === index)?.label || `第 ${index + 1} 级外圈距离` }}</small>
+                    </span>
                     <mars-input-number v-model:value="bufferRingDistances[index]" :min="0" :step="bufferDistanceUnit === 'm' ? 50 : 0.1" />
                     <span class="unit">{{ bufferDistanceUnit }}</span>
                   </label>
                 </div>
               </div>
-              <div class="param-row">
-                <div class="label">实时预览：</div>
+              <div class="input-guidance" :class="{ error: !bufferInputState.valid }">
+                <span>{{ bufferInputState.valid ? '✓' : '!' }}</span>
+                <span>{{ bufferInputState.message }}</span>
+              </div>
+              <div class="option-row">
+                <div><strong>实时预览</strong><span>参数变化后自动刷新地图环带</span></div>
                 <div class="value inline">
                   <mars-switch v-model:checked="previewOn" />
-                  <span class="hint">{{ previewOn ? "ON" : "OFF" }}</span>
+                  <span class="hint">{{ previewOn ? "已开启" : "已关闭" }}</span>
                 </div>
               </div>
-              <div class="param-row">
-                <div class="label">模板：</div>
-                <div class="value">
+              <div class="option-row">
+                <div><strong>参数模板</strong><span>复用已保存的距离组合</span></div>
+                <div class="template-select">
                   <mars-select
                     v-model:value="selectedTemplateId"
                     :options="templateOptions"
@@ -146,9 +169,13 @@
             </div>
 
             <div class="quick-btns">
+              <span>快捷距离</span>
               <mars-button size="small" @click="setRadiusQuick(500)">500m</mars-button>
               <mars-button size="small" @click="setRadiusQuick(1000)">1km</mars-button>
               <mars-button size="small" @click="setRadiusQuick(2000)">2km</mars-button>
+            </div>
+            <div class="analysis-scope-note">
+              缓冲结果表示基于距离的几何范围，不等同于地震动、扩散或道路可达性专业模拟结果。
             </div>
             <div class="preview-actions">
               <mars-button size="small" :disabled="!canRunBuffer" @click="previewBufferNow">更新预览</mars-button>
@@ -340,6 +367,7 @@ import {
   buildBufferResultView,
   convertDistanceValue,
   createBufferRunCoordinator,
+  getBufferInputState,
   type BufferDistanceUnit,
   type BufferMode
 } from "./buffer-model"
@@ -444,7 +472,6 @@ const bufferRunCoordinator = createBufferRunCoordinator()
 const sinkStatusText = ref("")
 const selectedTemplateId = ref<string | null>(null)
 
-const bufferModeOptions = [{ label: "单环缓冲", value: "single" }, { label: "多环缓冲", value: "multi" }]
 const bufferUnitOptions = [{ label: "米（m）", value: "m" }, { label: "公里（km）", value: "km" }]
 
 const templatesStorageKey = "ksh003_buffer_templates_v1"
@@ -745,6 +772,14 @@ const bufferAreaText = computed(() => {
   }
 })
 
+const bufferInputState = computed(() => getBufferInputState({
+  mode: bufferMode.value,
+  unit: bufferDistanceUnit.value,
+  distance: Number(bufferRadiusM.value),
+  ringDistances: bufferRingDistances.value.map(Number),
+  enabledRingIndexes: bufferRingEnabled.value.map((enabled, index) => enabled ? index : -1).filter((index) => index >= 0)
+}))
+
 const canRunBuffer = computed(() => {
   if (toolType.value !== "buffer") {
     return false
@@ -752,11 +787,7 @@ const canRunBuffer = computed(() => {
   if (!hasValidTarget.value) {
     return false
   }
-  const r = Number(bufferRadiusM.value)
-  if (bufferMode.value === "single") {
-    return Number.isFinite(r) && r > 0
-  }
-  return bufferRingDistances.value.some((distance, index) => bufferRingEnabled.value[index] && Number.isFinite(Number(distance)) && Number(distance) > 0)
+  return bufferInputState.value.valid
 })
 
 async function runAnalysis() {
@@ -1384,9 +1415,137 @@ async function autoSinkOutputs() {
       color: var(--mars-text-color);
     }
 
+    .param-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .param-subtitle {
+      max-width: 300px;
+      margin-top: 3px;
+      color: var(--mars-text-color-placeholder);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .unit-select {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+      color: var(--mars-text-color-placeholder);
+      font-size: 12px;
+    }
+
+    .mode-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mode-card {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--popup-item-radius, 8px);
+      background: color-mix(in srgb, var(--mars-bg-base, #101b2d) 90%, transparent);
+      color: var(--mars-text-color);
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+
+      &:hover {
+        border-color: color-mix(in srgb, var(--color-primary, #2d8cf0) 65%, transparent);
+        transform: translateY(-1px);
+      }
+
+      &.active {
+        border-color: var(--color-primary, #2d8cf0);
+        background: color-mix(in srgb, var(--color-primary, #2d8cf0) 14%, transparent);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2d8cf0) 18%, transparent);
+      }
+    }
+
+    .mode-copy {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+
+      small {
+        color: var(--mars-text-color-placeholder);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+    }
+
+    .mode-check { color: var(--color-primary, #2d8cf0); }
+
+    .mode-icon {
+      width: 28px;
+      height: 28px;
+      border: 2px solid #ff8a50;
+      border-radius: 50%;
+      opacity: 0.9;
+    }
+
+    .mode-icon.multi {
+      position: relative;
+      border-color: #f9c74f;
+      box-shadow: inset 0 0 0 5px transparent, inset 0 0 0 7px #ff8a50;
+    }
+
     .param-grid {
       display: grid;
       gap: 10px;
+    }
+
+    .distance-section {
+      padding: 10px;
+      border: 1px solid color-mix(in srgb, var(--color-primary, #2d8cf0) 24%, transparent);
+      border-radius: var(--popup-item-radius, 8px);
+      background: color-mix(in srgb, var(--color-primary, #2d8cf0) 6%, transparent);
+      display: grid;
+      gap: 10px;
+    }
+
+    .distance-section-head,
+    .option-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+
+      > div:first-child {
+        display: grid;
+        gap: 2px;
+      }
+
+      span {
+        color: var(--mars-text-color-placeholder);
+        font-size: 11px;
+      }
+    }
+
+    .range-preview {
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--color-primary, #2d8cf0) 13%, transparent);
+      color: var(--mars-text-color) !important;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .single-radius-input {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
     }
 
     .param-row {
@@ -1403,23 +1562,104 @@ async function autoSinkOutputs() {
 
     .quick-btns {
       display: flex;
+      align-items: center;
       gap: 8px;
       flex-wrap: wrap;
+
+      > span {
+        color: var(--mars-text-color-placeholder);
+        font-size: 12px;
+      }
     }
 
     .ring-editor-row { align-items: start; }
     .ring-editor { display: grid !important; gap: 8px; }
     .ring-distance-item {
       display: grid;
-      grid-template-columns: auto 42px minmax(90px, 1fr) auto;
+      grid-template-columns: auto 10px minmax(96px, 1fr) minmax(80px, 0.8fr) auto;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent);
       color: var(--mars-text-color);
+
+      &:last-child { border-bottom: 0; }
+    }
+
+    .ring-color {
+      width: 9px;
+      height: 28px;
+      border-radius: 5px;
+    }
+    .ring-color.ring-0 { background: #e53935; }
+    .ring-color.ring-1 { background: #fb8c00; }
+    .ring-color.ring-2 { background: #f9c74f; }
+
+    .ring-copy {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+
+      small {
+        overflow: hidden;
+        color: var(--mars-text-color-placeholder);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .input-guidance,
+    .analysis-scope-note {
+      padding: 8px 10px;
+      border-radius: 7px;
+      background: color-mix(in srgb, #36b37e 10%, transparent);
+      color: color-mix(in srgb, #77e0b4 90%, var(--mars-text-color));
+      display: flex;
+      gap: 7px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .input-guidance.error {
+      background: color-mix(in srgb, #e53935 10%, transparent);
+      color: #ff8a80;
+    }
+
+    .analysis-scope-note {
+      border-left: 3px solid #f9c74f;
+      border-radius: 0 7px 7px 0;
+      background: color-mix(in srgb, #f9c74f 8%, transparent);
+      color: var(--mars-text-color-placeholder);
+    }
+
+    .option-row {
+      min-height: 36px;
+      padding: 0 2px;
+    }
+
+    .template-select {
+      min-width: 150px;
     }
     .preview-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+    }
+
+    @media (max-width: 430px) {
+      .param-heading,
+      .distance-section-head,
+      .option-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .mode-cards { grid-template-columns: 1fr; }
+      .unit-select { justify-content: space-between; }
+      .template-select { width: 100%; }
+      .ring-distance-item { grid-template-columns: auto 10px minmax(80px, 1fr) minmax(74px, 0.8fr) auto; }
     }
 
     .run-actions {
@@ -1515,11 +1755,11 @@ async function autoSinkOutputs() {
     }
 
     .swatch.core,
-    .ring-dot.core { background: #d50000; }
+    .ring-dot.core { background: #e53935; }
     .swatch.transition,
-    .ring-dot.transition { background: #ff6d00; }
+    .ring-dot.transition { background: #fb8c00; }
     .swatch.edge,
-    .ring-dot.edge { background: #ffea00; }
+    .ring-dot.edge { background: #f9c74f; }
 
     .ring-result-list {
       display: grid;
@@ -1662,9 +1902,9 @@ async function autoSinkOutputs() {
       font-size: 12px;
     }
 
-    .swatch.core { background: #d50000; }
-    .swatch.transition { background: #ff6d00; }
-    .swatch.edge { background: #ffea00; }
+    .swatch.core { background: #e53935; }
+    .swatch.transition { background: #fb8c00; }
+    .swatch.edge { background: #f9c74f; }
     .swatch.a { background: #d50000; }
     .swatch.b { background: #1677ff; }
     .swatch.r { background: #8e24aa; }

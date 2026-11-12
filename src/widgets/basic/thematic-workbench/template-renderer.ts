@@ -1,19 +1,24 @@
-import { area, bbox, bboxClip, booleanValid, coordEach, distance, featureCollection, isolines, lineString, point, pointOnFeature, polygon } from "@turf/turf"
+import { area, bbox, bboxClip, coordEach, distance, featureCollection, isolines, lineString, point, pointOnFeature, polygon } from "@turf/turf"
+import { validVectorGeometry } from "./geometry-validation"
 import type { Feature, FeatureCollection, Geometry, GeometryCollection } from "geojson"
 import { analyzeEarthquakeDataset, parseEarthquakeGeoJson, type GeoBounds } from "./earthquake-analysis"
 import { EARTHQUAKE_COLORS, earthquakeLegend, INTENSITY_COLORS } from "./earthquake-palette"
 import { templateMapping } from "./template-map"
+import { classBreaks, legendNumber } from "./render-style"
 import { mapTemplatePalettes, sampleTemplatePalette } from "./template-palettes"
 import type { LegendEntry } from "./display-model"
+import { assessmentContracts, isAssessmentKind, renderAssessmentProduct } from "./assessment-products"
 
-export type TemplateContract = { name: string; fields: string[]; geometry: string; automatic?: "admin" | "rgb"; metadata?: Record<string, unknown> }
+export type TemplateContract = { name: string; fields: string[]; geometry: string; analysisOnly?: true; automatic?: "admin" | "rgb"; metadata?: Record<string, unknown> }
 export const TEMPLATE_CONTRACTS: Record<string, TemplateContract> = {
+  ...assessmentContracts,
   choropleth: { name: "分级设色", fields: ["value"], geometry: "Polygon", automatic: "admin" },
-  "unique-value": { name: "唯一值分类", fields: ["category"], geometry: "Polygon", automatic: "admin" },
+  "unique-value": { name: "唯一值分类", fields: ["category"], geometry: "Point / LineString / Polygon", automatic: "admin" },
   "graduated-symbol": { name: "分级符号", fields: ["value"], geometry: "Point / Polygon", automatic: "admin" },
+  "proportional-symbol": { name: "比例符号", fields: ["value"], geometry: "Point / Polygon", automatic: "admin" },
   "point-heat": { name: "点热力", fields: ["value"], geometry: "Point / Polygon", automatic: "admin" },
-  "raster-ramp": { name: "栅格色带", fields: ["value"], geometry: "RGB / Point", automatic: "rgb" },
-  "raster-threshold": { name: "栅格阈值", fields: ["value"], geometry: "RGB / Point", automatic: "rgb" },
+  "raster-ramp": { name: "栅格色带", fields: ["value"], geometry: "规则 Point 采样网格", automatic: "rgb" },
+  "raster-threshold": { name: "栅格阈值", fields: ["value"], geometry: "规则 Point 采样网格", automatic: "rgb" },
   contour: { name: "等值线", fields: ["value"], geometry: "规则 Point 网格", automatic: "rgb" },
   trajectory: { name: "轨迹回放", fields: ["observedAt", "track_id"], geometry: "Point", metadata: { timeZone: "ISO 8601 with offset" } },
   "flow-direction": { name: "流向", fields: ["flow_rate"], geometry: "LineString（坐标顺序为流向）", metadata: { unit: "m³/s" } },
@@ -21,15 +26,16 @@ export const TEMPLATE_CONTRACTS: Record<string, TemplateContract> = {
   "time-compare": { name: "时序对比", fields: ["before", "after"], geometry: "Point / Polygon", metadata: { unit: "", beforeTime: "", afterTime: "" } },
   "chart-linkage": { name: "图表联动", fields: ["value"], geometry: "Point / Polygon", automatic: "admin" },
   "anomaly-composite": { name: "异常综合", fields: ["thermal_index", "deformation_index", "seismic_index"], geometry: "Point / Polygon", metadata: { weights: [1, 1, 1], model: "", normalization: "各输入已归一化到 0–1" } },
-  "thermal-infrared": { name: "热红外", fields: ["lst_k", "baseline_mean_k", "baseline_sd_k", "baseline_count", "quality_flag"], geometry: "Point", metadata: { temperatureUnit: "K", baselinePeriod: "" } },
-  "post-quake-risk": { name: "震后风险", fields: ["risk_index"], geometry: "Point / Polygon", metadata: { model: "已评估风险成果的模型与版本" } },
-  "swarm-trajectory": { name: "震群轨迹", fields: ["observedAt", "track_id", "magnitude", "depth_km"], geometry: "Point", metadata: { depthUnit: "km", magnitudeType: "" } },
-  "insar-deformation": { name: "InSAR 形变", fields: ["los_mm", "coherence"], geometry: "Point", metadata: { losUnit: "mm", losConvention: "toward_positive", acquisitionPair: "" } },
-  "intensity-distribution": { name: "烈度分布", fields: ["intensity"], geometry: "Point / Polygon", metadata: { intensityStandard: "GB/T 17742-2020", assessment: "评定机构或模型版本" } },
-  "secondary-hazard": { name: "次生灾害", fields: ["hazard_type", "severity"], geometry: "Point / Polygon" },
-  "building-resilience": { name: "房屋抗震", fields: ["vulnerability_index"], geometry: "Polygon", metadata: { model: "脆弱性评估方法与版本" } },
-  "population-exposure": { name: "人口经济暴露", fields: ["population", "intensity"], geometry: "Polygon", metadata: { populationUnit: "人", assessment: "人口统计与烈度成果来源" } },
-  "emergency-command": { name: "应急指挥", fields: ["resource_type", "status"], geometry: "Point / LineString", metadata: { statusValues: "available / blocked / unknown" } }
+  "thermal-infrared": { name: "地表温度基线异常", fields: ["lst_k", "baseline_mean_k", "baseline_sd_k", "baseline_count", "quality_flag"], geometry: "Point", metadata: { temperatureUnit: "K", baselinePeriod: "" } },
+  "post-quake-risk": { name: "地震灾害风险指数", fields: ["risk_index"], geometry: "Point / Polygon", metadata: { model: "已评估风险成果的模型与版本" } },
+  "swarm-trajectory": { name: "地震序列时空分布", fields: ["observedAt", "track_id", "magnitude", "depth_km"], geometry: "Point", metadata: { depthUnit: "km", magnitudeType: "" } },
+  "insar-deformation": { name: "InSAR 视线向形变", fields: ["los_mm", "coherence"], geometry: "Point", metadata: { losUnit: "mm", losConvention: "toward_positive", acquisitionPair: "" } },
+  "instrumental-intensity": { name: "仪器烈度初判", fields: ["pga_ms2", "pgv_ms"], geometry: "Point", analysisOnly: true, metadata: { intensityStandard: "GB/T 17742-2020" } },
+  "intensity-distribution": { name: "烈度评定成果", fields: ["intensity"], geometry: "Point / Polygon", metadata: { intensityStandard: "GB/T 17742-2020", assessment: "评定机构或模型版本" } },
+  "secondary-hazard": { name: "次生灾害调查成果", fields: ["hazard_type", "severity"], geometry: "Point / Polygon" },
+  "building-resilience": { name: "建筑物地震易损性", fields: ["vulnerability_index"], geometry: "Polygon", metadata: { model: "脆弱性评估方法与版本" } },
+  "population-exposure": { name: "人口与资产暴露", fields: ["population", "intensity"], geometry: "Polygon", metadata: { populationUnit: "人", assessment: "人口统计与烈度成果来源" } },
+  "emergency-command": { name: "救灾资源与通行状态", fields: ["resource_type", "status"], geometry: "Point / LineString", metadata: { statusValues: "available / blocked / unknown" } }
 }
 
 type SupportedGeometry = Exclude<Geometry, GeometryCollection>
@@ -38,16 +44,25 @@ export type TemplateFeature = Feature<SupportedGeometry, Record<string, any>>
 export type TemplateScene = {
   kind: string; features: TemplateFeature[]; legend: LegendEntry[]; source: string; unit: string; time: string; note: string
   annotations?: Array<{ position: number[]; label: string; symbolKind?: string }>
-  rows: Array<{ id: string; label: string; value: number; color: string }>
+  rows: Array<{ id: string; label: string; value: number; color: string; category?: string; sourceFeatureId?: string }>
   heat?: Array<{ lng: number; lat: number; value: number }>
   heatColors?: string[]
 }
-export type TemplateOptions = { field?: string; count?: number; palette?: string; threshold?: number; coherence?: number; progress?: number; compare?: "difference" | "before" | "after"; exposure?: "population" | "asset_value" }
+export type TemplateOptions = { field?: string; method?: "natural" | "equal" | "quantile"; count?: number; palette?: string; threshold?: number; coherence?: number; progress?: number; compare?: "difference" | "before" | "after"; exposure?: "population" | "asset_value"; fieldMapping?: Record<string, string>; unit?: string; radius?: number; normalization?: { kind: "area-density" }; geometryFilter?: "point" | "line" | "polygon"; categoryLabels?: Record<string, string>; categoryColors?: Record<string, string> }
 const allowedGeometry = ["Point", "LineString", "MultiLineString", "Polygon", "MultiPolygon"]
 
-export function readTemplateDocument(input: unknown, filename = ""): TemplateDocument {
+function categoryColor(category: string) {
+  let hash = 2166136261
+  for (const char of category) { hash = Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0 }
+  const h = hash % 360 / 60; const c = 0.58; const x = c * (1 - Math.abs(h % 2 - 1)); const m = 0.16
+  const rgb = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.floor(h)]
+  return "#" + rgb.map(value => Math.round((value + m) * 255).toString(16).padStart(2, "0")).join("")
+}
+
+export function readTemplateDocument(input: unknown, filename = "", limits = { maxFeatures: 2000, maxVertices: 40000 }): TemplateDocument {
+  if (!Number.isInteger(limits.maxFeatures) || limits.maxFeatures < 1 || limits.maxFeatures > 2000 || !Number.isInteger(limits.maxVertices) || limits.maxVertices < 1 || limits.maxVertices > 250000) { throw new Error("矢量读取限额无效") }
   const raw = input as TemplateDocument
-  if (raw?.type !== "FeatureCollection" || !Array.isArray(raw.features) || !raw.features.length || raw.features.length > 2000) { throw new Error("需要包含 1–2000 个要素的 GeoJSON FeatureCollection") }
+  if (raw?.type !== "FeatureCollection" || !Array.isArray(raw.features) || !raw.features.length || raw.features.length > limits.maxFeatures) { throw new Error(`需要包含 1–${limits.maxFeatures} 个要素的 GeoJSON FeatureCollection`) }
   let vertices = 0
   raw.features.forEach((feature, index) => {
     if (feature?.type !== "Feature" || !allowedGeometry.includes(feature.geometry?.type) || !feature.properties || typeof feature.properties !== "object") { throw new Error(`第 ${index + 1} 个要素的几何或属性无效`) }
@@ -55,8 +70,8 @@ export function readTemplateDocument(input: unknown, filename = ""): TemplateDoc
       vertices++
       if (!Number.isFinite(coord[0]) || !Number.isFinite(coord[1]) || Math.abs(coord[0]) > 180 || Math.abs(coord[1]) > 90) { throw new Error("坐标必须为 WGS84 经纬度") }
     })
-    if (vertices > 40000) { throw new Error("顶点超过 40000，请简化后导入") }
-    if (!booleanValid(feature)) { throw new Error(`第 ${index + 1} 个要素的几何拓扑无效`) }
+    if (vertices > limits.maxVertices) { throw new Error(`顶点超过 ${limits.maxVertices}，请缩小范围或由后端分幅`) }
+    if (!validVectorGeometry(feature)) { throw new Error(`第 ${index + 1} 个要素的几何拓扑无效`) }
   })
   return { ...raw, metadata: { source: filename, ...raw.metadata } }
 }
@@ -100,9 +115,14 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
   const metadata = document.metadata || {}
   const source = required(metadata.source, "metadata.source 数据来源")
   if (!contract.automatic) { date(metadata.observedAt, "metadata.observedAt 观测时间") }
-  const scoped = document.features.map((feature, index) => clip({ ...feature, properties: { ...feature.properties, templateId: String(index) } }, bounds)).filter(Boolean) as TemplateFeature[]
+  const scoped = document.features.map((feature, index) => {
+    const geometry = ["graduated-symbol", "proportional-symbol", "point-heat"].includes(kind) ? pointOnFeature(feature).geometry : feature.geometry
+    return clip({ ...feature, geometry, properties: { ...feature.properties, templateId: String(index) } }, bounds)
+  }).filter(Boolean) as TemplateFeature[]
   if (!scoped.length && !["trajectory", "swarm-trajectory"].includes(kind)) { throw new Error("框选范围内没有匹配数据") }
-  const scene: TemplateScene = { kind, features: [], rows: [], legend: [], source, unit: metadata.unit || options.field || "value", time: metadata.observedAt || new Date().toISOString(), note: "" }
+  if (isAssessmentKind(kind)) { return renderAssessmentProduct(kind, { ...document, features: scoped }, bounds, options, renderTemplateDocument) }
+  const scene: TemplateScene = { kind, features: [], rows: [], legend: [], source, unit: metadata.unit || options.field || "value", time: metadata.observedAt || "", note: "" }
+  if (options.normalization) { scene.note = "密度 = 原统计区总量 / 原统计区面积（km²）；使用完整原区面积，不按框选面积分摊总量。" }
   const event = metadata.event
   if (event?.coordinates) {
     const p = event.coordinates
@@ -115,9 +135,10 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
   let features = scoped
   const field = options.field || "value"
   const risk = ["risk-overlay", "post-quake-risk", "building-resilience"].includes(kind)
-  if (["thermal-infrared", "insar-deformation"].includes(kind)) {
+  if (["thermal-infrared", "insar-deformation", "instrumental-intensity"].includes(kind)) {
     const dataset = parseEarthquakeGeoJson({ ...document, features: scoped })
-    const result = analyzeEarthquakeDataset(dataset, kind === "thermal-infrared" ? "thermal" : "deformation", bounds, { thermalZ: options.threshold ?? 2, coherenceMin: options.coherence ?? 0.4, deformationMm: options.threshold ?? 20 })
+    const operation = { "thermal-infrared": "thermal", "insar-deformation": "deformation", "instrumental-intensity": "intensity" } as const
+    const result = analyzeEarthquakeDataset(dataset, operation[kind], bounds, { thermalZ: options.threshold ?? 2, coherenceMin: options.coherence ?? 0.4, deformationMm: options.threshold ?? 20 })
     scene.features = result.points.map((p, i) => paint(point([p.lon, p.lat]), p.value, p.color, String(i), 16, p.label))
     scene.legend = earthquakeLegend(result.palette); scene.unit = result.unit; scene.note = `${result.method}；${result.caution}；剔除 ${result.excludedCount} 个无效点`
     return finish(scene)
@@ -197,10 +218,10 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
         if (!["Point", "LineString", "MultiLineString"].includes(feature.geometry.type)) { throw new Error("应急资源须为点或路线") }
       }
       value = kind === "secondary-hazard" ? number(p, "severity", 1, 3) : 1
-      const categoricalColors = mapTemplatePalettes[options.palette || "categorical"] || mapTemplatePalettes.categorical
-      if (!categories.has(category)) { categories.set(category, colors[category] || categoricalColors[categories.size % categoricalColors.length]) }
+      if (!categories.has(category)) { categories.set(category, options.categoryColors?.[category] || metadata.categoryColors?.[category] || colors[category] || categoryColor(category)) }
       if (categories.size > 24) { throw new Error("类别超过 24，请先筛选数据") }
       const painted = paint(feature, value, categories.get(category)!, p.templateId, 10 + value * 5, `${p.name || p.resource_type || category} · ${category}`)
+      painted.properties.renderedCategory = category
       if (feature.geometry.type === "Point" && kind === "emergency-command") {
         painted.properties.symbolKind = { 医院: "dbt-medical", 学校: "dbt-school", 避难场所: "dbt-refuge", 机场: "dbt-airport" }[p.resource_type as string]
       }
@@ -214,7 +235,7 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
     } else if (kind === "post-quake-risk") {
       value = number(p, "risk_index", 0, 1); scene.unit = "0–1"
     } else if (kind === "building-resilience") {
-      if (!["Polygon", "MultiPolygon"].includes(feature.geometry.type)) { throw new Error("房屋抗震需要建筑面") }
+      if (!["Polygon", "MultiPolygon"].includes(feature.geometry.type)) { throw new Error("建筑物地震易损性需要真实建筑面") }
       value = number(p, "vulnerability_index", 0, 1); scene.unit = "脆弱性 0–1"
     } else if (kind === "population-exposure") {
       value = number(p, options.exposure || "population", 0)
@@ -237,12 +258,24 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
     } else { value = number(p, field) }
     values.push(value)
   }
-  if (categories.size) { scene.legend = [...categories].map(([label, color]) => ({ label, color })); scene.unit = "类别"; return finish(scene) }
+  if (categories.size) { scene.legend = [...categories].sort(([a], [b]) => a.localeCompare(b, "zh-CN", { numeric: true })).map(([label, color]) => ({ label: options.categoryLabels?.[label] || metadata.categoryLabels?.[label] || (/^\d+$/.test(label) ? `分类代码 ${label}` : label), color })); scene.unit = "类别"; return finish(scene) }
   if (!values.length) { throw new Error("框选范围和阈值条件内没有有效要素") }
-  const mapping = templateMapping(values, options.palette || "sequential-blue", "natural", options.count ?? 5, "classified")
+  const mapping = templateMapping(values, options.palette || "sequential-blue", options.method || "natural", options.count ?? 5, "classified")
   const colors = risk ? [EARTHQUAKE_COLORS.risk.low, EARTHQUAKE_COLORS.risk.medium, EARTHQUAKE_COLORS.risk.high] : ["#61d0e5", "#2379b5", "#ef794f"]
   const max = Math.max(...values); const min = Math.min(...values)
+  const symbolBreaks = [...new Set(classBreaks(values, options.method || "natural", options.count ?? 5))]
+  const symbolSizes = symbolBreaks.map((_, index) => 10 + 30 * index / Math.max(1, symbolBreaks.length - 1))
+  const symbolColor = "#2379b5"
   scene.legend = mapping.legend
+  if (kind === "graduated-symbol") {
+    scene.legend = symbolBreaks.map((end, index) => ({ label: `${index ? "(" : "["}${legendNumber(index ? symbolBreaks[index - 1] : min)}, ${legendNumber(end)}] ${scene.unit}`, color: symbolColor, radius: symbolSizes[index] / 2, shape: "point" }))
+    scene.note = "同一级使用相同圆径；面要素以区内代表点表示，不代表实测站点或地理影响半径。"
+  }
+  if (kind === "proportional-symbol") {
+    if (max <= 0) { throw new Error("比例符号需要至少一个正值，零值不绘制圆") }
+    scene.legend = [max / 4, max / 2, max].map(value => ({ label: `${legendNumber(value)} ${scene.unit}`, value, color: symbolColor, radius: 20 * Math.sqrt(value / max), shape: "point" }))
+    scene.note = "圆面积与数值成正比，零值不绘制圆；面要素使用区内代表点，不代表实测站点。"
+  }
   const rampColors = mapTemplatePalettes[options.palette || "terrain"] || mapTemplatePalettes.terrain
   if (kind === "raster-ramp") {
     scene.legend = Array.from({ length: 5 }, (_, i) => ({ label: (min + (max - min) * i / 4).toFixed(2), color: sampleTemplatePalette(rampColors, i / 4) }))
@@ -263,11 +296,15 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
     if (kind === "intensity-distribution") { color = Object.values(INTENSITY_COLORS)[value - 6] }
     if (kind === "time-compare") { color = sampleTemplatePalette(["#2166ac", "#f7f7f7", "#b2182b"], 0.5 + value / (2 * Math.max(Math.abs(min), Math.abs(max), 1e-9))) }
     let geometry = feature
-    if (["graduated-symbol", "point-heat"].includes(kind)) {
+    if (["graduated-symbol", "proportional-symbol", "point-heat"].includes(kind)) {
       if (value < 0) { throw new Error("比例符号和热力权重不能为负数") }
       geometry = { ...feature, geometry: pointOnFeature(feature).geometry }
     }
-    const size = kind === "graduated-symbol" ? 8 + 38 * Math.sqrt(value / Math.max(max, 1e-9)) : 14
+    const level = symbolBreaks.findIndex(end => value <= end)
+    let size = 14
+    if (kind === "graduated-symbol") { size = symbolSizes[level < 0 ? symbolSizes.length - 1 : level] }
+    if (kind === "proportional-symbol") { size = 40 * Math.sqrt(value / max) }
+    if (["graduated-symbol", "proportional-symbol"].includes(kind)) { color = symbolColor }
     const result = paint(geometry, value, color, feature.properties.templateId, size)
     if (kind === "intensity-distribution") {
       result.properties.opacity = 0.25
@@ -280,20 +317,44 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
     return result
   })
   if (["raster-ramp", "raster-threshold"].includes(kind)) {
-    const coordinates = document.features.map(f => {
+    const coordinates: number[][] = document.features.map(f => {
       if (f.geometry.type !== "Point") { throw new Error("栅格模板需要完整规则 Point 网格") }
-      return f.geometry.coordinates
+      return f.geometry.coordinates as number[]
     })
     const xs = [...new Set(coordinates.map(c => c[0]))].sort((a, b) => a - b); const ys = [...new Set(coordinates.map(c => c[1]))].sort((a, b) => a - b)
     const regular = (axis: number[]) => axis.length >= 2 && axis.every((v, i) => !i || Math.abs(v - axis[i - 1] - (axis[1] - axis[0])) < 1e-7)
-    if (!regular(xs) || !regular(ys) || xs.length * ys.length !== coordinates.length || new Set(coordinates.map(c => `${c[0]},${c[1]}`)).size !== coordinates.length) { throw new Error("栅格模板需要完整规则 Point 网格") }
-    const dx = (xs[1] - xs[0]) / 2; const dy = (ys[1] - ys[0]) / 2
+    const grid = metadata.gridDefinition
+    if (grid) {
+      if (![grid.west, grid.north, grid.dx, grid.dy].every(Number.isFinite) || grid.dx <= 0 || grid.dy <= 0 || !Number.isInteger(grid.width) || !Number.isInteger(grid.height) || grid.width < 1 || grid.height < 1 || grid.width * grid.height > 2000 || grid.missing !== "omit") { throw new Error("显式规则网格定义无效") }
+      const seen = new Set<string>()
+      for (const [x, y] of coordinates) {
+        const col = (x - grid.west) / grid.dx - 0.5; const row = (grid.north - y) / grid.dy - 0.5
+        const key = `${Math.round(col)},${Math.round(row)}`
+        if (Math.abs(col - Math.round(col)) > 1e-7 || Math.abs(row - Math.round(row)) > 1e-7 || col < 0 || row < 0 || col >= grid.width || row >= grid.height || seen.has(key)) { throw new Error("数据坐标不在声明网格的像元中心，或存在重复像元") }
+        seen.add(key)
+      }
+    } else if (!regular(xs) || !regular(ys) || xs.length * ys.length !== coordinates.length || new Set(coordinates.map(c => `${c[0]},${c[1]}`)).size !== coordinates.length) { throw new Error("栅格模板需要完整规则 Point 网格") }
+    const dx = (grid ? grid.dx : xs[1] - xs[0]) / 2; const dy = (grid ? grid.dy : ys[1] - ys[0]) / 2
     scene.features = scene.features.map(f => {
       const [x, y] = (f.geometry as GeoJSON.Point).coordinates
       const left = Math.max(bounds.west, x - dx); const right = Math.min(bounds.east, x + dx); const bottom = Math.max(bounds.south, y - dy); const top = Math.min(bounds.north, y + dy)
       return polygon([[[left, bottom], [right, bottom], [right, top], [left, top], [left, bottom]]], { ...f.properties, rasterCell: true })
     })
+    if (grid) {
+      const known = new Set(coordinates.map(c => `${c[0]},${c[1]}`))
+      for (let row = 0; row < grid.height; row++) {
+        for (let col = 0; col < grid.width; col++) {
+          const x = grid.west + (col + 0.5) * grid.dx; const y = grid.north - (row + 0.5) * grid.dy
+          if (known.has(`${x},${y}`)) { continue }
+          const left = Math.max(bounds.west, x - dx); const right = Math.min(bounds.east, x + dx); const bottom = Math.max(bounds.south, y - dy); const top = Math.min(bounds.north, y + dy)
+          if (left >= right || bottom >= top) { continue }
+          scene.features.push(polygon([[[left, bottom], [right, bottom], [right, top], [left, top], [left, bottom]]], { color: "#d9dee5", noData: true, rasterCell: true, value: null, name: "NoData（缺测）" }))
+        }
+      }
+      if (coordinates.length < grid.width * grid.height) { scene.legend.push({ label: "NoData（缺测，非零值）", color: "#d9dee5" }) }
+    }
     scene.note = "导入规则采样网格，按声明单位渲染；未执行遥感物理反演。"
+    if (metadata.referenceOnly) { scene.note += " 参考数据；预报与观测非严格同时，不作为地震异常或预报误差检验。缺测不补零、不插值。" }
   }
   if (kind === "point-heat") {
     scene.heat = scene.features.map(feature => ({ lng: (feature.geometry as any).coordinates[0], lat: (feature.geometry as any).coordinates[1], value: feature.properties.value }))
@@ -309,7 +370,7 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
     const ys = [...new Set(coordinates.map(c => c[1]))].sort((a, b) => a - b)
     const pairs = new Set(coordinates.map(c => `${c[0]},${c[1]}`))
     const regular = (axis: number[]) => axis.length >= 2 && axis.every((value, index) => !index || Math.abs(value - axis[index - 1] - (axis[1] - axis[0])) < 1e-7)
-    if (xs.length * ys.length !== pairs.size || pairs.size !== scene.features.length || !regular(xs) || !regular(ys)) { throw new Error("等值线需要完整规则 Point 网格；可选择框选底图 RGB 网格") }
+    if (xs.length * ys.length !== pairs.size || pairs.size !== scene.features.length || !regular(xs) || !regular(ys)) { throw new Error("等值线需要完整规则 Point 网格；请导入带真实指标的采样数据") }
     const levels = Array.from({ length: options.count ?? 5 }, (_, index) => min + (max - min) * (index + 1) / ((options.count ?? 5) + 1))
     const lines = isolines(featureCollection(scene.features) as any, levels, { zProperty: "value" })
     scene.features = lines.features.filter(f => f.geometry.coordinates.some(line => line.length > 1)).map((f, i) => paint(f, Number(f.properties?.value), sampleTemplatePalette(["#cfe8ff", "#12639a"], i / Math.max(1, levels.length - 1)), String(i)))
@@ -324,7 +385,7 @@ export function renderTemplateDocument(kind: string, document: TemplateDocument,
 
 function finish(scene: TemplateScene) {
   if (!scene.features.length) { throw new Error("当前范围或时间位置没有可渲染要素") }
-  scene.rows = scene.features.filter(f => !f.properties.arrow).map(f => ({ id: f.properties.templateId, label: f.properties.name, value: f.properties.value, color: f.properties.color }))
+  scene.rows = scene.features.filter(f => !f.properties.noData && (scene.kind === "flow-direction" || !f.properties.arrow)).map(f => ({ id: f.properties.templateId, label: f.properties.name, value: f.properties.value, color: f.properties.color, category: f.properties.renderedCategory, sourceFeatureId: f.properties.sourceFeatureId }))
   return scene
 }
 

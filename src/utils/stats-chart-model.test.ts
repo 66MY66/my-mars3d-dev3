@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { buildStatsChartOption, getStatsDivisionLabel } from "./stats-chart-model"
+import { buildPopulationLatitudeProfileOption, buildStatsChartOption, getStatsDivisionLabel } from "./stats-chart-model"
 
 describe("statistics chart model", () => {
   it("renders real population density bins as a total-population bar chart", () => {
@@ -13,6 +13,25 @@ describe("statistics chart model", () => {
     const option: any = buildStatsChartOption("economy", [{ 区间: "1–100", 格网数: 1, 面积: 2, 总量: 80 }])
     expect(option.xAxis.data).toEqual(["1–100"])
     expect(option.series[0].data).toEqual([80])
+  })
+
+  it("renders a population latitude profile as a longitude-density line with broken segments", () => {
+    const option: any = buildPopulationLatitudeProfileOption(27.1025, [
+      { longitude: 101.0075, latitude: 27.1025, density: 100, population: 25 },
+      null,
+      { longitude: 101.0175, latitude: 27.1025, density: 140, population: 35 }
+    ])
+
+    expect(option.xAxis.name).toBe("经度")
+    expect(option.yAxis.name).toBe("人口密度（人/km²）")
+    expect(option.series[0].type).toBe("line")
+    expect(option.series[0].connectNulls).toBe(false)
+    expect(option.series[0].sampling).toBeUndefined()
+    expect(option.series[0].data).toEqual([
+      [101.0075, 100, 25],
+      [null, null, null],
+      [101.0175, 140, 35]
+    ])
   })
 
   it("renders population as a descending horizontal ranking", () => {

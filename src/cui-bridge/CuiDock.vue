@@ -39,6 +39,7 @@ function getCuiSrc() {
   return `${b}#/cui-chat`
 }
 const src = getCuiSrc()
+const cuiOrigin = new URL(src, window.location.href).origin
 
 const widthStorageKey = "cui_dock_width"
 const posStorageKey = "cui_dock_pos"
@@ -200,7 +201,7 @@ function sendContext() {
       theme: getCurrentTheme()
     }
   }
-  target.postMessage(message, "*")
+  target.postMessage(message, cuiOrigin)
 }
 
 function onFrameLoad() {
@@ -210,7 +211,7 @@ function onFrameLoad() {
 let disposeBridge: null | (() => void) = null
 
 onMounted(() => {
-  disposeBridge = initShellBridge(getCuiWindow)
+  disposeBridge = initShellBridge(getCuiWindow, cuiOrigin)
   window.addEventListener("themeChange", sendContext)
   window.addEventListener("resize", onViewportResize)
   const rect = fabRef.value?.getBoundingClientRect()

@@ -1,6 +1,27 @@
 version: '3.8'
 
 services:
+  gateway:
+    image: nginx:1.27.5-alpine
+    container_name: mars3d-gateway
+    ports:
+      - "8888:8888"
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      mars3d-frontend:
+        condition: service_healthy
+      jeecg-backend:
+        condition: service_healthy
+    networks:
+      - mars3d-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888/mars3d/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   mars3d-frontend:
     build:
       context: .
@@ -26,6 +47,81 @@ services:
       retries: 3
       start_period: 40s
 
+  mysql:
+    image: mysql:5.7.44
+    container_name: mars3d-jeecg-mysql
+    restart: unless-stopped
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_general_ci", "--lower_case_table_names=1"]
+    environment:
+      MYSQL_DATABASE: jeecg-boot
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_USER: jeecg
+      MYSQL_PASSWORD: ${JEECG_DB_PASSWORD:?Set JEECG_DB_PASSWORD in .env}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./deploy/mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - mars3d-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  redis:
+    image: redis:6.2.14-alpine
+    container_name: mars3d-jeecg-redis
+    restart: unless-stopped
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    volumes:
+      - redis-data:/data
+    networks:
+      - mars3d-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  jeecg-backend:
+    build:
+      context: ./deploy/jeecg
+      dockerfile: Dockerfile
+    container_name: mars3d-jeecg-backend
+    restart: unless-stopped
+    environment:
+      JEECG_DB_HOST: mysql
+      JEECG_DB_NAME: jeecg-boot
+      JEECG_DB_USER: jeecg
+      JEECG_DB_PASSWORD: ${JEECG_DB_PASSWORD:?Set JEECG_DB_PASSWORD in .env}
+      JEECG_REDIS_HOST: redis
+      JEECG_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      TZ: Asia/Shanghai
+    volumes:
+      - jeecg-data:/app/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mars3d-network
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/9100'"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
 networks:
   mars3d-network:
     driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  jeecg-data:

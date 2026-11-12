@@ -8,7 +8,7 @@ describe("China national and provincial boundary layer", () => {
     const directory = layers.find((item: any) => item?.id === 7070)
     const layer = layers.find((item: any) => item?.name === "中国国界与省级行政区划界线")
 
-    expect(root).toMatchObject({ name: "热异常与遥感异常监测", type: "group" })
+    expect(root).toMatchObject({ name: "卫星遥感产品", type: "group" })
     expect(directory).toMatchObject({ id: 7070, pid: 70, name: "辅助图层", type: "group" })
     expect(layer).toMatchObject({
       id: 707001,

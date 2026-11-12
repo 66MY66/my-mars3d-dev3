@@ -2,10 +2,14 @@ import { commandBus } from "@/core/commandBus"
 import { protocolVersion } from "@/cui-bridge/protocol"
 import type { CmdExecuteMessage, CmdResultMessage } from "@/cui-bridge/protocol"
 
-export function initShellBridge(getCuiWindow: () => Window | null) {
+export function initShellBridge(
+  getCuiWindow: () => Window | null,
+  allowedOrigin = window.location.origin,
+  allowedCommands?: ReadonlySet<string>
+) {
   async function onMessage(evt: MessageEvent) {
     const targetWindow = getCuiWindow()
-    if (!targetWindow || evt.source !== targetWindow) {
+    if (!targetWindow || evt.source !== targetWindow || evt.origin !== allowedOrigin) {
       return
     }
     const msg = evt.data as Partial<CmdExecuteMessage>
@@ -13,14 +17,24 @@ export function initShellBridge(getCuiWindow: () => Window | null) {
       return
     }
     const cmd = msg.payload?.cmd
-    if (!cmd) {
+    if (!cmd || typeof cmd !== "string") {
       const res: CmdResultMessage = {
         version: protocolVersion,
         type: "cmd.result",
         requestId: msg.requestId,
         payload: { cmd: "", success: false, error: "缺少cmd" }
       }
-      targetWindow.postMessage(res, "*")
+      targetWindow.postMessage(res, allowedOrigin)
+      return
+    }
+    if (allowedCommands && !allowedCommands.has(cmd)) {
+      const res: CmdResultMessage = {
+        version: protocolVersion,
+        type: "cmd.result",
+        requestId: msg.requestId,
+        payload: { cmd, success: false, error: "UNSUPPORTED_COMMAND: command is not allowed" }
+      }
+      targetWindow.postMessage(res, allowedOrigin)
       return
     }
 
@@ -37,7 +51,7 @@ export function initShellBridge(getCuiWindow: () => Window | null) {
       requestId: msg.requestId,
       payload
     }
-    targetWindow.postMessage(res, "*")
+    targetWindow.postMessage(res, allowedOrigin)
   }
 
   window.addEventListener("message", onMessage)

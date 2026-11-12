@@ -4,13 +4,14 @@ import { area, bbox, intersect, featureCollection } from "@turf/turf"
 import { CATALOG_SAMPLE_BOUNDS } from "./catalog-template-samples"
 import { TEMPLATE_CONTRACTS, readTemplateDocument, renderTemplateDocument } from "./template-renderer"
 import { standardScale, STANDARD_SHEET } from "./cartography-standard-layout"
+import { isAssessmentKind } from "./assessment-products"
 
-const sample = (kind: string) => readTemplateDocument(JSON.parse(readFileSync(`public/data/dbt116-test/templates/${kind}.geojson`, "utf8")))
+const sample = (kind: string) => readTemplateDocument(JSON.parse(readFileSync(`public/data/dbt116-test/templates/${kind === "proportional-symbol" ? "graduated-symbol" : kind}.geojson`, "utf8")))
 describe("original catalog standard previews", () => {
-  it.each(Object.keys(TEMPLATE_CONTRACTS))("renders %s from test geometry, not an illustration", kind => {
+  it.each(Object.keys(TEMPLATE_CONTRACTS).filter(kind => !isAssessmentKind(kind) && !TEMPLATE_CONTRACTS[kind].analysisOnly))("renders legacy %s from isolated test geometry, not an illustration", kind => {
     const document = sample(kind)
     expect(document.metadata.usage).toBe("test")
-    expect(document.metadata.templateKind).toBe(kind)
+    expect(document.metadata.templateKind).toBe(kind === "proportional-symbol" ? "graduated-symbol" : kind)
     expect(document.metadata.previewDescription.length).toBeGreaterThan(10)
     for (const feature of document.features) {
       expect(TEMPLATE_CONTRACTS[kind].fields.every(key => Object.hasOwn(feature.properties, key))).toBe(true)
@@ -21,7 +22,7 @@ describe("original catalog standard previews", () => {
     expect(scene.source).toContain("合成")
   })
   it("uses separate datasets with only relevant business fields", () => {
-    const fingerprints = Object.keys(TEMPLATE_CONTRACTS).map(kind => JSON.stringify(sample(kind).features))
+    const fingerprints = Object.keys(TEMPLATE_CONTRACTS).filter(kind => !isAssessmentKind(kind) && !TEMPLATE_CONTRACTS[kind].analysisOnly).map(kind => JSON.stringify(sample(kind).features))
     // Ramp, threshold and contour intentionally share the same scalar field.
     expect(new Set(fingerprints).size).toBe(20)
     expect(sample("secondary-hazard").features[0].properties).not.toHaveProperty("intensity")

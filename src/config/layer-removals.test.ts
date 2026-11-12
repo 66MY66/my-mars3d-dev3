@@ -28,6 +28,40 @@ function collectNames(items: any[], names = new Set<string>()) {
 }
 
 describe("layer menu removals", () => {
+  it("physically removes the requested placeholder and obsolete remote-sensing entries", () => {
+    const names = collectNames(config.layers || [])
+    const removedNames = [
+      "高分辨率光学遥感数据",
+      "高分辨率 SAR 遥感数据",
+      "高分辨率多光谱遥感数据",
+      "长波辐射",
+      "OLR长波辐射数据",
+      "长波辐射异常指数",
+      "MODIS地表温度日产品",
+      "地表温度月均值",
+      "气候数据",
+      "降水分布",
+      "气温分布",
+      "光学影像异常识别",
+      "植被异常区域",
+      "地表反射率异常",
+      "形变隐患识别",
+      "形变隐患点分布",
+      "InSAR形变监测",
+      "热异常识别",
+      "热异常强度分布",
+      "地表热异常检测结果",
+      "气象遥感底图",
+      "GPM降水数据",
+      "风云气象卫星影像",
+      "红外遥感数据底图",
+      "Sentinel-3热红外数据",
+      "MODIS热红外影像"
+    ]
+
+    removedNames.forEach((name) => expect(names.has(name), name).toBe(false))
+  })
+
   it("does not expose the retired layer entries", () => {
     const names = collectNames(removeRetiredLayers(config.layers || []))
     removedLayerNames.forEach((name) => expect(names.has(name), name).toBe(false))

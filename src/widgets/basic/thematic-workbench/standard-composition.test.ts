@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { reactive } from "vue"
 import { createCompositionItem, restoreComposition } from "./composition-model"
-import { standardCompositionIssues, syncStandardComposition, type StandardComposition } from "./standard-composition"
+import { standardComposition, standardCompositionIssues, syncStandardComposition, type StandardComposition } from "./standard-composition"
 
 function scene(): StandardComposition {
   return {
@@ -20,6 +20,39 @@ standardPart: kind,
 }
 
 describe("standard templates in the original composer", () => {
+  it("removes a cached generic north arrow when the georeferenced map already includes one", () => {
+    const baseline = { ...scene(), northAngle: 0 }
+    const cached = [...baseline.items, createCompositionItem("north")]
+    expect(syncStandardComposition(cached, baseline).some(item => item.kind === "north")).toBe(false)
+    expect(cached.some(item => item.kind === "north")).toBe(true)
+    expect(syncStandardComposition(cached, scene()).some(item => item.kind === "north")).toBe(true)
+  })
+  it("retains the same canonical region identities from draft to a data-backed map", () => {
+    const context = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage: vi.fn() } as any)
+    const encode = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAAA")
+    try {
+      const canvas = document.createElement("canvas"); canvas.width = 1680; canvas.height = 1188
+      const draft = standardComposition(canvas, null, "T30102000", 535, true)
+      const backed = standardComposition(canvas, null, "T30102000", 535, false)
+      expect(backed.northAngle).toBe(0); expect(draft.northAngle).toBeUndefined()
+      expect(draft.items.map(item => item.id)).toEqual(backed.items.map(item => item.id))
+      expect(syncStandardComposition(draft.items, backed).some(item => item.kind === "scale")).toBe(true)
+    } finally { context.mockRestore(); encode.mockRestore() }
+  })
+  it("follows changed content-region dimensions without stretching a new raster into an old slot", () => {
+    const baseline = scene(); const items = syncStandardComposition([], baseline)
+    baseline.items[1].h = 360
+    const updated = syncStandardComposition(items, baseline)
+    expect(updated[1].h).toBe(360)
+    expect(standardCompositionIssues(updated, baseline)).toEqual([])
+  })
+  it("preserves explicitly positioned geometry when new data change the default layout", () => {
+    const baseline = scene(); const items = syncStandardComposition([], baseline)
+    items[1].positioned = true; items[1].h = 150; items[1].x = 200
+    baseline.items[1].h = 360
+    const updated = syncStandardComposition(items, baseline)
+    expect(updated[1].h).toBe(150); expect(updated[1].x).toBe(200)
+  })
   it("copies Vue scenes without mutating their baseline", () => {
     const baseline = reactive(scene()); const items = syncStandardComposition([], baseline)
     items[0].x += 10

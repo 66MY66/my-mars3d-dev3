@@ -1,12 +1,57 @@
 import { describe, expect, it } from "vitest"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { dbtTemplates, readDbtDocument, inspectDbtDocument, standardBounds, intensityThreshold, intensityLabel, dbtVisibleLayers } from "./dbt116-standard"
+import { dbtTemplates, readDbtDocument, inspectDbtDocument, standardBounds, intensityThreshold, intensityLabel, dbtVisibleLayers, dbtTitle } from "./dbt116-standard"
 import { jpegWithDpi } from "./dbt116-export"
 import { area, bboxPolygon } from "@turf/turf"
 import { dbtRegion, dbtMapCode, intensityBands, dbtStatistics, coversBounds } from "./dbt-cartography-rules"
+import { CARTOGRAPHY_RULESET } from "./cartography-standards"
 const fixture = () => readDbtDocument(JSON.parse(readFileSync(resolve("public/data/dbt116-test/T30101000.json"), "utf8")))
-describe("Emergency cartography draft and DB/T 101 classification", () => {
+describe("Emergency cartography pre-adoption and DB/T 101 classification", () => {
+  it("retains explicit derived layers in reference compositions without adding them to formal product roles", () => {
+    const doc = fixture(); const layer = { ...doc.layers[0], id: "derived", role: "business" }; doc.layers.push(layer)
+    doc.usage = "reference"
+    expect(dbtVisibleLayers(doc, "T30102000")).toContain(layer)
+    doc.usage = "operational"
+    expect(dbtVisibleLayers(doc, "T30102000")).not.toContain(layer)
+  })
+  it("records a versioned pre-adoption profile rather than claiming certified published compliance", () => {
+    expect(CARTOGRAPHY_RULESET.id).toBe("earthquake-response-dbt116-2026.pre-adoption.v2")
+    expect(CARTOGRAPHY_RULESET.symbolEffectiveDate).toBe("2026-12-01")
+    expect(CARTOGRAPHY_RULESET.title).toContain("提前采用")
+    expect(CARTOGRAPHY_RULESET.adoption).toContain("not-product-certification")
+  })
+  it("accepts terrain, settlement and rescue-road instances without unrelated thematic layers", () => {
+    for (const [instance, role] of [["01", "dem"], ["03", "settlement"], ["05", "transport"]]) {
+      const doc = fixture()
+      doc.classification = { instance, spatial: "6" }
+      doc.layers = doc.layers.filter(layer => [role, "intensity", "boundary", "water"].includes(layer.role))
+      const issues = inspectDbtDocument(doc, "T30203000")
+      expect(dbtVisibleLayers(doc, "T30203000").some(layer => layer.role === role)).toBe(true)
+      expect(issues.some(issue => /缺少该模板所需专题数据|实例代码所指专题数据未显示/.test(issue.message))).toBe(false)
+      // Source and formal event checks remain active for this synthetic test fixture.
+      expect(issues.some(issue => issue.message.includes("禁止正式出图"))).toBe(true)
+    }
+  })
+  it("allows a distance map without stations but does not treat an ordinary road basemap as a distance map", () => {
+    const doc = fixture()
+    doc.layers = doc.layers.filter(layer => layer.role !== "station")
+    expect(inspectDbtDocument(doc, "T30101000").some(issue => issue.message.includes("缺少该模板所需专题数据"))).toBe(false)
+    doc.layers = doc.layers.filter(layer => layer.role !== "distance")
+    expect(inspectDbtDocument(doc, "T30101000").some(issue => issue.message.includes("缺少该模板所需专题数据"))).toBe(true)
+  })
+  it("does not let a PGA-only map pass as a disaster-reduction capacity instance", () => {
+    const doc = fixture()
+    doc.layers = doc.layers.filter(layer => !["capacity", "supplies", "refuge"].includes(layer.role))
+    doc.classification = { instance: "01", spatial: "6" }
+    expect(inspectDbtDocument(doc, "T30202000").some(issue => issue.message.includes("不能仅用地震动参数区划替代"))).toBe(true)
+    doc.classification.instance = "02"
+    expect(inspectDbtDocument(doc, "T30202000").some(issue => issue.message.includes("不能仅用地震动参数区划替代"))).toBe(false)
+  })
+  it("does not count zero opacity layers as visible mandatory content", () => {
+    const doc = fixture(); doc.layers.forEach(layer => { if (layer.role === "population") { layer.opacity = 0 } })
+    expect(dbtVisibleLayers(doc, "T30102000").some(layer => layer.role === "population")).toBe(false)
+  })
   it("has six category codes and matching mandatory roles", () => {
     expect(dbtTemplates).toHaveLength(6)
     expect(new Set(dbtTemplates.map(item => item.id)).size).toBe(6)
@@ -47,6 +92,16 @@ describe("Emergency cartography draft and DB/T 101 classification", () => {
   it("uses both Roman and Arabic intensity labels", () => {
     expect(intensityLabel(7)).toBe("Ⅶ度(7度)")
     expect(intensityLabel(7.5)).toBe("")
+  })
+  it("names the selected instance in the title without inventing missing event facts", () => {
+    const doc = fixture()
+    for (const [id, instance, name] of [["T30101000", "02", "震中与主要城市距离"], ["T30103000", "01", "医院"], ["T30103000", "04", "桥梁"], ["T30202000", "02", "地震动参数区划"], ["T30203000", "02", "遥感影像"], ["T30203000", "05", "救灾道路"]] as const) {
+      doc.classification = { instance, spatial: "6" }
+      expect(dbtTitle(doc, id)).toContain(name)
+      expect(dbtTitle(doc, id)).toContain(doc.event.place)
+    }
+    doc.event.time = ""; doc.event.place = ""; doc.event.magnitude = 0
+    expect(dbtTitle(doc, "T30101000")).toContain("[发震日期] [震中地名] [震级]")
   })
   it("encodes instance and spatial scope independently", () => {
     expect(dbtMapCode("T30102000", "01", "6")).toBe("T30102016")
