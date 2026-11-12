@@ -1,5 +1,5 @@
 <template>
-  <HeaderIconButton title="通知" icon="Alarm" :badge="unreadCount > 0 ? unreadCount : undefined" @click="openPanel" />
+  <HeaderIconButton title="通知" icon="Alarm" :active="visible" :badge="unreadCount > 0 ? unreadCount : undefined" @click="openPanel" />
 
   <teleport to="body">
     <div v-if="visible" class="mask" @click.self="closePanel">

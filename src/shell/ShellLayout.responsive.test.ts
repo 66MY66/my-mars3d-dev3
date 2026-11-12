@@ -27,10 +27,6 @@ vi.mock("@/shell/components/TopSettingsMenu.vue", () => {
   return { default: { template: "<div></div>" } }
 })
 
-vi.mock("@/shell/components/TopStatusBar.vue", () => {
-  return { default: { template: "<div></div>" } }
-})
-
 vi.mock("@/shell/components/TopNotificationsMenu.vue", () => {
   return { default: { template: "<div></div>" } }
 })

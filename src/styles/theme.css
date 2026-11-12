@@ -1435,15 +1435,6 @@ select,
   border-radius: 6px !important;
 }
 
-/* 顶部无障碍开关：覆盖全局 button 直角重置，保留胶囊圆角 */
-.status .a11y-switch.ant-switch {
-  border-radius: 999px !important;
-}
-
-.status .a11y-switch.ant-switch .ant-switch-handle::before {
-  border-radius: 50% !important;
-}
-
 /* 地图左下角帮助按钮：仅替换图标为简洁白色问号，不调整其它悬浮按钮样式 */
 .mars3d-host .cesium-viewer-toolbar-left-bottom .cesium-navigationHelpButton-wrapper > .cesium-button {
   position: relative;

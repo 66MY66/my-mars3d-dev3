@@ -2,6 +2,7 @@
   <a-tooltip :title="title" :mouseEnterDelay="0.4" :autoAdjustOverflow="true">
     <button
       class="header-icon-btn"
+      :class="{ active }"
       type="button"
       :aria-label="title"
       @click="$emit('click', $event)"
@@ -23,9 +24,11 @@ const props = withDefaults(
     icon: IconName
     iconSize?: number
     badge?: string | number | boolean
+    active?: boolean
   }>(),
   {
-    iconSize: 18
+    iconSize: 16,
+    active: false
   }
 )
 
@@ -44,11 +47,11 @@ const svg = computed(() => {
 
 <style scoped>
 .header-icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
-  border: 1px solid var(--border-light);
-  background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+  border: 1px solid transparent;
+  background: transparent;
   cursor: pointer;
   display: inline-grid;
   place-items: center;
@@ -57,13 +60,26 @@ const svg = computed(() => {
   color: var(--text-primary);
   overflow: hidden;
   box-sizing: border-box;
-  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+:global(:root[data-theme="light"]) .header-icon-btn {
+  color: #4E5969;
+}
+
+:global(:root[data-theme="light"]) .header-icon-btn.active {
+  background: #E8F3FF;
+  color: #165DFF;
 }
 
 .header-icon-btn:hover {
-  background: color-mix(in srgb, var(--bg-elevated) 80%, var(--primary-hover));
-  border-color: color-mix(in srgb, var(--border-light) 60%, var(--primary));
+  background: color-mix(in srgb, #E8F3FF 72%, transparent);
+  border-color: transparent;
   transform: translateY(-1px);
+}
+
+:global(:root[data-theme="light"]) .header-icon-btn.active:hover {
+  background: #E8F3FF;
 }
 
 .icon :deep(svg) {

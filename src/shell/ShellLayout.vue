@@ -20,7 +20,6 @@
       </div>
 
       <div class="header-right">
-        <TopStatusBar />
         <TopHeaderMenus />
         <div class="header-icon-group">
           <TopNotificationsMenu />
@@ -45,7 +44,6 @@ import Sidebar from "@/shell/Sidebar.vue"
 import UserMenu from "@/shell/UserMenu.vue"
 import TopHeaderMenus from "@/shell/components/TopHeaderMenus.vue"
 import TopSettingsMenu from "@/shell/components/TopSettingsMenu.vue"
-import TopStatusBar from "@/shell/components/TopStatusBar.vue"
 import TopNotificationsMenu from "@/shell/components/TopNotificationsMenu.vue"
 import { getStoredSidebarCollapsed, setStoredSidebarCollapsed } from "@/shell/sidebar"
 import { initTheme } from "@/shell/theme"
@@ -263,7 +261,7 @@ function onGlobalKeydown(e: KeyboardEvent) {
 .header-icon-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
 }
 
 .main {

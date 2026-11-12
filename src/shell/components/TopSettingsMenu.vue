@@ -1,5 +1,5 @@
 <template>
-  <HeaderIconButton title="设置" icon="SettingTwo" @click="togglePanel" />
+  <HeaderIconButton title="设置" icon="SettingTwo" :active="visible" @click="togglePanel" />
 
   <teleport to="body">
     <div v-if="visible" class="settings-anchor">
