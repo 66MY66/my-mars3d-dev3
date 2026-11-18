@@ -100,6 +100,12 @@ function buildDensityHistogramOption(rows: StatsRow[], valueName: string, color:
 }
 
 export function buildPopulationLatitudeProfileOption(latitude: number | null, points: Array<PopulationProfilePoint | null>) {
+  const longitudes = points.filter((point): point is PopulationProfilePoint => !!point).map((point) => point.longitude)
+  const longitudeMin = longitudes.length ? Math.min(...longitudes) : undefined
+  const longitudeMax = longitudes.length ? Math.max(...longitudes) : undefined
+  const longitudePadding = longitudeMin !== undefined && longitudeMax !== undefined
+    ? Math.max((longitudeMax - longitudeMin) * 0.05, 0.0005)
+    : undefined
   return {
     animation: false,
     tooltip: {
@@ -117,6 +123,7 @@ export function buildPopulationLatitudeProfileOption(latitude: number | null, po
       name: "经度",
       nameLocation: "middle",
       nameGap: 42,
+      ...(longitudeMin !== undefined && longitudePadding !== undefined ? { min: longitudeMin - longitudePadding, max: (longitudeMax as number) + longitudePadding } : {}),
       axisLabel: { formatter: (value: number) => `${Number(value).toFixed(2)}°E` }
     },
     yAxis: {
@@ -126,8 +133,13 @@ export function buildPopulationLatitudeProfileOption(latitude: number | null, po
       nameLocation: "middle"
     },
     dataZoom: [
-      { type: "inside", xAxisIndex: 0 },
-      { type: "slider", xAxisIndex: 0, height: 16, bottom: 8 }
+      {
+        type: "inside",
+        xAxisIndex: 0,
+        zoomOnMouseWheel: true,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: true
+      }
     ],
     series: [{
       name: "人口密度",

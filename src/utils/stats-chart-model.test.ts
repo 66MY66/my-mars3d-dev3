@@ -34,6 +34,30 @@ describe("statistics chart model", () => {
     ])
   })
 
+  it("limits the longitude axis to the actual profile points", () => {
+    const option: any = buildPopulationLatitudeProfileOption(27.1025, [
+      { longitude: 101.0075, latitude: 27.1025, density: 100, population: 25 },
+      { longitude: 101.0175, latitude: 27.1025, density: 140, population: 35 }
+    ])
+
+    expect(option.xAxis.min).toBeCloseTo(101.007, 6)
+    expect(option.xAxis.max).toBeCloseTo(101.018, 6)
+  })
+
+  it("keeps inside longitude zoom without rendering a bottom slider", () => {
+    const option: any = buildPopulationLatitudeProfileOption(27.1025, [
+      { longitude: 101.0075, latitude: 27.1025, density: 100, population: 25 }
+    ])
+
+    expect(option.dataZoom).toEqual([{
+      type: "inside",
+      xAxisIndex: 0,
+      zoomOnMouseWheel: true,
+      moveOnMouseMove: true,
+      moveOnMouseWheel: true
+    }])
+  })
+
   it("renders population as a descending horizontal ranking", () => {
     const option: any = buildStatsChartOption("population", [
       { 区划: "乙区", 人口: 200, 人口密度: 80 },

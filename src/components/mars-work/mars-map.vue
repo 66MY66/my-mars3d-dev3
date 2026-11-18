@@ -118,11 +118,7 @@
 
             <div v-if="!statsUi.collapsed[c.key]" class="card-body">
               <div v-if="c.key === 'population'" class="population-view-switch">
-                <a-radio-group v-model:value="populationChartMode" size="small" optionType="button" buttonStyle="solid" @change="handlePopulationChartModeChange">
-                  <a-radio-button value="density">密度分布</a-radio-button>
-                  <a-radio-button value="profile">纬向剖面</a-radio-button>
-                </a-radio-group>
-                <span v-if="populationChartMode === 'profile'" class="population-profile-caption">当前纬度 {{ populationProfileLatitudeText }}</span>
+                <span class="population-profile-caption">纬向剖面 · 当前纬度 {{ populationProfileLatitudeText }}</span>
               </div>
 
               <div v-if="c.hasLevel" class="card-level">
@@ -137,11 +133,11 @@
                   'is-loading': getCardState(c.key).loading,
                   'is-empty': getCardState(c.key).empty,
                   'is-error': !!getCardState(c.key).error,
-                  'population-profile': c.key === 'population' && populationChartMode === 'profile'
+                  'population-profile': c.key === 'population'
                 }"
                 @wheel.prevent="adjustCardLevel(c.key, $event)"
               >
-                <div v-if="c.key === 'population' && populationChartMode === 'profile'" class="population-latitude-control">
+                <div v-if="c.key === 'population'" class="population-latitude-control">
                   <span>{{ populationLatitudeBounds.max.toFixed(3) }}°N</span>
                   <input
                     v-model.number="populationLatitude"
@@ -776,7 +772,6 @@ const identifyPanelPos = reactive<{ left: number | null; top: number | null; wid
 })
 const activeRing = ref<RingLonLat>([])
 const populationGridStep = 0.005
-const populationChartMode = ref<"density" | "profile">("density")
 const populationLatitude = ref(0)
 const populationProfileRevision = ref(0)
 const populationLatitudeBounds = computed(() => {
@@ -786,7 +781,7 @@ const populationLatitudeBounds = computed(() => {
 })
 const populationProfile = computed(() => {
   const cells = populationProfileRevision.value >= 0 ? gridStatsResults.get("population")?.selectedCells || [] : []
-  return buildPopulationLatitudeProfile(cells, populationLatitude.value)
+  return buildPopulationLatitudeProfile(cells, populationLatitude.value, activeRing.value)
 })
 const populationProfileLatitudeText = computed(() => {
   const latitude = populationProfile.value.latitude ?? populationLatitude.value
@@ -1864,12 +1859,12 @@ function renderCard(key: StatsCardKey) {
       // #endregion
       return
     }
-    if (key === "population" && populationChartMode.value === "profile" && !populationProfile.value.points.some(Boolean)) {
+    if (key === "population" && !populationProfile.value.points.some(Boolean)) {
       chart.clear?.()
       updateCardState(key, { loading: false, empty: true, error: null })
       return
     }
-    const option = key === "population" && populationChartMode.value === "profile"
+    const option = key === "population"
       ? buildPopulationLatitudeProfileOption(populationProfile.value.latitude, populationProfile.value.points)
       : buildStatsChartOption(key, rows)
     // #region debug-point C:set-option-before
@@ -1926,13 +1921,8 @@ function closeStats() {
   clearGridStatsOnMap()
 }
 
-async function handlePopulationChartModeChange() {
-  await nextTick()
-  if (statsVisible.value) { renderCard("population") }
-}
-
 function handlePopulationLatitudeInput() {
-  if (statsVisible.value && populationChartMode.value === "profile") {
+  if (statsVisible.value) {
     renderCard("population")
   }
 }
